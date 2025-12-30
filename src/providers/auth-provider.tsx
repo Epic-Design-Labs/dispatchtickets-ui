@@ -29,7 +29,7 @@ interface AuthContextType {
   sendMagicLink: (email: string) => Promise<boolean>;
   verifyToken: (token: string) => Promise<Session | null>;
   connectApiKey: (apiKey: string) => Promise<boolean>;
-  refreshSession: () => Promise<boolean>;
+  refreshSession: () => Promise<Session | null>;
   logout: () => void;
 }
 
@@ -61,12 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const refreshSession = useCallback(async (): Promise<boolean> => {
+  const refreshSession = useCallback(async (): Promise<Session | null> => {
     const token = getSessionToken();
     if (!token) {
       setSession(null);
       setIsLoading(false);
-      return false;
+      return null;
     }
 
     try {
@@ -83,50 +83,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Parse email from the JWT token (it's in the payload)
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
-          setSession({
+          const newSession: Session = {
             customerId: payload.sub || '',
             email: payload.email || '',
             organizationId: '',
             connected: false,
-          });
-          return true; // Token is valid, just needs org connection
+          };
+          setSession(newSession);
+          return newSession;
         } catch {
           // If JWT parsing fails, still keep them "authenticated" for the connect flow
-          setSession({
+          const newSession: Session = {
             customerId: '',
             email: '',
             organizationId: '',
             connected: false,
-          });
-          return true;
+          };
+          setSession(newSession);
+          return newSession;
         }
       }
 
       if (!response.ok) {
         clearSessionToken();
         setSession(null);
-        return false;
+        return null;
       }
 
       if (data.valid) {
-        setSession({
+        const newSession: Session = {
           customerId: data.customerId,
           email: data.email,
           organizationId: data.organizationId,
           orgRole: data.orgRole,
           connected: data.connected,
           expiresAt: data.expiresAt,
-        });
-        return true;
+        };
+        setSession(newSession);
+        return newSession;
       } else {
         clearSessionToken();
         setSession(null);
-        return false;
+        return null;
       }
     } catch {
       clearSessionToken();
       setSession(null);
-      return false;
+      return null;
     } finally {
       setIsLoading(false);
     }

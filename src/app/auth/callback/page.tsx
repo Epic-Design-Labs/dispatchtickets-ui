@@ -46,9 +46,9 @@ function AuthCallbackContent() {
         localStorage.setItem('dispatch_session_token', sessionToken);
 
         // Refresh session to validate and get connected status
-        const success = await refreshSession();
+        const sessionData = await refreshSession();
 
-        if (!success) {
+        if (!sessionData) {
           setStatus('error');
           setErrorMessage('Session validation failed. Check console for details.');
           return;
@@ -57,9 +57,9 @@ function AuthCallbackContent() {
         setStatus('success');
         toast.success('Successfully signed in!');
 
-        // Use window.location for reliable navigation
+        // Redirect based on connected status
         setTimeout(() => {
-          window.location.href = '/connect';
+          window.location.href = sessionData.connected ? '/workspaces' : '/connect';
         }, 500);
         return;
       }
