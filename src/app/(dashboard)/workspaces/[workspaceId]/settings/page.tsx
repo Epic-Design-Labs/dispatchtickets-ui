@@ -12,25 +12,25 @@ export default function SettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-muted-foreground">
-          Manage workspace configuration and preferences
+          Manage brand configuration and preferences
         </p>
       </div>
 
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Workspace Settings</CardTitle>
+            <CardTitle>Brand Settings</CardTitle>
             <CardDescription>
-              General workspace configuration
+              General brand configuration
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Settings management is under development. You'll be able to configure workspace name,
+              Settings management is under development. You'll be able to configure brand name,
               inbound email addresses, custom fields schema, and more.
             </p>
             <div className="mt-4 rounded-lg bg-muted p-4">
-              <p className="text-sm font-medium">Workspace ID</p>
+              <p className="text-sm font-medium">Brand ID</p>
               <code className="text-xs text-muted-foreground">{workspaceId}</code>
             </div>
           </CardContent>

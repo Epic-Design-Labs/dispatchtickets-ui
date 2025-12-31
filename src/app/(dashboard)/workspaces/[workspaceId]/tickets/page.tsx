@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useWorkspace, useTickets } from '@/lib/hooks';
+import { useBrand, useTickets } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { TicketFilters, TicketTable, CreateTicketDialog } from '@/components/tickets';
 import { Button } from '@/components/ui/button';
@@ -13,14 +13,14 @@ export default function TicketsPage() {
   const workspaceId = params.workspaceId as string;
   const [filters, setFilters] = useState<TicketFiltersType>({});
 
-  const { data: workspace } = useWorkspace(workspaceId);
+  const { data: brand } = useBrand(workspaceId);
   const { data: ticketsData, isLoading } = useTickets(workspaceId, filters);
 
   const tickets = ticketsData?.data || [];
 
   return (
     <div className="flex flex-col">
-      <Header title={workspace?.name ? `${workspace.name} - Tickets` : 'Tickets'} />
+      <Header title={brand?.name ? `${brand.name} - Tickets` : 'Tickets'} />
       <div className="flex-1 p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>

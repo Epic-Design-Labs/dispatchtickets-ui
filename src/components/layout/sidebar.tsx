@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
-import { WorkspaceSwitcher } from './workspace-switcher';
+import { BrandSwitcher } from './brand-switcher';
 
 interface SidebarProps {
   workspaceId?: string;
@@ -81,7 +81,7 @@ export function Sidebar({ workspaceId }: SidebarProps) {
 
       <div className="flex-1 overflow-y-auto py-4">
         <div className="px-3">
-          <WorkspaceSwitcher />
+          <BrandSwitcher />
         </div>
 
         {workspaceId && (

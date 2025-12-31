@@ -2,20 +2,20 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useWorkspace, useTickets } from '@/lib/hooks';
+import { useBrand, useTickets } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 
-export default function WorkspaceDashboardPage() {
+export default function BrandDashboardPage() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
 
-  const { data: workspace, isLoading: workspaceLoading } = useWorkspace(workspaceId);
+  const { data: brand, isLoading: brandLoading } = useBrand(workspaceId);
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(workspaceId);
 
-  const isLoading = workspaceLoading || ticketsLoading;
+  const isLoading = brandLoading || ticketsLoading;
 
   // Calculate ticket stats
   const tickets = ticketsData?.data || [];
@@ -29,13 +29,13 @@ export default function WorkspaceDashboardPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title={workspace?.name || 'Dashboard'} />
+      <Header title={brand?.name || 'Dashboard'} />
       <div className="flex-1 p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
             <p className="text-muted-foreground">
-              Overview of your workspace activity
+              Overview of your brand activity
             </p>
           </div>
           <Button asChild>

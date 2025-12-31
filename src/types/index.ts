@@ -1,4 +1,4 @@
-export * from './workspace';
+export * from './brand';
 export * from './ticket';
 export * from './comment';
 export * from './webhook';

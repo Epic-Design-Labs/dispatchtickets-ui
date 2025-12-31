@@ -30,7 +30,7 @@ export default function WebhooksPage() {
             for security.
           </p>
           <div className="mt-4 rounded-lg bg-muted p-4">
-            <p className="text-sm font-medium">Workspace ID</p>
+            <p className="text-sm font-medium">Brand ID</p>
             <code className="text-xs text-muted-foreground">{workspaceId}</code>
           </div>
         </CardContent>
