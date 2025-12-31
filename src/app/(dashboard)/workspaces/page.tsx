@@ -1,23 +1,76 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { useBrands } from '@/lib/hooks';
+import { useRouter } from 'next/navigation';
+import { useBrands, useCreateBrand } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { Plus } from 'lucide-react';
 
 export default function BrandsPage() {
+  const router = useRouter();
   const { data: brands, isLoading, error } = useBrands();
+  const createBrand = useCreateBrand();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newBrandName, setNewBrandName] = useState('');
+
+  const handleCreateBrand = async () => {
+    if (!newBrandName.trim()) {
+      toast.error('Please enter a brand name');
+      return;
+    }
+
+    try {
+      const name = newBrandName.trim();
+      // Generate slug from name: lowercase, replace spaces with hyphens, remove special chars
+      const baseSlug = name
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      // Add random suffix to avoid collisions
+      const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+
+      const brand = await createBrand.mutateAsync({ name, slug });
+      toast.success('Brand created successfully');
+      setCreateDialogOpen(false);
+      setNewBrandName('');
+      router.push(`/workspaces/${brand.id}`);
+    } catch (error) {
+      toast.error('Failed to create brand');
+    }
+  };
 
   return (
     <div className="flex flex-col">
       <Header title="Brands" />
       <div className="flex-1 p-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold tracking-tight">Your Brands</h2>
-          <p className="text-muted-foreground">
-            Select a brand to view and manage tickets
-          </p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Your Brands</h2>
+            <p className="text-muted-foreground">
+              Select a brand to view and manage tickets
+            </p>
+          </div>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Brand
+          </Button>
         </div>
 
         {isLoading && (
@@ -82,7 +135,7 @@ export default function BrandsPage() {
                   </svg>
                   <p className="text-lg font-medium">No brands found</p>
                   <p className="text-muted-foreground">
-                    Use the brand switcher in the sidebar to create your first brand
+                    Click the button above to create your first brand
                   </p>
                 </CardContent>
               </Card>
@@ -90,6 +143,42 @@ export default function BrandsPage() {
           </div>
         )}
       </div>
+
+      {/* Create Brand Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Brand</DialogTitle>
+            <DialogDescription>
+              Create a new brand to organize your tickets.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Brand Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g., My Company"
+                value={newBrandName}
+                onChange={(e) => setNewBrandName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCreateBrand();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateBrand} disabled={createBrand.isPending}>
+              {createBrand.isPending ? 'Creating...' : 'Create Brand'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

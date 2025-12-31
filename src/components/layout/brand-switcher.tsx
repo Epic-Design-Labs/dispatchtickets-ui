@@ -58,7 +58,18 @@ export function BrandSwitcher() {
     }
 
     try {
-      const brand = await createBrand.mutateAsync({ name: newBrandName.trim() });
+      const name = newBrandName.trim();
+      // Generate slug from name: lowercase, replace spaces with hyphens, remove special chars
+      const baseSlug = name
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      // Add random suffix to avoid collisions
+      const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+
+      const brand = await createBrand.mutateAsync({ name, slug });
       toast.success('Brand created successfully');
       setCreateDialogOpen(false);
       setNewBrandName('');
