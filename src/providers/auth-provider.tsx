@@ -26,13 +26,18 @@ interface CheckEmailResult {
   hasOrganization: boolean;
 }
 
+interface SendMagicLinkResult {
+  success: boolean;
+  notFound?: boolean;
+}
+
 interface AuthContextType {
   session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isConnected: boolean;
   checkEmail: (email: string) => Promise<CheckEmailResult>;
-  sendMagicLink: (email: string) => Promise<boolean>;
+  sendMagicLink: (email: string) => Promise<SendMagicLinkResult>;
   verifyToken: (token: string) => Promise<Session | null>;
   connectApiKey: (apiKey: string) => Promise<boolean>;
   refreshSession: () => Promise<Session | null>;
@@ -163,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const sendMagicLink = async (email: string): Promise<boolean> => {
+  const sendMagicLink = async (email: string): Promise<{ success: boolean; notFound?: boolean }> => {
     try {
       const response = await fetch(`${API_URL}/auth/magic-link`, {
         method: 'POST',
@@ -172,13 +177,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        return false;
+        const data = await response.json().catch(() => ({}));
+        // Check if Stackbe returned "Customer not found"
+        if (data.message?.includes('Customer not found') || data.message?.includes('not found')) {
+          return { success: false, notFound: true };
+        }
+        return { success: false };
       }
 
       const data = await response.json();
-      return data.success === true;
+      return { success: data.success === true };
     } catch {
-      return false;
+      return { success: false };
     }
   };
 

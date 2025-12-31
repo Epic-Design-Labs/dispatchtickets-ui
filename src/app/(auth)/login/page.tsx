@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [noAccount, setNoAccount] = useState(false);
-  const { checkEmail, sendMagicLink } = useAuth();
+  const { sendMagicLink } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,20 +35,14 @@ export default function LoginPage() {
     setNoAccount(false);
 
     try {
-      // First check if account exists
-      const { exists } = await checkEmail(email.trim());
-
-      if (!exists) {
-        setNoAccount(true);
-        setIsLoading(false);
-        return;
-      }
-
-      // Account exists, send magic link
-      const success = await sendMagicLink(email.trim());
-      if (success) {
+      // Send magic link - Stackbe will reject if customer doesn't exist
+      const result = await sendMagicLink(email.trim());
+      if (result.success) {
         setEmailSent(true);
         toast.success('Magic link sent! Check your email.');
+      } else if (result.notFound) {
+        // Customer doesn't exist - show signup prompt
+        setNoAccount(true);
       } else {
         toast.error('Failed to send magic link. Please try again.');
       }
