@@ -5,6 +5,16 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/providers';
 import { WorkspaceSwitcher } from './workspace-switcher';
 
 interface SidebarProps {
@@ -13,6 +23,8 @@ interface SidebarProps {
 
 export function Sidebar({ workspaceId }: SidebarProps) {
   const pathname = usePathname();
+  const { session, logout } = useAuth();
+  const email = session?.email;
 
   const navigation = workspaceId
     ? [
@@ -101,6 +113,45 @@ export function Sidebar({ workspaceId }: SidebarProps) {
             </nav>
           </>
         )}
+      </div>
+
+      {/* Account menu at bottom */}
+      <div className="border-t p-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="w-full justify-start gap-2">
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className="text-xs">
+                  {email ? email[0].toUpperCase() : 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="truncate text-sm">{email || 'Account'}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="start" side="top">
+            <DropdownMenuLabel className="font-normal">
+              <p className="text-sm font-medium">Account</p>
+              <p className="text-xs text-muted-foreground truncate">{email}</p>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600">
+              <svg
+                className="mr-2 h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
