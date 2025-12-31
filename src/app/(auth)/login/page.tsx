@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/providers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,13 +14,14 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Mail, ArrowLeft } from 'lucide-react';
+import { Mail, ArrowLeft, UserPlus } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const { sendMagicLink } = useAuth();
+  const [noAccount, setNoAccount] = useState(false);
+  const { checkEmail, sendMagicLink } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +32,19 @@ export default function LoginPage() {
     }
 
     setIsLoading(true);
+    setNoAccount(false);
 
     try {
+      // First check if account exists
+      const { exists } = await checkEmail(email.trim());
+
+      if (!exists) {
+        setNoAccount(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Account exists, send magic link
       const success = await sendMagicLink(email.trim());
       if (success) {
         setEmailSent(true);
@@ -48,8 +61,44 @@ export default function LoginPage() {
 
   const handleBack = () => {
     setEmailSent(false);
+    setNoAccount(false);
     setEmail('');
   };
+
+  if (noAccount) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10">
+              <UserPlus className="h-6 w-6 text-amber-500" />
+            </div>
+            <CardTitle className="text-2xl font-bold">No account found</CardTitle>
+            <CardDescription>
+              We couldn&apos;t find an account for <strong>{email}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-center text-sm text-muted-foreground">
+              You&apos;ll need to sign up first to create an account and get started with Dispatch Tickets.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button asChild>
+                <Link href="https://dispatchtickets.com/signup">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Sign up for an account
+                </Link>
+              </Button>
+              <Button variant="outline" onClick={handleBack}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Try a different email
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (emailSent) {
     return (

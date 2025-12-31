@@ -21,11 +21,17 @@ interface Session {
   expiresAt?: string;
 }
 
+interface CheckEmailResult {
+  exists: boolean;
+  hasOrganization: boolean;
+}
+
 interface AuthContextType {
   session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isConnected: boolean;
+  checkEmail: (email: string) => Promise<CheckEmailResult>;
   sendMagicLink: (email: string) => Promise<boolean>;
   verifyToken: (token: string) => Promise<Session | null>;
   connectApiKey: (apiKey: string) => Promise<boolean>;
@@ -139,6 +145,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshSession();
   }, [refreshSession]);
 
+  const checkEmail = async (email: string): Promise<CheckEmailResult> => {
+    try {
+      const response = await fetch(`${API_URL}/auth/check-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        return { exists: false, hasOrganization: false };
+      }
+
+      return await response.json();
+    } catch {
+      return { exists: false, hasOrganization: false };
+    }
+  };
+
   const sendMagicLink = async (email: string): Promise<boolean> => {
     try {
       const response = await fetch(`${API_URL}/auth/magic-link`, {
@@ -234,6 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         isLoading,
         isConnected,
+        checkEmail,
         sendMagicLink,
         verifyToken,
         connectApiKey,
