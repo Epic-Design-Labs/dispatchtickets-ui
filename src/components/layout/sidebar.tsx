@@ -152,9 +152,8 @@ export function Sidebar({ workspaceId }: SidebarProps) {
         )}
       </div>
 
-      {/* Organization navigation */}
+      {/* Organization section */}
       <div className="border-t p-3">
-        <p className="mb-2 px-2 text-xs font-medium text-muted-foreground">Organization</p>
         <nav className="space-y-1">
           <Button
             variant={pathname === '/team' ? 'secondary' : 'ghost'}
@@ -174,26 +173,6 @@ export function Sidebar({ workspaceId }: SidebarProps) {
                 />
               </svg>
               Team
-            </Link>
-          </Button>
-          <Button
-            variant={pathname === '/feature-requests' ? 'secondary' : 'ghost'}
-            className={cn(
-              'w-full justify-start gap-2',
-              pathname === '/feature-requests' && 'bg-secondary'
-            )}
-            asChild
-          >
-            <Link href="/feature-requests">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                />
-              </svg>
-              Feature Requests
             </Link>
           </Button>
           {session?.orgRole === 'owner' && (
@@ -221,7 +200,53 @@ export function Sidebar({ workspaceId }: SidebarProps) {
         </nav>
       </div>
 
-      {/* Account menu at bottom */}
+      {/* Support section */}
+      <div className="border-t p-3">
+        <nav className="space-y-1">
+          <Button
+            variant={pathname === '/support' ? 'secondary' : 'ghost'}
+            className={cn(
+              'w-full justify-start gap-2',
+              pathname === '/support' && 'bg-secondary'
+            )}
+            asChild
+          >
+            <Link href="/support">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              </svg>
+              Support
+            </Link>
+          </Button>
+          <Button
+            variant={pathname === '/feature-requests' ? 'secondary' : 'ghost'}
+            className={cn(
+              'w-full justify-start gap-2',
+              pathname === '/feature-requests' && 'bg-secondary'
+            )}
+            asChild
+          >
+            <Link href="/feature-requests">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                />
+              </svg>
+              Feature Requests
+            </Link>
+          </Button>
+        </nav>
+      </div>
+
+      {/* Profile section */}
       <div className="border-t p-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
