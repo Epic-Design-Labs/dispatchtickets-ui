@@ -20,12 +20,22 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { RoleBadge } from './role-badge';
 import { BrandAssignmentsDialog } from './brand-assignments-dialog';
 import { TeamMember, OrgRole } from '@/types';
-import { useUpdateMember, useRemoveMember, useResendInvite } from '@/lib/hooks';
+import { useUpdateMember, useRemoveMember, useResendInvite, useTransferOwnership } from '@/lib/hooks';
 import { toast } from 'sonner';
-import { RotateCw } from 'lucide-react';
+import { RotateCw, Crown } from 'lucide-react';
 
 interface TeamMemberTableProps {
   members: TeamMember[];
@@ -43,10 +53,13 @@ export function TeamMemberTable({
   const updateMember = useUpdateMember();
   const removeMember = useRemoveMember();
   const resendInvite = useResendInvite();
+  const transferOwnership = useTransferOwnership();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [brandDialogMember, setBrandDialogMember] = useState<TeamMember | null>(null);
+  const [transferTarget, setTransferTarget] = useState<TeamMember | null>(null);
 
   const canManageMembers = currentUserRole === 'owner' || currentUserRole === 'admin';
+  const isCurrentUserOwner = currentUserRole === 'owner';
 
   const handleResendInvite = async (memberId: string, email: string) => {
     setPendingAction(memberId);
@@ -79,6 +92,20 @@ export function TeamMemberTable({
       toast.success(`${email} has been removed`);
     } catch (error) {
       toast.error('Failed to remove member');
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleTransferOwnership = async () => {
+    if (!transferTarget) return;
+    setPendingAction(transferTarget.id);
+    try {
+      await transferOwnership.mutateAsync(transferTarget.id);
+      toast.success(`Ownership transferred to ${transferTarget.email}`);
+      setTransferTarget(null);
+    } catch (error) {
+      toast.error('Failed to transfer ownership');
     } finally {
       setPendingAction(null);
     }
@@ -273,6 +300,14 @@ export function TeamMemberTable({
                                 Make Member
                               </DropdownMenuItem>
                             )}
+                            {isCurrentUserOwner && (
+                              <DropdownMenuItem
+                                onClick={() => setTransferTarget(member)}
+                              >
+                                <Crown className="mr-2 h-4 w-4" />
+                                Transfer Ownership
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                           </>
                         )}
@@ -301,6 +336,30 @@ export function TeamMemberTable({
           currentUserRole={currentUserRole}
         />
       )}
+
+      <AlertDialog open={!!transferTarget} onOpenChange={(open) => !open && setTransferTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Transfer Ownership</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to transfer ownership to{' '}
+              <span className="font-medium">{transferTarget?.email}</span>?
+              <br /><br />
+              This action will make them the owner of this organization. You will become an admin
+              and will no longer have owner privileges.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleTransferOwnership}
+              disabled={transferOwnership.isPending}
+            >
+              {transferOwnership.isPending ? 'Transferring...' : 'Transfer Ownership'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

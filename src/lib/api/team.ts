@@ -51,6 +51,14 @@ export const teamApi = {
     return response.data;
   },
 
+  transferOwnership: async (newOwnerId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      '/auth/transfer-ownership',
+      { newOwnerId }
+    );
+    return response.data;
+  },
+
   getOrganization: async (): Promise<Organization> => {
     const response = await apiClient.get<Organization>('/auth/organization');
     return response.data;

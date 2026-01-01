@@ -75,9 +75,12 @@ export function CommentThread({ comments, isLoading }: CommentThreadProps) {
     return comment.metadata?.isInternal === true;
   };
 
+  // Show newest comments first
+  const sortedComments = [...comments].reverse();
+
   return (
     <div className="space-y-4">
-      {comments.map((comment) => (
+      {sortedComments.map((comment) => (
         <div key={comment.id} className="flex gap-3">
           <Avatar className="h-8 w-8">
             <AvatarFallback

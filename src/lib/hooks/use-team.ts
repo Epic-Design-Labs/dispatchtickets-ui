@@ -63,6 +63,17 @@ export function useRemoveMember() {
   });
 }
 
+export function useTransferOwnership() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (newOwnerId: string) => teamApi.transferOwnership(newOwnerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.members() });
+    },
+  });
+}
+
 export function useOrganization() {
   return useQuery({
     queryKey: teamKeys.organization(),

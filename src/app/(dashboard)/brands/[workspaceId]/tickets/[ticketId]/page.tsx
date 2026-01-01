@@ -15,7 +15,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -34,7 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
-import { MoreHorizontal, Trash2, ShieldAlert, Building2 } from 'lucide-react';
+import { Trash2, ShieldAlert, Building2 } from 'lucide-react';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -173,30 +172,26 @@ export default function TicketDetailPage() {
           </div>
           <div className="mt-2 flex items-center justify-between">
             <h2 className="text-2xl font-bold tracking-tight">{ticket.title}</h2>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={handleMarkAsSpam}
-                  disabled={markAsSpam.isPending}
-                >
-                  <ShieldAlert className="mr-2 h-4 w-4" />
-                  Mark as Spam
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Ticket
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkAsSpam}
+                disabled={markAsSpam.isPending}
+              >
+                <ShieldAlert className="mr-2 h-4 w-4" />
+                Spam
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -220,15 +215,15 @@ export default function TicketDetailPage() {
             {/* Comments */}
             <Card>
               <CardHeader>
-                <CardTitle>Comments</CardTitle>
+                <CardTitle>Activity</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <CommentEditor workspaceId={workspaceId} ticketId={ticketId} />
+                <Separator />
                 <CommentThread
                   comments={comments || []}
                   isLoading={commentsLoading}
                 />
-                <Separator />
-                <CommentEditor workspaceId={workspaceId} ticketId={ticketId} />
               </CardContent>
             </Card>
           </div>

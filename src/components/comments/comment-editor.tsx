@@ -2,17 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuShortcut,
-} from '@/components/ui/dropdown-menu';
 import { useCreateComment, useProfile } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
-import { ChevronDown, Send, Clock, CheckCircle } from 'lucide-react';
+import { Send, Clock, CheckCircle } from 'lucide-react';
 
 interface CommentEditorProps {
   workspaceId: string;
@@ -134,48 +127,36 @@ export function CommentEditor({ workspaceId, ticketId }: CommentEditorProps) {
           <span className="text-muted-foreground">Internal note (not visible to customer)</span>
         </label>
 
-        <div className="flex items-center">
-          {/* Main submit button */}
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSubmit('pending')}
+            disabled={createComment.isPending || !body.trim()}
+            title={`Add & Pending (${modKey}+Shift+P)`}
+          >
+            <Clock className="mr-2 h-4 w-4" />
+            Pending
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSubmit('resolved')}
+            disabled={createComment.isPending || !body.trim()}
+            title={`Add & Resolve (${modKey}+Shift+R)`}
+          >
+            <CheckCircle className="mr-2 h-4 w-4" />
+            Resolve
+          </Button>
           <Button
             type="button"
             onClick={() => handleSubmit('comment')}
             disabled={createComment.isPending || !body.trim()}
-            className="rounded-r-none"
+            title={`Add Comment (${modKey}+Enter)`}
           >
             <Send className="mr-2 h-4 w-4" />
-            {createComment.isPending ? 'Adding...' : 'Add Comment'}
+            {createComment.isPending ? 'Adding...' : 'Send'}
           </Button>
-
-          {/* Dropdown for status actions */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                disabled={createComment.isPending || !body.trim()}
-                className="rounded-l-none border-l-0 px-2"
-                variant="default"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleSubmit('comment')}>
-                <Send className="mr-2 h-4 w-4" />
-                Add Comment
-                <DropdownMenuShortcut>{modKey}+↵</DropdownMenuShortcut>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSubmit('pending')}>
-                <Clock className="mr-2 h-4 w-4" />
-                Add & Pending
-                <DropdownMenuShortcut>{modKey}+⇧+P</DropdownMenuShortcut>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSubmit('resolved')}>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Add & Resolve
-                <DropdownMenuShortcut>{modKey}+⇧+R</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
     </div>
