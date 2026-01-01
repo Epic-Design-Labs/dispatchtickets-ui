@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useCompanies, useUpdateCustomer } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -22,6 +22,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -33,7 +40,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
-import { MoreHorizontal, Trash2, ShieldAlert } from 'lucide-react';
+import { MoreHorizontal, Trash2, ShieldAlert, Building2 } from 'lucide-react';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -45,9 +52,13 @@ export default function TicketDetailPage() {
 
   const { data: ticket, isLoading: ticketLoading } = useTicket(workspaceId, ticketId);
   const { data: comments, isLoading: commentsLoading } = useComments(workspaceId, ticketId, { polling: true });
+  const { data: companiesData } = useCompanies(workspaceId);
   const updateTicket = useUpdateTicket(workspaceId, ticketId);
   const deleteTicket = useDeleteTicket(workspaceId);
   const markAsSpam = useMarkAsSpam(workspaceId);
+  const updateCustomer = useUpdateCustomer(workspaceId, ticket?.customerId || '');
+
+  const companies = companiesData?.data || [];
 
   const handleStatusChange = async (status: string) => {
     try {
@@ -84,6 +95,18 @@ export default function TicketDetailPage() {
       router.push(`/brands/${workspaceId}`);
     } catch {
       toast.error('Failed to delete ticket');
+    }
+  };
+
+  const handleCompanyChange = async (companyId: string) => {
+    if (!ticket?.customerId) return;
+    try {
+      await updateCustomer.mutateAsync({
+        companyId: companyId === 'none' ? undefined : companyId,
+      });
+      toast.success('Customer company updated');
+    } catch {
+      toast.error('Failed to update company');
     }
   };
 
@@ -296,22 +319,66 @@ export default function TicketDetailPage() {
                   <p className="mt-1">{ticket.source}</p>
                 </div>
 
-                {customerEmail && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Customer Email
-                    </p>
-                    <p className="mt-1">{customerEmail}</p>
-                  </div>
-                )}
+                {/* Customer Info */}
+                {ticket.customer ? (
+                  <>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Customer</p>
+                      <Link
+                        href={`/brands/${workspaceId}/customers/${ticket.customer.id}`}
+                        className="mt-1 block text-primary hover:underline"
+                      >
+                        {ticket.customer.name || ticket.customer.email}
+                      </Link>
+                      {ticket.customer.name && (
+                        <p className="text-sm text-muted-foreground">{ticket.customer.email}</p>
+                      )}
+                    </div>
 
-                {customerName && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Customer Name
-                    </p>
-                    <p className="mt-1">{customerName}</p>
-                  </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />
+                        Company
+                      </p>
+                      <Select
+                        value={ticket.customer.companyId || 'none'}
+                        onValueChange={handleCompanyChange}
+                        disabled={updateCustomer.isPending}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select company" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No company</SelectItem>
+                          {companies.map((company) => (
+                            <SelectItem key={company.id} value={company.id}>
+                              {company.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {customerEmail && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Customer Email
+                        </p>
+                        <p className="mt-1">{customerEmail}</p>
+                      </div>
+                    )}
+
+                    {customerName && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Customer Name
+                        </p>
+                        <p className="mt-1">{customerName}</p>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {ticket.assigneeId && (

@@ -2,6 +2,8 @@ export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed' | null;
 export type TicketPriority = 'low' | 'normal' | 'medium' | 'high' | 'urgent' | null;
 export type TicketSource = 'api' | 'email' | 'slack' | 'sms' | 'web' | 'other';
 
+import { Customer } from './customer';
+
 export interface Ticket {
   id: string;
   workspaceId: string;
@@ -14,6 +16,8 @@ export interface Ticket {
   sourceId?: string;
   sourceData?: Record<string, unknown>;
   assigneeId?: string;
+  customerId?: string;
+  customer?: Customer;
   links?: string[];
   customFields?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
