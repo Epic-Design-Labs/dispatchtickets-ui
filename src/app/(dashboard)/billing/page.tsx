@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
-import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription } from '@/lib/hooks';
+import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage } from '@/lib/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,6 +26,7 @@ export default function BillingPage() {
   const router = useRouter();
   const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError, refetch } = useSubscription();
   const { data: plansData, isLoading: plansLoading } = usePlans();
+  const { data: usageData, isLoading: usageLoading } = useUsage();
 
   // Handle upgrade success URL param
   useEffect(() => {
@@ -332,10 +333,53 @@ export default function BillingPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Usage tracking coming soon. You&apos;ll be able to see how many tickets
-                  you&apos;ve processed this billing period.
-                </p>
+                {usageLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-48" />
+                  </div>
+                ) : usageData ? (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-3xl font-bold">
+                        {usageData.ticketCount.toLocaleString()}
+                        {usageData.planLimit && (
+                          <span className="text-lg font-normal text-muted-foreground">
+                            {' '}/ {usageData.planLimit.toLocaleString()}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        tickets this billing period
+                      </p>
+                    </div>
+                    {usageData.planLimit && (
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${
+                            usageData.ticketCount >= usageData.planLimit
+                              ? 'bg-destructive'
+                              : usageData.ticketCount >= usageData.planLimit * 0.8
+                              ? 'bg-yellow-500'
+                              : 'bg-primary'
+                          }`}
+                          style={{
+                            width: `${Math.min(100, (usageData.ticketCount / usageData.planLimit) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+                    {usageData.billingPeriodStart && (
+                      <p className="text-xs text-muted-foreground">
+                        Period started: {formatDate(usageData.billingPeriodStart)}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No usage data available.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

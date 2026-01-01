@@ -6,6 +6,7 @@ import { billingApi, UpgradeRequest, CancelRequest } from '@/lib/api/billing';
 export const billingKeys = {
   plans: ['plans'] as const,
   subscription: ['subscription'] as const,
+  usage: ['usage'] as const,
 };
 
 export function usePlans() {
@@ -20,6 +21,13 @@ export function useSubscription() {
   return useQuery({
     queryKey: billingKeys.subscription,
     queryFn: billingApi.getSubscription,
+  });
+}
+
+export function useUsage() {
+  return useQuery({
+    queryKey: billingKeys.usage,
+    queryFn: billingApi.getUsage,
   });
 }
 

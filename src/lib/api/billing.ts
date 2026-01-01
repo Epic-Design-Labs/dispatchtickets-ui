@@ -51,6 +51,12 @@ export interface CancelResponse {
   endsAt: string;
 }
 
+export interface UsageResponse {
+  ticketCount: number;
+  billingPeriodStart: string | null;
+  planLimit: number | null;
+}
+
 export const billingApi = {
   getPlans: async (): Promise<PlansResponse> => {
     const response = await apiClient.get<PlansResponse>('/auth/plans');
@@ -59,6 +65,11 @@ export const billingApi = {
 
   getSubscription: async (): Promise<SubscriptionResponse> => {
     const response = await apiClient.get<SubscriptionResponse>('/auth/subscription');
+    return response.data;
+  },
+
+  getUsage: async (): Promise<UsageResponse> => {
+    const response = await apiClient.get<UsageResponse>('/auth/usage');
     return response.data;
   },
 
