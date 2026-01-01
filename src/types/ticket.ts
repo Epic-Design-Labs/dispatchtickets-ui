@@ -5,6 +5,7 @@ export type TicketSource = 'api' | 'email' | 'slack' | 'sms' | 'web' | 'other';
 export interface Ticket {
   id: string;
   workspaceId: string;
+  ticketNumber: number;  // Sequential number for public ID (e.g., 1001)
   title: string;
   body?: string;
   status: TicketStatus;
