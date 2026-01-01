@@ -83,10 +83,13 @@ export default function BillingPage() {
       });
       // Redirect to Stripe checkout
       window.location.href = result.url;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Upgrade error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to start upgrade: ${message}`);
+      // Extract message from axios error response
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const message = axiosError.response?.data?.message
+        || (error instanceof Error ? error.message : 'Unknown error');
+      toast.error(`Upgrade failed: ${message}`);
       setUpgradingPlanId(null);
     }
   };
