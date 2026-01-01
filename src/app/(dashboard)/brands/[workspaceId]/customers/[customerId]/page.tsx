@@ -74,7 +74,7 @@ export default function CustomerDetailPage() {
     try {
       await updateCustomer.mutateAsync({
         name: editName || undefined,
-        companyId: editCompanyId || null,
+        companyId: editCompanyId || undefined,
       });
       toast.success('Customer updated');
       setIsEditing(false);
