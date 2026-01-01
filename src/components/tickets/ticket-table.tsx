@@ -104,7 +104,7 @@ export function TicketTable({ tickets, workspaceId, isLoading }: TicketTableProp
               <TableRow key={ticket.id} className="cursor-pointer hover:bg-muted/50">
                 <TableCell>
                   <Link
-                    href={`/workspaces/${workspaceId}/tickets/${ticket.id}`}
+                    href={`/brands/${workspaceId}/tickets/${ticket.id}`}
                     className="block font-medium hover:underline"
                   >
                     {ticket.title}

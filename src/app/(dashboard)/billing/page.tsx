@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
 import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription } from '@/lib/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,8 +22,23 @@ import { toast } from 'sonner';
 import { Plan } from '@/lib/api/billing';
 
 export default function BillingPage() {
-  const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError } = useSubscription();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError, refetch } = useSubscription();
   const { data: plansData, isLoading: plansLoading } = usePlans();
+
+  // Handle upgrade success URL param
+  useEffect(() => {
+    if (searchParams.get('upgraded') === 'true') {
+      // Force refetch subscription data
+      refetch().then(() => {
+        toast.success('Subscription updated successfully');
+      });
+      // Clean up URL
+      router.replace('/billing', { scroll: false });
+    }
+  }, [searchParams, refetch, router]);
+
   const cancelSubscription = useCancelSubscription();
   const reactivateSubscription = useReactivateSubscription();
   const upgradeSubscription = useUpgradeSubscription();

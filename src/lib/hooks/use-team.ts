@@ -2,12 +2,13 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamApi, Organization } from '@/lib/api/team';
-import { InviteMemberInput, UpdateMemberInput } from '@/types';
+import { InviteMemberInput, UpdateMemberInput, UpdateBrandAssignmentsInput } from '@/types';
 
 export const teamKeys = {
   all: ['team'] as const,
   members: () => [...teamKeys.all, 'members'] as const,
   organization: () => [...teamKeys.all, 'organization'] as const,
+  brandAssignments: (memberId: string) => [...teamKeys.all, 'brandAssignments', memberId] as const,
 };
 
 export function useTeamMembers() {
@@ -67,6 +68,27 @@ export function useUpdateOrganization() {
       queryClient.setQueryData<Organization>(teamKeys.organization(), (old) =>
         old ? { ...old, name: data.name } : { id: '', name: data.name }
       );
+    },
+  });
+}
+
+export function useBrandAssignments(memberId: string) {
+  return useQuery({
+    queryKey: teamKeys.brandAssignments(memberId),
+    queryFn: () => teamApi.getBrandAssignments(memberId),
+    enabled: !!memberId,
+  });
+}
+
+export function useUpdateBrandAssignments() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ memberId, data }: { memberId: string; data: UpdateBrandAssignmentsInput }) =>
+      teamApi.updateBrandAssignments(memberId, data),
+    onSuccess: (_, { memberId }) => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.brandAssignments(memberId) });
+      queryClient.invalidateQueries({ queryKey: teamKeys.members() });
     },
   });
 }

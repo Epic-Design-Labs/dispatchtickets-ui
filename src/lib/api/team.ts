@@ -3,6 +3,8 @@ import {
   TeamMembersResponse,
   InviteMemberInput,
   UpdateMemberInput,
+  BrandAssignmentResponse,
+  UpdateBrandAssignmentsInput,
 } from '@/types';
 
 export interface Organization {
@@ -51,6 +53,24 @@ export const teamApi = {
     const response = await apiClient.patch<{ success: boolean; name: string }>(
       '/auth/organization',
       { name }
+    );
+    return response.data;
+  },
+
+  getBrandAssignments: async (memberId: string): Promise<BrandAssignmentResponse> => {
+    const response = await apiClient.get<BrandAssignmentResponse>(
+      `/auth/members/${memberId}/brands`
+    );
+    return response.data;
+  },
+
+  updateBrandAssignments: async (
+    memberId: string,
+    data: UpdateBrandAssignmentsInput
+  ): Promise<BrandAssignmentResponse> => {
+    const response = await apiClient.put<BrandAssignmentResponse>(
+      `/auth/members/${memberId}/brands`,
+      data
     );
     return response.data;
   },

@@ -112,7 +112,7 @@ export default function TicketDetailPage() {
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link
-              href={`/workspaces/${workspaceId}/tickets`}
+              href={`/brands/${workspaceId}`}
               className="hover:underline"
             >
               Tickets

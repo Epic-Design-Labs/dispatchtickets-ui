@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RoleBadge } from './role-badge';
+import { BrandAssignmentsDialog } from './brand-assignments-dialog';
 import { TeamMember, OrgRole } from '@/types';
 import { useUpdateMember, useRemoveMember } from '@/lib/hooks';
 import { toast } from 'sonner';
@@ -41,6 +42,7 @@ export function TeamMemberTable({
   const updateMember = useUpdateMember();
   const removeMember = useRemoveMember();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [brandDialogMember, setBrandDialogMember] = useState<TeamMember | null>(null);
 
   const canManageMembers = currentUserRole === 'owner' || currentUserRole === 'admin';
 
@@ -76,6 +78,7 @@ export function TeamMemberTable({
             <TableRow>
               <TableHead>Member</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Brands</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[70px]"></TableHead>
             </TableRow>
@@ -88,6 +91,9 @@ export function TeamMemberTable({
                     <Skeleton className="h-4 w-32" />
                     <Skeleton className="h-3 w-48" />
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-16" />
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-5 w-16" />
@@ -134,16 +140,18 @@ export function TeamMemberTable({
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Member</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="w-[70px]"></TableHead>
-          </TableRow>
-        </TableHeader>
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Member</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Brands</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-[70px]"></TableHead>
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {allMembers.map((member) => {
             const name =
@@ -165,6 +173,26 @@ export function TeamMemberTable({
                 </TableCell>
                 <TableCell>
                   <RoleBadge role={member.role} />
+                </TableCell>
+                <TableCell>
+                  {isPending ? (
+                    <span className="text-sm text-muted-foreground">—</span>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-1"
+                      onClick={() => setBrandDialogMember(member)}
+                    >
+                      <Badge variant="secondary">
+                        {member.brandAssignment?.allBrands
+                          ? 'All'
+                          : member.brandAssignment?.workspaceIds?.length
+                            ? `${member.brandAssignment.workspaceIds.length} brand${member.brandAssignment.workspaceIds.length === 1 ? '' : 's'}`
+                            : 'All'}
+                      </Badge>
+                    </Button>
+                  )}
                 </TableCell>
                 <TableCell>
                   {isPending ? (
@@ -239,5 +267,15 @@ export function TeamMemberTable({
         </TableBody>
       </Table>
     </div>
+
+      {brandDialogMember && (
+        <BrandAssignmentsDialog
+          member={brandDialogMember}
+          open={!!brandDialogMember}
+          onOpenChange={(open) => !open && setBrandDialogMember(null)}
+          currentUserRole={currentUserRole}
+        />
+      )}
+    </>
   );
 }

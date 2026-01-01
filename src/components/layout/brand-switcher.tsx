@@ -73,7 +73,7 @@ export function BrandSwitcher() {
       toast.success('Brand created successfully');
       setCreateDialogOpen(false);
       setNewBrandName('');
-      router.push(`/workspaces/${brand.id}`);
+      router.push(`/brands/${brand.id}`);
     } catch (error) {
       toast.error('Failed to create brand');
     }
@@ -90,7 +90,7 @@ export function BrandSwitcher() {
 
       // If we deleted the current brand, go to brands list
       if (brandToDelete.id === currentBrandId) {
-        router.push('/workspaces');
+        router.push('/brands');
       }
     } catch (error) {
       toast.error('Failed to delete brand');

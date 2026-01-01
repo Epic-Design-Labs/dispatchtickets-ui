@@ -27,7 +27,7 @@ export default function ConnectPage() {
       if (!isAuthenticated) {
         router.push('/login');
       } else if (isConnected) {
-        router.push('/workspaces');
+        router.push('/brands');
       }
     }
   }, [isAuthenticated, isConnected, authLoading, router]);
@@ -46,7 +46,7 @@ export default function ConnectPage() {
       const success = await connectApiKey(apiKey.trim());
       if (success) {
         toast.success('API key connected successfully!');
-        router.push('/workspaces');
+        router.push('/brands');
       } else {
         toast.error('Invalid API key. Please check and try again.');
       }

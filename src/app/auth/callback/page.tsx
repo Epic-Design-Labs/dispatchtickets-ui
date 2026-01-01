@@ -59,7 +59,7 @@ function AuthCallbackContent() {
 
         // Redirect based on connected status
         setTimeout(() => {
-          window.location.href = sessionData.connected ? '/workspaces' : '/connect';
+          window.location.href = sessionData.connected ? '/brands' : '/connect';
         }, 500);
         return;
       }
@@ -72,7 +72,7 @@ function AuthCallbackContent() {
             setStatus('success');
             toast.success('Successfully signed in!');
             setTimeout(() => {
-              window.location.href = session.connected ? '/workspaces' : '/connect';
+              window.location.href = session.connected ? '/brands' : '/connect';
             }, 500);
             return;
           }

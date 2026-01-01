@@ -50,7 +50,7 @@ export default function BrandsPage() {
       toast.success('Brand created successfully');
       setCreateDialogOpen(false);
       setNewBrandName('');
-      router.push(`/workspaces/${brand.id}`);
+      router.push(`/brands/${brand.id}`);
     } catch (error) {
       toast.error('Failed to create brand');
     }
@@ -102,7 +102,7 @@ export default function BrandsPage() {
         {!isLoading && !error && brands && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {brands.map((brand) => (
-              <Link key={brand.id} href={`/workspaces/${brand.id}`}>
+              <Link key={brand.id} href={`/brands/${brand.id}`}>
                 <Card className="cursor-pointer transition-colors hover:bg-accent">
                   <CardHeader>
                     <CardTitle>{brand.name}</CardTitle>

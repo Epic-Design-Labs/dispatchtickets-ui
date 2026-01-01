@@ -117,7 +117,7 @@ export function useTicketNotifications(workspaceId: string | undefined) {
 
     // Helper to navigate to ticket
     const navigateToTicket = (ticket: Ticket) => {
-      window.location.href = `/workspaces/${ticket.workspaceId}/tickets/${ticket.id}`;
+      window.location.href = `/brands/${ticket.workspaceId}/tickets/${ticket.id}`;
     };
 
     // Show notifications

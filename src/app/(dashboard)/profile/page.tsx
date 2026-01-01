@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { useProfile, useUpdateProfile } from '@/lib/hooks';
+import { useProfile, useUpdateProfile, useUploadAvatar, useDeleteAvatar } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
+import { Camera, Trash2, Loader2 } from 'lucide-react';
 
 // Simple MD5 hash for Gravatar
 function md5(string: string): string {
@@ -100,11 +101,18 @@ export default function ProfilePage() {
   const { session } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
+  const uploadAvatar = useUploadAvatar();
+  const deleteAvatar = useDeleteAvatar();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [desktopNotificationsEnabled, setDesktopNotificationsEnabled] = useState(false);
+
+  // Notification preferences state
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  const [notifyToast, setNotifyToast] = useState(true);
+  const [notifyDesktop, setNotifyDesktop] = useState(true);
 
   // Check notification support and permission on mount
   useEffect(() => {
@@ -122,7 +130,9 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.displayName || '');
-      setAvatarUrl(profile.avatarUrl || '');
+      setNotifyEmail(profile.notifyEmail ?? true);
+      setNotifyToast(profile.notifyToast ?? true);
+      setNotifyDesktop(profile.notifyDesktop ?? true);
     }
   }, [profile]);
 
@@ -163,17 +173,88 @@ export default function ProfilePage() {
     }
   };
 
+  const handleNotifyEmailChange = async (checked: boolean) => {
+    setNotifyEmail(checked);
+    try {
+      await updateProfile.mutateAsync({ notifyEmail: checked });
+    } catch {
+      setNotifyEmail(!checked);
+      toast.error('Failed to update notification preference');
+    }
+  };
+
+  const handleNotifyToastChange = async (checked: boolean) => {
+    setNotifyToast(checked);
+    try {
+      await updateProfile.mutateAsync({ notifyToast: checked });
+    } catch {
+      setNotifyToast(!checked);
+      toast.error('Failed to update notification preference');
+    }
+  };
+
+  const handleNotifyDesktopChange = async (checked: boolean) => {
+    setNotifyDesktop(checked);
+    try {
+      await updateProfile.mutateAsync({ notifyDesktop: checked });
+    } catch {
+      setNotifyDesktop(!checked);
+      toast.error('Failed to update notification preference');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       await updateProfile.mutateAsync({
         displayName: displayName.trim() || undefined,
-        avatarUrl: avatarUrl.trim() || undefined,
       });
       toast.success('Profile updated');
     } catch {
       toast.error('Failed to update profile');
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+      toast.error('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    try {
+      await uploadAvatar.mutateAsync(file);
+      toast.success('Avatar updated');
+    } catch {
+      toast.error('Failed to upload avatar');
+    }
+
+    // Clear the input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    try {
+      await deleteAvatar.mutateAsync();
+      toast.success('Avatar removed');
+    } catch {
+      toast.error('Failed to remove avatar');
     }
   };
 
@@ -192,6 +273,11 @@ export default function ProfilePage() {
     }
     return '?';
   };
+
+  // Check if user has a custom avatar (not Gravatar)
+  const hasCustomAvatar = profile?.avatarUrl && !profile.avatarUrl.includes('gravatar.com');
+  const isUploading = uploadAvatar.isPending;
+  const isDeleting = deleteAvatar.isPending;
 
   if (isLoading) {
     return (
@@ -234,18 +320,62 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Avatar Preview */}
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage
-                    src={avatarUrl || (session?.email ? getGravatarUrl(session.email) : undefined)}
-                    alt={displayName || session?.email || 'Avatar'}
+              {/* Avatar Section */}
+              <div className="flex items-start gap-4">
+                <div className="relative group">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleFileChange}
+                    className="hidden"
                   />
-                  <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
-                </Avatar>
-                <div className="text-sm text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={handleAvatarClick}
+                    disabled={isUploading}
+                    className="relative block rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <Avatar className="h-20 w-20 cursor-pointer">
+                      <AvatarImage
+                        src={profile?.avatarUrl || (session?.email ? getGravatarUrl(session.email) : undefined)}
+                        alt={displayName || session?.email || 'Avatar'}
+                      />
+                      <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
+                    </Avatar>
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      {isUploading ? (
+                        <Loader2 className="h-6 w-6 text-white animate-spin" />
+                      ) : (
+                        <Camera className="h-6 w-6 text-white" />
+                      )}
+                    </div>
+                  </button>
+                </div>
+                <div className="flex-1">
                   <p className="font-medium text-foreground">{displayName || session?.email}</p>
-                  <p>{session?.email}</p>
+                  <p className="text-sm text-muted-foreground">{session?.email}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Click avatar to upload a new photo
+                  </p>
+                  {hasCustomAvatar && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 text-destructive hover:text-destructive"
+                      onClick={handleDeleteAvatar}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-2 h-4 w-4" />
+                      )}
+                      Remove photo
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -264,21 +394,6 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              {/* Avatar URL */}
-              <div className="space-y-2">
-                <Label htmlFor="avatarUrl">Profile Image URL (optional)</Label>
-                <Input
-                  id="avatarUrl"
-                  type="url"
-                  placeholder="https://example.com/your-photo.jpg"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Enter a URL to your profile picture. Leave blank to use your initials.
-                </p>
-              </div>
-
               <Button type="submit" disabled={updateProfile.isPending}>
                 {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -286,12 +401,78 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Notifications Card */}
+        {/* Notification Preferences Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Notifications</CardTitle>
+            <CardTitle>Notification Preferences</CardTitle>
             <CardDescription>
-              Receive desktop notifications for new tickets and customer replies
+              Choose how you want to be notified about new tickets and customer replies
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Email notifications */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notify-email">Email Notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                  Receive email when tickets are created or customers reply
+                </p>
+              </div>
+              <Switch
+                id="notify-email"
+                checked={notifyEmail}
+                onCheckedChange={handleNotifyEmailChange}
+                disabled={updateProfile.isPending}
+              />
+            </div>
+
+            {/* Toast notifications */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notify-toast">In-App Toast Notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                  Show toast notifications within the app
+                </p>
+              </div>
+              <Switch
+                id="notify-toast"
+                checked={notifyToast}
+                onCheckedChange={handleNotifyToastChange}
+                disabled={updateProfile.isPending}
+              />
+            </div>
+
+            {/* Desktop notifications */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notify-desktop">Desktop Notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                  Show system notifications outside the browser
+                </p>
+              </div>
+              <Switch
+                id="notify-desktop"
+                checked={notifyDesktop}
+                onCheckedChange={handleNotifyDesktopChange}
+                disabled={updateProfile.isPending}
+              />
+            </div>
+
+            {/* Note about brand filtering */}
+            <div className="rounded-lg border border-dashed p-3 mt-4">
+              <p className="text-sm text-muted-foreground">
+                You'll only receive notifications for brands you're assigned to.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Browser Notification Permission Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Browser Permissions</CardTitle>
+            <CardDescription>
+              Enable browser notifications to receive alerts outside this tab
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -313,9 +494,9 @@ export default function ProfilePage() {
             ) : notificationPermission === 'granted' ? (
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="desktop-notifications">Desktop Notifications</Label>
+                  <Label htmlFor="desktop-notifications">Browser Permission</Label>
                   <p className="text-sm text-muted-foreground">
-                    Get notified when new tickets arrive or customers reply
+                    Permission granted - desktop notifications will work when enabled above
                   </p>
                 </div>
                 <Switch
@@ -327,13 +508,13 @@ export default function ProfilePage() {
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Enable desktop notifications to get alerted when new tickets arrive or customers reply, even when you're in another tab.
+                  Enable browser notification permission to receive alerts even when you're in another tab.
                 </p>
                 <Button onClick={handleEnableNotifications} variant="outline">
                   <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
-                  Enable Desktop Notifications
+                  Enable Browser Notifications
                 </Button>
               </div>
             )}
