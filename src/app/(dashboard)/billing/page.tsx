@@ -376,7 +376,7 @@ export default function BillingPage() {
                                 handleDowngrade(plan);
                               }
                             }}
-                            disabled={upgradingPlanId !== null || subscription?.cancelAtPeriodEnd || (!isUpgrade(plan) && !!getDowngradeBlockReason(plan))}
+                            disabled={upgradingPlanId !== null || (!isUpgrade(plan) && (subscription?.cancelAtPeriodEnd || !!getDowngradeBlockReason(plan)))}
                             title={!isUpgrade(plan) ? getDowngradeBlockReason(plan) || undefined : undefined}
                           >
                             {upgradingPlanId === plan.id
