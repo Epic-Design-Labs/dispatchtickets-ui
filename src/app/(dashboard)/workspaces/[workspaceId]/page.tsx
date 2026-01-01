@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useBrand, useTickets } from '@/lib/hooks';
+import { useBrand, useTickets, useTicketNotifications } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { TicketFilters, TicketTable, CreateTicketDialog } from '@/components/tickets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,9 @@ export default function BrandDashboardPage() {
   const { data: allTicketsData, isLoading: allTicketsLoading } = useTickets(workspaceId, {});
   // Fetch filtered tickets for display
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(workspaceId, filters);
+
+  // Enable real-time notifications for ticket updates
+  useTicketNotifications(workspaceId);
 
   const isLoading = brandLoading || allTicketsLoading;
 

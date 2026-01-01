@@ -29,7 +29,7 @@ export default function TicketDetailPage() {
   const ticketId = params.ticketId as string;
 
   const { data: ticket, isLoading: ticketLoading } = useTicket(workspaceId, ticketId);
-  const { data: comments, isLoading: commentsLoading } = useComments(workspaceId, ticketId);
+  const { data: comments, isLoading: commentsLoading } = useComments(workspaceId, ticketId, { polling: true });
   const updateTicket = useUpdateTicket(workspaceId, ticketId);
 
   const handleStatusChange = async (status: string) => {

@@ -9,11 +9,14 @@ export const commentKeys = {
     ['comments', workspaceId, ticketId] as const,
 };
 
-export function useComments(workspaceId: string, ticketId: string) {
+export function useComments(workspaceId: string, ticketId: string, options?: { polling?: boolean }) {
   return useQuery({
     queryKey: commentKeys.all(workspaceId, ticketId),
     queryFn: () => commentsApi.list(workspaceId, ticketId),
     enabled: !!workspaceId && !!ticketId,
+    // Poll every 10 seconds when viewing a ticket
+    refetchInterval: options?.polling ? 10000 : false,
+    refetchIntervalInBackground: false, // Don't poll when tab is not focused
   });
 }
 
