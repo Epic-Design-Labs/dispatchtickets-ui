@@ -5,3 +5,5 @@ export { commentsApi } from './comments';
 export { webhooksApi } from './webhooks';
 export { teamApi } from './team';
 export { billingApi } from './billing';
+export { profileApi } from './profile';
+export type { Profile, UpdateProfileInput } from './profile';

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useCreateComment } from '@/lib/hooks';
+import { useCreateComment, useProfile } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
 
@@ -16,9 +16,15 @@ export function CommentEditor({ workspaceId, ticketId }: CommentEditorProps) {
   const [isInternal, setIsInternal] = useState(false);
   const createComment = useCreateComment(workspaceId, ticketId);
   const { session } = useAuth();
+  const { data: profile } = useProfile();
 
-  // Derive author name from email (e.g., "john.smith@example.com" -> "John Smith")
+  // Get author name: profile > email-derived
   const getAuthorName = () => {
+    // Use profile display name if set
+    if (profile?.displayName) {
+      return profile.displayName;
+    }
+    // Fall back to deriving from email
     if (!session?.email) return undefined;
     const namePart = session.email.split('@')[0];
     return namePart
@@ -36,11 +42,15 @@ export function CommentEditor({ workspaceId, ticketId }: CommentEditorProps) {
     }
 
     try {
+      const authorName = getAuthorName();
       await createComment.mutateAsync({
         body: body.trim(),
         authorType: 'AGENT',
-        authorName: getAuthorName(),
-        metadata: isInternal ? { isInternal: true } : undefined,
+        authorName,
+        metadata: {
+          ...(isInternal && { isInternal: true }),
+          ...(authorName && { authorName }),
+        },
       });
       setBody('');
       setIsInternal(false);

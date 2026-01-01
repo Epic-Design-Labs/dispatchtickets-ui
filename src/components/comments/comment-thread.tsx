@@ -48,12 +48,24 @@ export function CommentThread({ comments, isLoading }: CommentThreadProps) {
   }
 
   const getAuthorLabel = (comment: Comment) => {
+    // Check for author name in metadata
+    const authorName = comment.metadata?.authorName as string | undefined;
+    if (authorName) return authorName;
+
+    // Fall back to type-based labels
     if (comment.authorType === 'AGENT') return 'Agent';
     if (comment.authorType === 'SYSTEM') return 'System';
     return comment.authorId || 'Customer';
   };
 
   const getAuthorInitial = (comment: Comment) => {
+    // Use initials from author name if available
+    const authorName = comment.metadata?.authorName as string | undefined;
+    if (authorName) {
+      return authorName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+
+    // Fall back to type-based initials
     if (comment.authorType === 'AGENT') return 'A';
     if (comment.authorType === 'SYSTEM') return 'S';
     return 'C';

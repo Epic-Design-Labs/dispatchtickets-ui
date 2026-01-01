@@ -13,8 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
+import { useProfile } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
 
 interface SidebarProps {
@@ -24,7 +25,22 @@ interface SidebarProps {
 export function Sidebar({ workspaceId }: SidebarProps) {
   const pathname = usePathname();
   const { session, logout } = useAuth();
+  const { data: profile } = useProfile();
   const email = session?.email;
+
+  // Get display name: profile > email-derived > email
+  const displayName = profile?.displayName || (email ? email.split('@')[0].split(/[._-]/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User');
+
+  // Get initials for avatar fallback
+  const getInitials = () => {
+    if (profile?.displayName) {
+      return profile.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    if (email) {
+      return email.slice(0, 2).toUpperCase();
+    }
+    return 'U';
+  };
 
   const navigation = workspaceId
     ? [
@@ -173,18 +189,38 @@ export function Sidebar({ workspaceId }: SidebarProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start gap-2">
               <Avatar className="h-6 w-6">
+                <AvatarImage src={profile?.avatarUrl || undefined} alt={displayName} />
                 <AvatarFallback className="text-xs">
-                  {email ? email[0].toUpperCase() : 'U'}
+                  {getInitials()}
                 </AvatarFallback>
               </Avatar>
-              <span className="truncate text-sm">{email || 'Account'}</span>
+              <span className="truncate text-sm">{displayName}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="start" side="top">
             <DropdownMenuLabel className="font-normal">
-              <p className="text-sm font-medium">Account</p>
+              <p className="text-sm font-medium">{displayName}</p>
               <p className="text-xs text-muted-foreground truncate">{email}</p>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/profile">
+                <svg
+                  className="mr-2 h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                Profile Settings
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600">
               <svg
