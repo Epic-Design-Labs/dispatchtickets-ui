@@ -12,6 +12,7 @@ export interface Comment {
 export interface CreateCommentInput {
   body: string;
   authorId?: string;
+  authorName?: string;
   authorType?: 'CUSTOMER' | 'AGENT' | 'SYSTEM';
   metadata?: Record<string, unknown>;
 }

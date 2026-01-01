@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCreateComment } from '@/lib/hooks';
+import { useAuth } from '@/providers';
 import { toast } from 'sonner';
 
 interface CommentEditorProps {
@@ -14,6 +15,17 @@ export function CommentEditor({ workspaceId, ticketId }: CommentEditorProps) {
   const [body, setBody] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const createComment = useCreateComment(workspaceId, ticketId);
+  const { session } = useAuth();
+
+  // Derive author name from email (e.g., "john.smith@example.com" -> "John Smith")
+  const getAuthorName = () => {
+    if (!session?.email) return undefined;
+    const namePart = session.email.split('@')[0];
+    return namePart
+      .split(/[._-]/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +39,7 @@ export function CommentEditor({ workspaceId, ticketId }: CommentEditorProps) {
       await createComment.mutateAsync({
         body: body.trim(),
         authorType: 'AGENT',
+        authorName: getAuthorName(),
         metadata: isInternal ? { isInternal: true } : undefined,
       });
       setBody('');
