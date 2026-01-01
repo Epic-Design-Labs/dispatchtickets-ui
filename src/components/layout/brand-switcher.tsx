@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useBrands, useCreateBrand, useDeleteBrand } from '@/lib/hooks';
+import { useBrands, useCreateBrand, useDeleteBrand, useUsage } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,6 +30,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,6 +47,7 @@ export function BrandSwitcher() {
   const params = useParams();
   const currentBrandId = params.workspaceId as string | undefined;
   const { data: brands, isLoading } = useBrands();
+  const { data: usageData } = useUsage();
   const createBrand = useCreateBrand();
   const deleteBrand = useDeleteBrand();
 
@@ -50,6 +57,12 @@ export function BrandSwitcher() {
   const [newBrandName, setNewBrandName] = useState('');
 
   const currentBrand = brands?.find((b) => b.id === currentBrandId);
+
+  // Check if user is at their brand limit
+  const isAtBrandLimit = usageData?.brandLimit !== null &&
+    usageData?.brandLimit !== -1 &&
+    usageData?.brandCount !== undefined &&
+    usageData.brandCount >= usageData.brandLimit;
 
   const handleCreateBrand = async () => {
     if (!newBrandName.trim()) {
@@ -132,17 +145,32 @@ export function BrandSwitcher() {
         <DropdownMenuContent className="w-56" align="start">
           <DropdownMenuLabel className="flex items-center justify-between">
             <span>Brands</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={(e) => {
-                e.preventDefault();
-                setCreateDialogOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      disabled={isAtBrandLimit}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCreateDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {isAtBrandLimit && (
+                  <TooltipContent>
+                    <p>Brand limit reached ({usageData?.brandLimit})</p>
+                    <p className="text-muted-foreground text-xs">Upgrade to create more</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {brands?.map((brand) => (

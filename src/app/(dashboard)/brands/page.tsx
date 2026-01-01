@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useBrands, useCreateBrand } from '@/lib/hooks';
+import { useBrands, useCreateBrand, useUsage } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +16,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -24,9 +30,16 @@ import { Plus } from 'lucide-react';
 export default function BrandsPage() {
   const router = useRouter();
   const { data: brands, isLoading, error } = useBrands();
+  const { data: usageData } = useUsage();
   const createBrand = useCreateBrand();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState('');
+
+  // Check if user is at their brand limit
+  const isAtBrandLimit = usageData?.brandLimit !== null &&
+    usageData?.brandLimit !== -1 &&
+    usageData?.brandCount !== undefined &&
+    usageData.brandCount >= usageData.brandLimit;
 
   // Auto-redirect to single brand
   useEffect(() => {
@@ -74,10 +87,27 @@ export default function BrandsPage() {
               Select a brand to view and manage tickets
             </p>
           </div>
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Brand
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    onClick={() => setCreateDialogOpen(true)}
+                    disabled={isAtBrandLimit}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Brand
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {isAtBrandLimit && (
+                <TooltipContent>
+                  <p>You&apos;ve reached your plan&apos;s brand limit ({usageData?.brandLimit}).</p>
+                  <p className="text-muted-foreground">Upgrade your plan to create more brands.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {isLoading && (
