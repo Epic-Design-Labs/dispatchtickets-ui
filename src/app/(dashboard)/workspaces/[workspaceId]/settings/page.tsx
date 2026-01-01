@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useBrand, useUpdateBrand } from '@/lib/hooks';
 import { toast } from 'sonner';
 
@@ -20,12 +22,23 @@ export default function SettingsPage() {
 
   const [name, setName] = useState('');
   const [ticketPrefix, setTicketPrefix] = useState('');
+  const [nextTicketNumber, setNextTicketNumber] = useState<number>(1000);
+
+  // Autoresponse state
+  const [autoresponseEnabled, setAutoresponseEnabled] = useState(false);
+  const [autoresponseSubject, setAutoresponseSubject] = useState('');
+  const [autoresponseBody, setAutoresponseBody] = useState('');
 
   // Initialize form with brand data
   useEffect(() => {
     if (brand) {
       setName(brand.name);
       setTicketPrefix(brand.ticketPrefix || '');
+      setNextTicketNumber(brand.nextTicketNumber || 1000);
+      // Autoresponse
+      setAutoresponseEnabled(brand.autoresponseEnabled || false);
+      setAutoresponseSubject(brand.autoresponseSubject || '');
+      setAutoresponseBody(brand.autoresponseBody || '');
     }
   }, [brand]);
 
@@ -46,14 +59,49 @@ export default function SettingsPage() {
       return;
     }
 
+    // Validate next ticket number
+    if (nextTicketNumber < (brand?.nextTicketNumber || 1)) {
+      toast.error('Next ticket number cannot be lower than current value');
+      return;
+    }
+
     try {
       await updateBrand.mutateAsync({
         name: name.trim(),
         ticketPrefix: ticketPrefix.trim().toUpperCase(),
+        // Only send if changed (to avoid unnecessary updates)
+        ...(nextTicketNumber !== brand?.nextTicketNumber && {
+          ticketNumberStart: nextTicketNumber,
+        }),
       });
       toast.success('Settings saved');
     } catch {
       toast.error('Failed to save settings');
+    }
+  };
+
+  const handleSaveAutoresponse = async () => {
+    // Validate if enabled
+    if (autoresponseEnabled) {
+      if (!autoresponseSubject.trim()) {
+        toast.error('Autoresponse subject is required when enabled');
+        return;
+      }
+      if (!autoresponseBody.trim()) {
+        toast.error('Autoresponse message is required when enabled');
+        return;
+      }
+    }
+
+    try {
+      await updateBrand.mutateAsync({
+        autoresponseEnabled,
+        autoresponseSubject: autoresponseSubject.trim() || undefined,
+        autoresponseBody: autoresponseBody.trim() || undefined,
+      });
+      toast.success('Autoresponse settings saved');
+    } catch {
+      toast.error('Failed to save autoresponse settings');
     }
   };
 
@@ -124,11 +172,26 @@ export default function SettingsPage() {
                   maxLength={10}
                 />
                 <span className="text-muted-foreground">
-                  → {ticketPrefix || 'XXX'}-{brand?.nextTicketNumber || 1000}
+                  → {ticketPrefix || 'XXX'}-{nextTicketNumber}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Prefix for public ticket IDs (e.g., EDL-1001). Cannot be changed after tickets are created.
+                Prefix for public ticket IDs (e.g., EDL-1001)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nextTicketNumber">Next Ticket Number</Label>
+              <Input
+                id="nextTicketNumber"
+                type="number"
+                value={nextTicketNumber}
+                onChange={(e) => setNextTicketNumber(parseInt(e.target.value) || 1)}
+                className="w-32"
+                min={brand?.nextTicketNumber || 1}
+              />
+              <p className="text-sm text-muted-foreground">
+                The next ticket created will use this number. Useful when migrating from another platform to avoid ID collisions.
               </p>
             </div>
 
@@ -158,6 +221,71 @@ export default function SettingsPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               Forward emails to this address to automatically create tickets
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Autoresponse */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Autoresponse</CardTitle>
+            <CardDescription>
+              Automatically reply to new tickets created via email
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="autoresponse-enabled">Enable Autoresponse</Label>
+                <p className="text-sm text-muted-foreground">
+                  Send an automatic reply when a new ticket is created via email
+                </p>
+              </div>
+              <Switch
+                id="autoresponse-enabled"
+                checked={autoresponseEnabled}
+                onCheckedChange={setAutoresponseEnabled}
+              />
+            </div>
+
+            {autoresponseEnabled && (
+              <>
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label htmlFor="autoresponse-subject">Email Subject</Label>
+                  <Input
+                    id="autoresponse-subject"
+                    placeholder="e.g., We received your request [{{ticketNumber}}]"
+                    value={autoresponseSubject}
+                    onChange={(e) => setAutoresponseSubject(e.target.value)}
+                    maxLength={200}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Use <code className="rounded bg-muted px-1">{'{{ticketNumber}}'}</code> for ticket ID, <code className="rounded bg-muted px-1">{'{{ticketTitle}}'}</code> for subject
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="autoresponse-body">Message Body</Label>
+                  <Textarea
+                    id="autoresponse-body"
+                    placeholder="Thank you for contacting us. We have received your request and will respond shortly."
+                    value={autoresponseBody}
+                    onChange={(e) => setAutoresponseBody(e.target.value)}
+                    rows={6}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Available placeholders: <code className="rounded bg-muted px-1">{'{{ticketNumber}}'}</code>, <code className="rounded bg-muted px-1">{'{{ticketTitle}}'}</code>, <code className="rounded bg-muted px-1">{'{{customerName}}'}</code>, <code className="rounded bg-muted px-1">{'{{brandName}}'}</code>
+                  </p>
+                </div>
+              </>
+            )}
+
+            <Separator />
+
+            <Button onClick={handleSaveAutoresponse} disabled={updateBrand.isPending}>
+              {updateBrand.isPending ? 'Saving...' : 'Save Autoresponse Settings'}
+            </Button>
           </CardContent>
         </Card>
 

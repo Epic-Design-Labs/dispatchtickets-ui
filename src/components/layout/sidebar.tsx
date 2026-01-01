@@ -54,15 +54,6 @@ export function Sidebar({ workspaceId }: SidebarProps) {
           ),
         },
         {
-          name: 'Tickets',
-          href: `/workspaces/${workspaceId}/tickets`,
-          icon: (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          ),
-        },
-        {
           name: 'Webhooks',
           href: `/workspaces/${workspaceId}/webhooks`,
           icon: (
@@ -110,9 +101,7 @@ export function Sidebar({ workspaceId }: SidebarProps) {
             <Separator className="my-4" />
             <nav className="space-y-1 px-3">
               {navigation.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.name === 'Tickets' && pathname.startsWith(item.href));
+                const isActive = pathname === item.href;
 
                 return (
                   <Button

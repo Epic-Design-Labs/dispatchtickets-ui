@@ -11,6 +11,10 @@ export interface Brand {
   ticketSchema?: unknown;
   customInboundDomain?: string;
   inboundEmailEnabled?: boolean;
+  // Autoresponse settings
+  autoresponseEnabled?: boolean;
+  autoresponseSubject?: string;
+  autoresponseBody?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,7 +30,12 @@ export interface CreateBrandInput {
 export interface UpdateBrandInput {
   name?: string;
   ticketPrefix?: string;
+  ticketNumberStart?: number;
   settings?: Record<string, unknown>;
+  // Autoresponse settings
+  autoresponseEnabled?: boolean;
+  autoresponseSubject?: string;
+  autoresponseBody?: string;
 }
 
 // Aliases for backward compatibility with API code

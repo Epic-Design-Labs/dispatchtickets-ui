@@ -2,11 +2,45 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ticketsApi } from '@/lib/api';
-import { Ticket } from '@/types';
+import { ticketsApi, commentsApi } from '@/lib/api';
+import { Ticket, Comment } from '@/types';
 import { toast } from 'sonner';
 
 const POLL_INTERVAL = 30000; // 30 seconds
+
+// Check if desktop notifications are enabled
+function isDesktopNotificationsEnabled(): boolean {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return false;
+  }
+  return (
+    Notification.permission === 'granted' &&
+    localStorage.getItem('desktop_notifications_enabled') === 'true'
+  );
+}
+
+// Send a desktop notification
+function sendDesktopNotification(
+  title: string,
+  body: string,
+  onClick?: () => void
+): void {
+  if (!isDesktopNotificationsEnabled()) return;
+
+  const notification = new Notification(title, {
+    body,
+    icon: '/icon.svg',
+    tag: `dispatch-${Date.now()}`, // Unique tag to allow multiple notifications
+  });
+
+  if (onClick) {
+    notification.onclick = () => {
+      window.focus();
+      onClick();
+      notification.close();
+    };
+  }
+}
 
 interface TicketSnapshot {
   id: string;
@@ -29,7 +63,7 @@ export function useTicketNotifications(workspaceId: string | undefined) {
     refetchIntervalInBackground: false,
   });
 
-  const checkForUpdates = useCallback((tickets: Ticket[]) => {
+  const checkForUpdates = useCallback(async (tickets: Ticket[]) => {
     // Skip first load - just populate the cache
     if (isFirstLoadRef.current) {
       isFirstLoadRef.current = false;
@@ -81,48 +115,77 @@ export function useTicketNotifications(workspaceId: string | undefined) {
     });
     previousTicketsRef.current = snapshot;
 
+    // Helper to navigate to ticket
+    const navigateToTicket = (ticket: Ticket) => {
+      window.location.href = `/workspaces/${ticket.workspaceId}/tickets/${ticket.id}`;
+    };
+
     // Show notifications
-    notifications.forEach(({ type, ticket, oldStatus }) => {
-      const ticketLabel = `#${ticket.ticketNumber}`;
+    for (const { type, ticket, oldStatus } of notifications) {
+      const ticketLabel = ticket.ticketNumber ? `#${ticket.ticketNumber}` : ticket.id.slice(0, 8);
 
       switch (type) {
         case 'new':
           toast.info(`New ticket: ${ticketLabel}`, {
             description: ticket.title,
+            duration: 8000,
             action: {
               label: 'View',
-              onClick: () => {
-                window.location.href = `/workspaces/${ticket.workspaceId}/tickets/${ticket.id}`;
-              },
+              onClick: () => navigateToTicket(ticket),
             },
           });
+          // Also send desktop notification
+          sendDesktopNotification(
+            `New ticket: ${ticketLabel}`,
+            ticket.title,
+            () => navigateToTicket(ticket)
+          );
           break;
 
         case 'comment':
-          toast.info(`New comment on ${ticketLabel}`, {
-            description: ticket.title,
-            action: {
-              label: 'View',
-              onClick: () => {
-                window.location.href = `/workspaces/${ticket.workspaceId}/tickets/${ticket.id}`;
-              },
-            },
-          });
+          // Fetch latest comment to check if it's from a customer and get name
+          try {
+            const comments = await commentsApi.list(ticket.workspaceId, ticket.id);
+            if (comments.length > 0) {
+              const latestComment = comments[comments.length - 1];
+              // Only notify for customer comments (external), not agent comments (internal)
+              if (latestComment.authorType === 'CUSTOMER') {
+                const authorName = (latestComment.metadata as { authorName?: string })?.authorName || 'Customer';
+                const notifTitle = `${ticketLabel} reply from ${authorName}`;
+                toast.info(notifTitle, {
+                  description: ticket.title,
+                  duration: 8000,
+                  action: {
+                    label: 'View',
+                    onClick: () => navigateToTicket(ticket),
+                  },
+                });
+                // Also send desktop notification
+                sendDesktopNotification(
+                  notifTitle,
+                  ticket.title,
+                  () => navigateToTicket(ticket)
+                );
+              }
+            }
+          } catch {
+            // Fallback if comment fetch fails - still only show for external, but we can't tell
+          }
           break;
 
         case 'status':
           toast.info(`${ticketLabel} status changed`, {
             description: `${oldStatus} → ${ticket.status}`,
+            duration: 8000,
             action: {
               label: 'View',
-              onClick: () => {
-                window.location.href = `/workspaces/${ticket.workspaceId}/tickets/${ticket.id}`;
-              },
+              onClick: () => navigateToTicket(ticket),
             },
           });
+          // Status changes don't need desktop notifications (less urgent)
           break;
       }
-    });
+    }
 
     // Invalidate tickets query to refresh the list
     if (notifications.length > 0) {
