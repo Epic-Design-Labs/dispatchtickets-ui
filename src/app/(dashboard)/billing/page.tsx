@@ -46,6 +46,7 @@ export default function BillingPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
   const [selectedDowngradePlan, setSelectedDowngradePlan] = useState<Plan | null>(null);
+  const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
 
   const subscription = subscriptionData?.subscription;
   const allPlans = plansData?.plans || [];
@@ -73,6 +74,7 @@ export default function BillingPage() {
   };
 
   const handleUpgrade = async (planId: string) => {
+    setUpgradingPlanId(planId);
     try {
       const result = await upgradeSubscription.mutateAsync({
         planId,
@@ -83,6 +85,7 @@ export default function BillingPage() {
       window.location.href = result.url;
     } catch {
       toast.error('Failed to start upgrade process');
+      setUpgradingPlanId(null);
     }
   };
 
@@ -373,10 +376,10 @@ export default function BillingPage() {
                                 handleDowngrade(plan);
                               }
                             }}
-                            disabled={upgradeSubscription.isPending || subscription?.cancelAtPeriodEnd || (!isUpgrade(plan) && !!getDowngradeBlockReason(plan))}
+                            disabled={upgradingPlanId !== null || subscription?.cancelAtPeriodEnd || (!isUpgrade(plan) && !!getDowngradeBlockReason(plan))}
                             title={!isUpgrade(plan) ? getDowngradeBlockReason(plan) || undefined : undefined}
                           >
-                            {upgradeSubscription.isPending
+                            {upgradingPlanId === plan.id
                               ? 'Processing...'
                               : isUpgrade(plan)
                               ? 'Upgrade'

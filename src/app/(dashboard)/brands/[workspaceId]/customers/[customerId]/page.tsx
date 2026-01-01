@@ -7,24 +7,17 @@ import {
   useCustomer,
   useUpdateCustomer,
   useDeleteCustomer,
-  useCompanies,
   useTickets,
 } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { TicketTable } from '@/components/tickets';
+import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,17 +40,15 @@ export default function CustomerDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editCompanyId, setEditCompanyId] = useState<string | undefined>();
+  const [editCompanyName, setEditCompanyName] = useState<string | undefined>();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const { data: customer, isLoading } = useCustomer(workspaceId, customerId);
-  const { data: companiesData } = useCompanies(workspaceId);
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(workspaceId, {
     // Filter tickets by this customer's email
   });
   const updateCustomer = useUpdateCustomer(workspaceId, customerId);
   const deleteCustomer = useDeleteCustomer(workspaceId);
-
-  const companies = companiesData?.data || [];
 
   // Filter tickets for this customer
   const customerTickets = ticketsData?.data?.filter(
@@ -67,6 +58,7 @@ export default function CustomerDetailPage() {
   const startEditing = () => {
     setEditName(customer?.name || '');
     setEditCompanyId(customer?.companyId);
+    setEditCompanyName(customer?.company?.name);
     setIsEditing(true);
   };
 
@@ -220,22 +212,16 @@ export default function CustomerDetailPage() {
                   <Label>Company</Label>
                 </div>
                 {isEditing ? (
-                  <Select
-                    value={editCompanyId || 'none'}
-                    onValueChange={(v) => setEditCompanyId(v === 'none' ? undefined : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select company" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No company</SelectItem>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CompanyCombobox
+                    workspaceId={workspaceId}
+                    value={editCompanyId}
+                    companyName={editCompanyName}
+                    onChange={(id, name) => {
+                      setEditCompanyId(id);
+                      setEditCompanyName(name);
+                    }}
+                    placeholder="Search or create company..."
+                  />
                 ) : customer.company ? (
                   <Link
                     href={`/brands/${workspaceId}/companies/${customer.company.id}`}

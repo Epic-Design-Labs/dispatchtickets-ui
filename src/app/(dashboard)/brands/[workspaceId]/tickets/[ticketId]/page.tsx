@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useCompanies, useUpdateCustomer } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
+import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -21,13 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,13 +46,10 @@ export default function TicketDetailPage() {
 
   const { data: ticket, isLoading: ticketLoading } = useTicket(workspaceId, ticketId);
   const { data: comments, isLoading: commentsLoading } = useComments(workspaceId, ticketId, { polling: true });
-  const { data: companiesData } = useCompanies(workspaceId);
   const updateTicket = useUpdateTicket(workspaceId, ticketId);
   const deleteTicket = useDeleteTicket(workspaceId);
   const markAsSpam = useMarkAsSpam(workspaceId);
   const updateCustomer = useUpdateCustomer(workspaceId, ticket?.customerId || '');
-
-  const companies = companiesData?.data || [];
 
   const handleStatusChange = async (status: string) => {
     try {
@@ -98,11 +89,11 @@ export default function TicketDetailPage() {
     }
   };
 
-  const handleCompanyChange = async (companyId: string) => {
+  const handleCompanyChange = async (companyId: string | undefined) => {
     if (!ticket?.customerId) return;
     try {
       await updateCustomer.mutateAsync({
-        companyId: companyId === 'none' ? undefined : companyId,
+        companyId: companyId,
       });
       toast.success('Customer company updated');
     } catch {
@@ -340,23 +331,16 @@ export default function TicketDetailPage() {
                         <Building2 className="h-3 w-3" />
                         Company
                       </p>
-                      <Select
-                        value={ticket.customer.companyId || 'none'}
-                        onValueChange={handleCompanyChange}
-                        disabled={updateCustomer.isPending}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select company" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No company</SelectItem>
-                          {companies.map((company) => (
-                            <SelectItem key={company.id} value={company.id}>
-                              {company.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="mt-1">
+                        <CompanyCombobox
+                          workspaceId={workspaceId}
+                          value={ticket.customer.companyId}
+                          companyName={ticket.customer.company?.name}
+                          onChange={handleCompanyChange}
+                          disabled={updateCustomer.isPending}
+                          placeholder="Search or create company..."
+                        />
+                      </div>
                     </div>
                   </>
                 ) : (
