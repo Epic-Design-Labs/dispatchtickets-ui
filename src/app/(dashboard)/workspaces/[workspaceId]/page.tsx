@@ -1,51 +1,58 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import { useBrand, useTickets } from '@/lib/hooks';
 import { Header } from '@/components/layout';
+import { TicketFilters, TicketTable, CreateTicketDialog } from '@/components/tickets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { TicketFilters as TicketFiltersType } from '@/types';
 
 export default function BrandDashboardPage() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
+  const [filters, setFilters] = useState<TicketFiltersType>({});
 
   const { data: brand, isLoading: brandLoading } = useBrand(workspaceId);
-  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(workspaceId);
+  // Fetch all tickets for stats (without filters)
+  const { data: allTicketsData, isLoading: allTicketsLoading } = useTickets(workspaceId, {});
+  // Fetch filtered tickets for display
+  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(workspaceId, filters);
 
-  const isLoading = brandLoading || ticketsLoading;
+  const isLoading = brandLoading || allTicketsLoading;
 
-  // Calculate ticket stats
-  const tickets = ticketsData?.data || [];
+  // Calculate ticket stats from all tickets (unfiltered)
+  const allTickets = allTicketsData?.data || [];
   const stats = {
-    total: tickets.length,
-    open: tickets.filter((t) => t.status === 'open').length,
-    pending: tickets.filter((t) => t.status === 'pending').length,
-    resolved: tickets.filter((t) => t.status === 'resolved').length,
-    closed: tickets.filter((t) => t.status === 'closed').length,
+    total: allTickets.length,
+    open: allTickets.filter((t) => t.status === 'open').length,
+    pending: allTickets.filter((t) => t.status === 'pending').length,
+    resolved: allTickets.filter((t) => t.status === 'resolved').length,
+    closed: allTickets.filter((t) => t.status === 'closed').length,
+  };
+
+  const tickets = ticketsData?.data || [];
+
+  // Handle clicking on a stat card to filter
+  const handleStatClick = (status: string | undefined) => {
+    if (status === filters.status) {
+      // If already filtered by this status, clear it
+      setFilters((f) => ({ ...f, status: undefined }));
+    } else {
+      setFilters((f) => ({ ...f, status }));
+    }
   };
 
   return (
     <div className="flex flex-col">
       <Header title={brand?.name || 'Dashboard'} />
       <div className="flex-1 p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-            <p className="text-muted-foreground">
-              Overview of your brand activity
-            </p>
-          </div>
-          <Button asChild>
-            <Link href={`/workspaces/${workspaceId}/tickets`}>View All Tickets</Link>
-          </Button>
-        </div>
-
+        {/* Stats Cards */}
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {[1, 2, 3, 4, 5].map((i) => (
               <Card key={i}>
                 <CardHeader className="pb-2">
                   <Skeleton className="h-4 w-20" />
@@ -57,109 +64,154 @@ export default function BrandDashboardPage() {
             ))}
           </div>
         ) : (
-          <>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
-                  <svg
-                    className="h-4 w-4 text-muted-foreground"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                    />
-                  </svg>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.total}</div>
-                </CardContent>
-              </Card>
+          <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <Card
+              className={`cursor-pointer transition-colors hover:bg-accent ${
+                !filters.status ? 'ring-2 ring-primary' : ''
+              }`}
+              onClick={() => handleStatClick(undefined)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total</CardTitle>
+                <svg
+                  className="h-4 w-4 text-muted-foreground"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.total}</div>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Open</CardTitle>
-                  <div className="h-2 w-2 rounded-full bg-blue-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.open}</div>
-                </CardContent>
-              </Card>
+            <Card
+              className={`cursor-pointer transition-colors hover:bg-accent ${
+                filters.status === 'open' ? 'ring-2 ring-blue-500' : ''
+              }`}
+              onClick={() => handleStatClick('open')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Open</CardTitle>
+                <div className="h-2 w-2 rounded-full bg-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.open}</div>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                  <div className="h-2 w-2 rounded-full bg-yellow-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.pending}</div>
-                </CardContent>
-              </Card>
+            <Card
+              className={`cursor-pointer transition-colors hover:bg-accent ${
+                filters.status === 'pending' ? 'ring-2 ring-yellow-500' : ''
+              }`}
+              onClick={() => handleStatClick('pending')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                <div className="h-2 w-2 rounded-full bg-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.pending}</div>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Resolved</CardTitle>
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.resolved}</div>
-                </CardContent>
-              </Card>
-            </div>
+            <Card
+              className={`cursor-pointer transition-colors hover:bg-accent ${
+                filters.status === 'resolved' ? 'ring-2 ring-green-500' : ''
+              }`}
+              onClick={() => handleStatClick('resolved')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Resolved</CardTitle>
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.resolved}</div>
+              </CardContent>
+            </Card>
 
-            {/* Recent Tickets */}
-            <div className="mt-8">
-              <h3 className="mb-4 text-lg font-semibold">Recent Tickets</h3>
-              {tickets.length === 0 ? (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <p className="text-muted-foreground">No tickets yet</p>
-                    <Button className="mt-4" asChild>
-                      <Link href={`/workspaces/${workspaceId}/tickets?new=true`}>
-                        Create your first ticket
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-2">
-                  {tickets.slice(0, 5).map((ticket) => {
-                    const customerEmail = ticket.customFields?.requesterEmail as string | undefined;
-                    return (
-                      <Link
-                        key={ticket.id}
-                        href={`/workspaces/${workspaceId}/tickets/${ticket.id}`}
-                      >
-                        <Card className="cursor-pointer transition-colors hover:bg-accent">
-                          <CardContent className="flex items-center justify-between p-4">
-                            <div className="flex-1">
-                              <p className="font-medium">{ticket.title}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {customerEmail || 'No customer email'}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="rounded-full bg-secondary px-2 py-1 text-xs">
-                                {ticket.status || 'No status'}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(ticket.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </>
+            <Card
+              className={`cursor-pointer transition-colors hover:bg-accent ${
+                filters.status === 'closed' ? 'ring-2 ring-gray-500' : ''
+              }`}
+              onClick={() => handleStatClick('closed')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Closed</CardTitle>
+                <div className="h-2 w-2 rounded-full bg-gray-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.closed}</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Tickets Section */}
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">
+            Tickets
+            {filters.status && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                (filtered by {filters.status})
+              </span>
+            )}
+          </h3>
+          <CreateTicketDialog workspaceId={workspaceId}>
+            <Button size="sm">
+              <svg
+                className="mr-2 h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Create Ticket
+            </Button>
+          </CreateTicketDialog>
+        </div>
+
+        {/* Filters */}
+        <div className="mb-4">
+          <TicketFilters filters={filters} onFiltersChange={setFilters} />
+        </div>
+
+        {/* Ticket Table */}
+        <TicketTable
+          tickets={tickets}
+          workspaceId={workspaceId}
+          isLoading={ticketsLoading}
+        />
+
+        {/* Load More */}
+        {ticketsData?.pagination?.hasMore && (
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setFilters((f) => ({
+                  ...f,
+                  cursor: ticketsData.pagination.nextCursor || undefined,
+                }))
+              }
+            >
+              Load More
+            </Button>
+          </div>
         )}
       </div>
     </div>
