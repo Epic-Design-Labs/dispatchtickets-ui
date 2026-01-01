@@ -47,23 +47,43 @@ export function CommentThread({ comments, isLoading }: CommentThreadProps) {
     );
   }
 
+  const getAuthorLabel = (comment: Comment) => {
+    if (comment.authorType === 'AGENT') return 'Agent';
+    if (comment.authorType === 'SYSTEM') return 'System';
+    return comment.authorId || 'Customer';
+  };
+
+  const getAuthorInitial = (comment: Comment) => {
+    if (comment.authorType === 'AGENT') return 'A';
+    if (comment.authorType === 'SYSTEM') return 'S';
+    return 'C';
+  };
+
+  const isInternal = (comment: Comment) => {
+    return comment.metadata?.isInternal === true;
+  };
+
   return (
     <div className="space-y-4">
       {comments.map((comment) => (
         <div key={comment.id} className="flex gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarFallback>
-              {(comment.author || comment.authorEmail || 'U')
-                .charAt(0)
-                .toUpperCase()}
+            <AvatarFallback
+              className={
+                comment.authorType === 'AGENT'
+                  ? 'bg-blue-100 text-blue-700'
+                  : comment.authorType === 'SYSTEM'
+                    ? 'bg-gray-100 text-gray-700'
+                    : ''
+              }
+            >
+              {getAuthorInitial(comment)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-medium">
-                {comment.author || comment.authorEmail || 'Unknown'}
-              </span>
-              {comment.isInternal && (
+              <span className="font-medium">{getAuthorLabel(comment)}</span>
+              {isInternal(comment) && (
                 <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-xs text-yellow-800">
                   Internal
                 </span>

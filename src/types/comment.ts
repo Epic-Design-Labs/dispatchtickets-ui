@@ -1,22 +1,22 @@
 export interface Comment {
   id: string;
   ticketId: string;
-  author?: string;
-  authorEmail?: string;
+  authorId?: string;
+  authorType: 'CUSTOMER' | 'AGENT' | 'SYSTEM';
   body: string;
-  isInternal?: boolean;
+  metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateCommentInput {
   body: string;
-  author?: string;
-  authorEmail?: string;
-  isInternal?: boolean;
+  authorId?: string;
+  authorType?: 'CUSTOMER' | 'AGENT' | 'SYSTEM';
+  metadata?: Record<string, unknown>;
 }
 
 export interface UpdateCommentInput {
   body?: string;
-  isInternal?: boolean;
+  metadata?: Record<string, unknown>;
 }

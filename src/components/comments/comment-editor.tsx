@@ -26,7 +26,8 @@ export function CommentEditor({ workspaceId, ticketId }: CommentEditorProps) {
     try {
       await createComment.mutateAsync({
         body: body.trim(),
-        isInternal: isInternal,
+        authorType: 'AGENT',
+        metadata: isInternal ? { isInternal: true } : undefined,
       });
       setBody('');
       setIsInternal(false);
