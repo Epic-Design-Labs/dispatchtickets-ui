@@ -29,6 +29,14 @@ export default function SettingsPage() {
   const [autoresponseSubject, setAutoresponseSubject] = useState('');
   const [autoresponseBody, setAutoresponseBody] = useState('');
 
+  // Brand identity state
+  const [url, setUrl] = useState('');
+  const [iconUrl, setIconUrl] = useState('');
+
+  // Outbound email state
+  const [fromName, setFromName] = useState('');
+  const [fromEmail, setFromEmail] = useState('');
+
   // Initialize form with brand data
   useEffect(() => {
     if (brand) {
@@ -39,6 +47,12 @@ export default function SettingsPage() {
       setAutoresponseEnabled(brand.autoresponseEnabled || false);
       setAutoresponseSubject(brand.autoresponseSubject || '');
       setAutoresponseBody(brand.autoresponseBody || '');
+      // Brand identity
+      setUrl(brand.url || '');
+      setIconUrl(brand.iconUrl || '');
+      // Outbound email
+      setFromName(brand.fromName || '');
+      setFromEmail(brand.fromEmail || '');
     }
   }, [brand]);
 
@@ -199,6 +213,133 @@ export default function SettingsPage() {
 
             <Button onClick={handleSave} disabled={updateBrand.isPending}>
               {updateBrand.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Brand Identity */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Brand Identity</CardTitle>
+            <CardDescription>
+              Website URL and icon for your brand
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="url">Website URL</Label>
+              <Input
+                id="url"
+                type="url"
+                placeholder="https://example.com"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Your brand's website URL. We'll automatically fetch the favicon.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="iconUrl">Icon URL</Label>
+              <div className="flex items-center gap-3">
+                {iconUrl && (
+                  <img
+                    src={iconUrl}
+                    alt="Brand icon"
+                    className="h-8 w-8 rounded object-contain"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                )}
+                <Input
+                  id="iconUrl"
+                  type="url"
+                  placeholder="https://example.com/favicon.ico"
+                  value={iconUrl}
+                  onChange={(e) => setIconUrl(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Custom icon URL (leave empty to auto-fetch from website)
+              </p>
+            </div>
+
+            <Separator />
+
+            <Button
+              onClick={async () => {
+                try {
+                  await updateBrand.mutateAsync({
+                    url: url.trim() || undefined,
+                    iconUrl: iconUrl.trim() || undefined,
+                  });
+                  toast.success('Brand identity saved');
+                } catch {
+                  toast.error('Failed to save brand identity');
+                }
+              }}
+              disabled={updateBrand.isPending}
+            >
+              {updateBrand.isPending ? 'Saving...' : 'Save Brand Identity'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Outbound Email Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Outbound Email</CardTitle>
+            <CardDescription>
+              Configure how emails are sent from this brand
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fromName">Sender Name</Label>
+              <Input
+                id="fromName"
+                placeholder="e.g., Epic Design Labs Support"
+                value={fromName}
+                onChange={(e) => setFromName(e.target.value)}
+                maxLength={100}
+              />
+              <p className="text-sm text-muted-foreground">
+                The name that appears in the "From" field of outbound emails
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fromEmail">Sender Email</Label>
+              <Input
+                id="fromEmail"
+                type="email"
+                placeholder="support@yourdomain.com"
+                value={fromEmail}
+                onChange={(e) => setFromEmail(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Custom sender email address. Requires domain verification with Resend.
+              </p>
+            </div>
+
+            <Separator />
+
+            <Button
+              onClick={async () => {
+                try {
+                  await updateBrand.mutateAsync({
+                    fromName: fromName.trim() || undefined,
+                    fromEmail: fromEmail.trim() || undefined,
+                  });
+                  toast.success('Outbound email settings saved');
+                } catch {
+                  toast.error('Failed to save outbound email settings');
+                }
+              }}
+              disabled={updateBrand.isPending}
+            >
+              {updateBrand.isPending ? 'Saving...' : 'Save Email Settings'}
             </Button>
           </CardContent>
         </Card>

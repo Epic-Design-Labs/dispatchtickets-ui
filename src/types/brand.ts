@@ -15,6 +15,12 @@ export interface Brand {
   autoresponseEnabled?: boolean;
   autoresponseSubject?: string;
   autoresponseBody?: string;
+  // Brand identity
+  url?: string;
+  iconUrl?: string;
+  // Outbound email settings
+  fromName?: string;
+  fromEmail?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,6 +42,12 @@ export interface UpdateBrandInput {
   autoresponseEnabled?: boolean;
   autoresponseSubject?: string;
   autoresponseBody?: string;
+  // Brand identity
+  url?: string;
+  iconUrl?: string;
+  // Outbound email settings
+  fromName?: string;
+  fromEmail?: string;
 }
 
 // Aliases for backward compatibility with API code

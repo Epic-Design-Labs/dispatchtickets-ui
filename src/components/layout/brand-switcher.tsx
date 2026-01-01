@@ -149,7 +149,7 @@ export function BrandSwitcher() {
             <DropdownMenuItem
               key={brand.id}
               className="cursor-pointer flex items-center justify-between group"
-              onClick={() => router.push(`/workspaces/${brand.id}`)}
+              onClick={() => router.push(`/brands/${brand.id}`)}
             >
               <span className="truncate">{brand.name}</span>
               <div className="flex items-center gap-1">
