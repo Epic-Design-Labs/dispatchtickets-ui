@@ -1,12 +1,13 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { teamApi } from '@/lib/api';
+import { teamApi, Organization } from '@/lib/api/team';
 import { InviteMemberInput, UpdateMemberInput } from '@/types';
 
 export const teamKeys = {
   all: ['team'] as const,
   members: () => [...teamKeys.all, 'members'] as const,
+  organization: () => [...teamKeys.all, 'organization'] as const,
 };
 
 export function useTeamMembers() {
@@ -46,6 +47,26 @@ export function useRemoveMember() {
     mutationFn: (memberId: string) => teamApi.removeMember(memberId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teamKeys.members() });
+    },
+  });
+}
+
+export function useOrganization() {
+  return useQuery({
+    queryKey: teamKeys.organization(),
+    queryFn: teamApi.getOrganization,
+  });
+}
+
+export function useUpdateOrganization() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (name: string) => teamApi.updateOrganization(name),
+    onSuccess: (data) => {
+      queryClient.setQueryData<Organization>(teamKeys.organization(), (old) =>
+        old ? { ...old, name: data.name } : { id: '', name: data.name }
+      );
     },
   });
 }

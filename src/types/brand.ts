@@ -4,6 +4,8 @@ export interface Brand {
   accountId: string;
   slug: string;
   name: string;
+  ticketPrefix: string;
+  nextTicketNumber: number;
   settings?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   ticketSchema?: unknown;
@@ -16,11 +18,14 @@ export interface Brand {
 export interface CreateBrandInput {
   name: string;
   slug?: string;
+  ticketPrefix?: string;
+  ticketNumberStart?: number;
   settings?: Record<string, unknown>;
 }
 
 export interface UpdateBrandInput {
   name?: string;
+  ticketPrefix?: string;
   settings?: Record<string, unknown>;
 }
 
