@@ -66,3 +66,18 @@ export function useDeleteTicket(workspaceId: string) {
     },
   });
 }
+
+export function useMarkAsSpam(workspaceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ ticketId, isSpam }: { ticketId: string; isSpam: boolean }) =>
+      ticketsApi.markAsSpam(workspaceId, ticketId, isSpam),
+    onSuccess: (_, { ticketId }) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(workspaceId) });
+      queryClient.invalidateQueries({
+        queryKey: ticketKeys.detail(workspaceId, ticketId),
+      });
+    },
+  });
+}

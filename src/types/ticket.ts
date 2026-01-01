@@ -20,6 +20,7 @@ export interface Ticket {
   createdBy?: string;
   commentCount?: number;
   attachmentCount?: number;
+  isSpam?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,4 +54,5 @@ export interface TicketFilters {
   search?: string;
   cursor?: string;
   limit?: number;
+  isSpam?: boolean;
 }

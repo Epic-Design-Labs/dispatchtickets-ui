@@ -166,7 +166,7 @@ export function BrandSwitcher() {
                 {isAtBrandLimit && (
                   <TooltipContent>
                     <p>Brand limit reached ({usageData?.brandLimit})</p>
-                    <p className="text-muted-foreground text-xs">Upgrade to create more</p>
+                    <p className="text-zinc-400 text-xs">Upgrade to create more</p>
                   </TooltipContent>
                 )}
               </Tooltip>

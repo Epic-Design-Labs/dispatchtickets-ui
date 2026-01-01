@@ -103,7 +103,7 @@ export default function BrandsPage() {
               {isAtBrandLimit && (
                 <TooltipContent>
                   <p>You&apos;ve reached your plan&apos;s brand limit ({usageData?.brandLimit}).</p>
-                  <p className="text-muted-foreground">Upgrade your plan to create more brands.</p>
+                  <p className="text-zinc-400">Upgrade your plan to create more brands.</p>
                 </TooltipContent>
               )}
             </Tooltip>

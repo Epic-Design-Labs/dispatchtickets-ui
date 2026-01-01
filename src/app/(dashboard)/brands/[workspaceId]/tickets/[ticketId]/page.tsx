@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -47,6 +47,7 @@ export default function TicketDetailPage() {
   const { data: comments, isLoading: commentsLoading } = useComments(workspaceId, ticketId, { polling: true });
   const updateTicket = useUpdateTicket(workspaceId, ticketId);
   const deleteTicket = useDeleteTicket(workspaceId);
+  const markAsSpam = useMarkAsSpam(workspaceId);
 
   const handleStatusChange = async (status: string) => {
     try {
@@ -68,8 +69,8 @@ export default function TicketDetailPage() {
 
   const handleMarkAsSpam = async () => {
     try {
-      await updateTicket.mutateAsync({ isSpam: true, status: 'resolved' });
-      toast.success('Ticket marked as spam');
+      await markAsSpam.mutateAsync({ ticketId, isSpam: true });
+      toast.success('Ticket marked as spam. Future emails from this sender will be auto-spammed.');
       router.push(`/brands/${workspaceId}`);
     } catch {
       toast.error('Failed to mark as spam');
@@ -167,7 +168,7 @@ export default function TicketDetailPage() {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={handleMarkAsSpam}
-                  disabled={updateTicket.isPending}
+                  disabled={markAsSpam.isPending}
                 >
                   <ShieldAlert className="mr-2 h-4 w-4" />
                   Mark as Spam

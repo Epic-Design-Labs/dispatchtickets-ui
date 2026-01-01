@@ -60,4 +60,16 @@ export const ticketsApi = {
   delete: async (workspaceId: string, ticketId: string): Promise<void> => {
     await apiClient.delete(`/workspaces/${workspaceId}/tickets/${ticketId}`);
   },
+
+  markAsSpam: async (
+    workspaceId: string,
+    ticketId: string,
+    isSpam: boolean
+  ): Promise<Ticket> => {
+    const response = await apiClient.post<Ticket>(
+      `/workspaces/${workspaceId}/tickets/${ticketId}/spam`,
+      { isSpam }
+    );
+    return response.data;
+  },
 };

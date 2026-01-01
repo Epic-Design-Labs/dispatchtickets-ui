@@ -18,9 +18,10 @@ interface TicketTableProps {
   tickets: Ticket[];
   workspaceId: string;
   isLoading?: boolean;
+  renderActions?: (ticket: Ticket) => React.ReactNode;
 }
 
-export function TicketTable({ tickets, workspaceId, isLoading }: TicketTableProps) {
+export function TicketTable({ tickets, workspaceId, isLoading, renderActions }: TicketTableProps) {
   if (isLoading) {
     return (
       <div className="rounded-md border">
@@ -94,6 +95,7 @@ export function TicketTable({ tickets, workspaceId, isLoading }: TicketTableProp
             <TableHead>Priority</TableHead>
             <TableHead>Customer</TableHead>
             <TableHead>Created</TableHead>
+            {renderActions && <TableHead className="w-24">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -122,6 +124,11 @@ export function TicketTable({ tickets, workspaceId, isLoading }: TicketTableProp
                 <TableCell className="text-muted-foreground">
                   {new Date(ticket.createdAt).toLocaleDateString()}
                 </TableCell>
+                {renderActions && (
+                  <TableCell>
+                    {renderActions(ticket)}
+                  </TableCell>
+                )}
               </TableRow>
             );
           })}
