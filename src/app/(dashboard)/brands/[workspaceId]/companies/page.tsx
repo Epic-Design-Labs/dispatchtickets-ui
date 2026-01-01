@@ -3,28 +3,62 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useCompanies } from '@/lib/hooks';
+import { useCompanies, useCreateCompany } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Building2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { Search, Building2, Plus } from 'lucide-react';
 
 export default function CompaniesPage() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
   const [search, setSearch] = useState('');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState('');
+  const [newCompanyDomain, setNewCompanyDomain] = useState('');
 
   const { data, isLoading } = useCompanies(workspaceId, { search: search || undefined });
+  const createCompany = useCreateCompany(workspaceId);
 
   const companies = data?.data || [];
+
+  const handleCreateCompany = async () => {
+    if (!newCompanyName.trim()) {
+      toast.error('Please enter a company name');
+      return;
+    }
+
+    try {
+      await createCompany.mutateAsync({
+        name: newCompanyName.trim(),
+        domain: newCompanyDomain.trim() || undefined,
+      });
+      toast.success('Company created');
+      setCreateDialogOpen(false);
+      setNewCompanyName('');
+      setNewCompanyDomain('');
+    } catch {
+      toast.error('Failed to create company');
+    }
+  };
 
   return (
     <div className="flex flex-col">
       <Header title="Companies" />
       <div className="flex-1 p-6">
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -34,6 +68,10 @@ export default function CompaniesPage() {
               className="pl-9"
             />
           </div>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Company
+          </Button>
         </div>
 
         {isLoading ? (
@@ -103,6 +141,57 @@ export default function CompaniesPage() {
           </div>
         )}
       </div>
+
+      {/* Create Company Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Company</DialogTitle>
+            <DialogDescription>
+              Add a company to group customers from the same organization.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Company Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g., Acme Inc"
+                value={newCompanyName}
+                onChange={(e) => setNewCompanyName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateCompany();
+                }}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="domain">
+                Email Domain <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="domain"
+                placeholder="e.g., acme.com"
+                value={newCompanyDomain}
+                onChange={(e) => setNewCompanyDomain(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateCompany();
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Customers with this email domain will be automatically linked to this company.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateCompany} disabled={createCompany.isPending}>
+              {createCompany.isPending ? 'Creating...' : 'Create Company'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
