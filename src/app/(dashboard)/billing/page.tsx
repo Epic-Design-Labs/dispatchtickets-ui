@@ -44,9 +44,14 @@ export default function BillingPage() {
   const reactivateSubscription = useReactivateSubscription();
   const upgradeSubscription = useUpgradeSubscription();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
+  const [selectedDowngradePlan, setSelectedDowngradePlan] = useState<Plan | null>(null);
 
   const subscription = subscriptionData?.subscription;
-  const plans = plansData?.plans || [];
+  const allPlans = plansData?.plans || [];
+  // Filter out free plan from cards - it will have its own button
+  const plans = allPlans.filter(p => p.price > 0);
+  const freePlan = allPlans.find(p => p.price === 0);
 
   const handleCancel = async () => {
     try {
@@ -143,6 +148,55 @@ export default function BillingPage() {
     return plan.price > subscription.planPrice;
   };
 
+  // Check if downgrade is allowed based on current usage vs target plan limits
+  const getDowngradeBlockReason = (plan: Plan): string | null => {
+    if (!usageData) return null;
+
+    const entitlements = plan.entitlements as Record<string, number | boolean>;
+    const targetBrandLimit = entitlements.brands_limit;
+
+    // Check brand limit (-1 means unlimited)
+    if (typeof targetBrandLimit === 'number' && targetBrandLimit !== -1) {
+      if (usageData.brandCount > targetBrandLimit) {
+        return `You have ${usageData.brandCount} brands but this plan only allows ${targetBrandLimit}. Please delete ${usageData.brandCount - targetBrandLimit} brand${usageData.brandCount - targetBrandLimit > 1 ? 's' : ''} first.`;
+      }
+    }
+
+    return null;
+  };
+
+  const handleDowngrade = (plan: Plan) => {
+    const blockReason = getDowngradeBlockReason(plan);
+    if (blockReason) {
+      toast.error(blockReason);
+      return;
+    }
+    setSelectedDowngradePlan(plan);
+    setDowngradeDialogOpen(true);
+  };
+
+  const confirmDowngrade = async () => {
+    if (!selectedDowngradePlan) return;
+    try {
+      const result = await upgradeSubscription.mutateAsync({
+        planId: selectedDowngradePlan.id,
+        successUrl: `${window.location.origin}/billing?upgraded=true`,
+        cancelUrl: `${window.location.origin}/billing`,
+      });
+      // For free plan, no checkout redirect - just refresh
+      if (selectedDowngradePlan.price === 0) {
+        toast.success('Downgraded to free plan');
+        refetch();
+        setDowngradeDialogOpen(false);
+        setSelectedDowngradePlan(null);
+      } else {
+        window.location.href = result.url;
+      }
+    } catch {
+      toast.error('Failed to change plan');
+    }
+  };
+
   return (
     <div className="flex flex-col">
       <Header title="Billing" />
@@ -232,6 +286,16 @@ export default function BillingPage() {
                           {reactivateSubscription.isPending ? 'Reactivating...' : 'Reactivate Subscription'}
                         </Button>
                       )}
+                      {!subscription.cancelAtPeriodEnd && freePlan && !isCurrentPlan(freePlan) && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleDowngrade(freePlan)}
+                          disabled={upgradeSubscription.isPending || !!getDowngradeBlockReason(freePlan)}
+                          title={getDowngradeBlockReason(freePlan) || undefined}
+                        >
+                          Downgrade to Free
+                        </Button>
+                      )}
                       {!subscription.cancelAtPeriodEnd && (
                         <Button
                           variant="destructive"
@@ -263,13 +327,13 @@ export default function BillingPage() {
               </CardHeader>
               <CardContent>
                 {plansLoading ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {[1, 2, 3, 4].map((i) => (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {[1, 2, 3].map((i) => (
                       <Skeleton key={i} className="h-48 w-full" />
                     ))}
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid gap-4 md:grid-cols-3">
                     {plans.map((plan) => (
                       <div
                         key={plan.id}
@@ -302,14 +366,21 @@ export default function BillingPage() {
                           <Button
                             className="w-full"
                             variant={isUpgrade(plan) ? 'default' : 'outline'}
-                            onClick={() => handleUpgrade(plan.id)}
-                            disabled={upgradeSubscription.isPending || subscription?.cancelAtPeriodEnd}
+                            onClick={() => {
+                              if (isUpgrade(plan)) {
+                                handleUpgrade(plan.id);
+                              } else {
+                                handleDowngrade(plan);
+                              }
+                            }}
+                            disabled={upgradeSubscription.isPending || subscription?.cancelAtPeriodEnd || (!isUpgrade(plan) && !!getDowngradeBlockReason(plan))}
+                            title={!isUpgrade(plan) ? getDowngradeBlockReason(plan) || undefined : undefined}
                           >
                             {upgradeSubscription.isPending
                               ? 'Processing...'
                               : isUpgrade(plan)
                               ? 'Upgrade'
-                              : 'Switch'}
+                              : 'Downgrade'}
                           </Button>
                         )}
                         {isCurrentPlan(plan) && (
@@ -403,6 +474,31 @@ export default function BillingPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {cancelSubscription.isPending ? 'Cancelling...' : 'Cancel Subscription'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Downgrade Plan Dialog */}
+      <AlertDialog open={downgradeDialogOpen} onOpenChange={setDowngradeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Downgrade to {selectedDowngradePlan?.name}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to downgrade to the {selectedDowngradePlan?.name} plan?
+              {selectedDowngradePlan?.price === 0
+                ? ' Your current plan benefits will end immediately.'
+                : ' The change will take effect at your next billing cycle.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedDowngradePlan(null)}>
+              Keep Current Plan
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDowngrade}
+            >
+              {upgradeSubscription.isPending ? 'Processing...' : 'Confirm Downgrade'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

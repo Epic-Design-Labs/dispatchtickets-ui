@@ -53,8 +53,10 @@ export interface CancelResponse {
 
 export interface UsageResponse {
   ticketCount: number;
+  brandCount: number;
   billingPeriodStart: string | null;
   planLimit: number | null;
+  brandLimit: number | null;
 }
 
 export const billingApi = {
