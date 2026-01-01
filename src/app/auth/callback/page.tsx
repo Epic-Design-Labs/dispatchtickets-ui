@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
+const PENDING_INVITE_KEY = 'dispatch_pending_invite';
+
 function AuthCallbackContent() {
   const searchParams = useSearchParams();
-  const { verifyToken, refreshSession } = useAuth();
+  const { verifyToken, refreshSession, acceptInvite } = useAuth();
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasProcessed, setHasProcessed] = useState(false);
@@ -30,6 +32,9 @@ function AuthCallbackContent() {
         toast.error('Authentication failed');
         return;
       }
+
+      // Check for org_invite parameter (invite flow from Stackbe)
+      const orgInvite = searchParams.get('org_invite');
 
       // Check for sessionToken param first
       let sessionToken = searchParams.get('sessionToken');
@@ -54,8 +59,21 @@ function AuthCallbackContent() {
           return;
         }
 
+        // Check for pending invite (from previous visit or current URL)
+        const pendingInvite = orgInvite || localStorage.getItem(PENDING_INVITE_KEY);
+        if (pendingInvite) {
+          localStorage.removeItem(PENDING_INVITE_KEY);
+          const result = await acceptInvite(pendingInvite);
+          if (result.success) {
+            toast.success('You have joined the organization!');
+          } else {
+            toast.error(result.message || 'Failed to accept invite');
+          }
+        } else {
+          toast.success('Successfully signed in!');
+        }
+
         setStatus('success');
-        toast.success('Successfully signed in!');
 
         // Redirect based on connected status
         setTimeout(() => {
@@ -69,8 +87,21 @@ function AuthCallbackContent() {
         try {
           const session = await verifyToken(token);
           if (session) {
+            // Check for pending invite
+            const pendingInvite = orgInvite || localStorage.getItem(PENDING_INVITE_KEY);
+            if (pendingInvite) {
+              localStorage.removeItem(PENDING_INVITE_KEY);
+              const result = await acceptInvite(pendingInvite);
+              if (result.success) {
+                toast.success('You have joined the organization!');
+              } else {
+                toast.error(result.message || 'Failed to accept invite');
+              }
+            } else {
+              toast.success('Successfully signed in!');
+            }
+
             setStatus('success');
-            toast.success('Successfully signed in!');
             setTimeout(() => {
               window.location.href = session.connected ? '/brands' : '/connect';
             }, 500);
@@ -81,13 +112,22 @@ function AuthCallbackContent() {
         }
       }
 
+      // If we have an org_invite but no valid session, redirect to login
+      if (orgInvite) {
+        // Store the invite ID for after login
+        localStorage.setItem(PENDING_INVITE_KEY, orgInvite);
+        setStatus('error');
+        setErrorMessage('Please sign in to accept this invitation');
+        return;
+      }
+
       // No valid token found
       setStatus('error');
       setErrorMessage('No valid authentication token found');
     };
 
     handleCallback();
-  }, [searchParams, verifyToken, refreshSession, hasProcessed]);
+  }, [searchParams, verifyToken, refreshSession, acceptInvite, hasProcessed]);
 
   if (status === 'error') {
     return (

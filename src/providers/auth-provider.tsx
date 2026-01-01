@@ -31,6 +31,12 @@ interface SendMagicLinkResult {
   notFound?: boolean;
 }
 
+interface AcceptInviteResult {
+  success: boolean;
+  message?: string;
+  organizationId?: string;
+}
+
 interface AuthContextType {
   session: Session | null;
   isAuthenticated: boolean;
@@ -40,6 +46,7 @@ interface AuthContextType {
   sendMagicLink: (email: string) => Promise<SendMagicLinkResult>;
   verifyToken: (token: string) => Promise<Session | null>;
   connectApiKey: (apiKey: string) => Promise<boolean>;
+  acceptInvite: (inviteId: string) => Promise<AcceptInviteResult>;
   refreshSession: () => Promise<Session | null>;
   logout: () => void;
 }
@@ -252,6 +259,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const acceptInvite = async (inviteId: string): Promise<AcceptInviteResult> => {
+    const token = getSessionToken();
+    if (!token) {
+      return { success: false, message: 'Not authenticated' };
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/auth/accept-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ inviteId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data.message || 'Failed to accept invite'
+        };
+      }
+
+      // Refresh session to get updated organization
+      await refreshSession();
+      return {
+        success: true,
+        message: 'Invite accepted',
+        organizationId: data.organizationId
+      };
+    } catch {
+      return { success: false, message: 'Failed to accept invite' };
+    }
+  };
+
   const logout = () => {
     clearSessionToken();
     setSession(null);
@@ -272,6 +316,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sendMagicLink,
         verifyToken,
         connectApiKey,
+        acceptInvite,
         refreshSession,
         logout,
       }}
