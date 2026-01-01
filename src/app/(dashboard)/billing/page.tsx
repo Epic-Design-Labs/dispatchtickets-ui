@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Header } from '@/components/layout';
-import { useSubscription, useCancelSubscription, useReactivateSubscription } from '@/lib/hooks';
+import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription } from '@/lib/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,21 +18,25 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { Plan } from '@/lib/api/billing';
 
 export default function BillingPage() {
-  const { data, isLoading, error } = useSubscription();
+  const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError } = useSubscription();
+  const { data: plansData, isLoading: plansLoading } = usePlans();
   const cancelSubscription = useCancelSubscription();
   const reactivateSubscription = useReactivateSubscription();
+  const upgradeSubscription = useUpgradeSubscription();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
-  const subscription = data?.subscription;
+  const subscription = subscriptionData?.subscription;
+  const plans = plansData?.plans || [];
 
   const handleCancel = async () => {
     try {
       const result = await cancelSubscription.mutateAsync({});
       toast.success(result.message);
       setCancelDialogOpen(false);
-    } catch (error) {
+    } catch {
       toast.error('Failed to cancel subscription');
     }
   };
@@ -41,8 +45,22 @@ export default function BillingPage() {
     try {
       const result = await reactivateSubscription.mutateAsync();
       toast.success(result.message);
-    } catch (error) {
+    } catch {
       toast.error('Failed to reactivate subscription');
+    }
+  };
+
+  const handleUpgrade = async (planId: string) => {
+    try {
+      const result = await upgradeSubscription.mutateAsync({
+        planId,
+        successUrl: `${window.location.origin}/billing?upgraded=true`,
+        cancelUrl: `${window.location.origin}/billing`,
+      });
+      // Redirect to Stripe checkout
+      window.location.href = result.url;
+    } catch {
+      toast.error('Failed to start upgrade process');
     }
   };
 
@@ -82,6 +100,32 @@ export default function BillingPage() {
     }
   };
 
+  const getPlanFeatures = (plan: Plan) => {
+    const features: string[] = [];
+    const entitlements = plan.entitlements as Record<string, number | boolean>;
+
+    if (entitlements.brands_limit === -1) {
+      features.push('Unlimited brands');
+    } else if (typeof entitlements.brands_limit === 'number') {
+      features.push(`${entitlements.brands_limit} brand${entitlements.brands_limit === 1 ? '' : 's'}`);
+    }
+
+    if (entitlements.custom_domain) {
+      features.push('Custom domain');
+    }
+
+    return features;
+  };
+
+  const isCurrentPlan = (plan: Plan) => {
+    return subscription?.planId === plan.id;
+  };
+
+  const isUpgrade = (plan: Plan) => {
+    if (!subscription) return true;
+    return plan.price > subscription.planPrice;
+  };
+
   return (
     <div className="flex flex-col">
       <Header title="Billing" />
@@ -93,7 +137,7 @@ export default function BillingPage() {
           </p>
         </div>
 
-        {isLoading && (
+        {subscriptionLoading && (
           <Card>
             <CardHeader>
               <Skeleton className="h-6 w-32" />
@@ -109,7 +153,7 @@ export default function BillingPage() {
           </Card>
         )}
 
-        {error && (
+        {subscriptionError && (
           <Card className="border-destructive">
             <CardContent className="pt-6">
               <p className="text-destructive">
@@ -119,8 +163,9 @@ export default function BillingPage() {
           </Card>
         )}
 
-        {!isLoading && !error && (
+        {!subscriptionLoading && !subscriptionError && (
           <div className="space-y-6">
+            {/* Current Plan */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -162,25 +207,21 @@ export default function BillingPage() {
                     </div>
 
                     <div className="flex gap-3">
-                      {subscription.cancelAtPeriodEnd ? (
+                      {subscription.cancelAtPeriodEnd && (
                         <Button
                           onClick={handleReactivate}
                           disabled={reactivateSubscription.isPending}
                         >
                           {reactivateSubscription.isPending ? 'Reactivating...' : 'Reactivate Subscription'}
                         </Button>
-                      ) : (
-                        <>
-                          <Button variant="outline" disabled>
-                            Upgrade Plan (Coming Soon)
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={() => setCancelDialogOpen(true)}
-                          >
-                            Cancel Subscription
-                          </Button>
-                        </>
+                      )}
+                      {!subscription.cancelAtPeriodEnd && (
+                        <Button
+                          variant="destructive"
+                          onClick={() => setCancelDialogOpen(true)}
+                        >
+                          Cancel Subscription
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -188,13 +229,85 @@ export default function BillingPage() {
                   <div className="text-center py-8">
                     <p className="text-lg font-medium">No active subscription</p>
                     <p className="text-muted-foreground mt-1">
-                      You don&apos;t have an active subscription.
+                      Choose a plan below to get started.
                     </p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
+            {/* Available Plans */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Available Plans</CardTitle>
+                <CardDescription>
+                  {subscription ? 'Upgrade or change your plan' : 'Choose a plan to get started'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {plansLoading ? (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <Skeleton key={i} className="h-48 w-full" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {plans.map((plan) => (
+                      <div
+                        key={plan.id}
+                        className={`relative rounded-lg border p-4 ${
+                          isCurrentPlan(plan) ? 'border-primary bg-primary/5' : ''
+                        }`}
+                      >
+                        {isCurrentPlan(plan) && (
+                          <Badge className="absolute -top-2 right-2 bg-primary">
+                            Current
+                          </Badge>
+                        )}
+                        <div className="mb-4">
+                          <h3 className="font-semibold">{plan.name}</h3>
+                          <p className="text-2xl font-bold mt-1">
+                            {formatPrice(plan.price, plan.currency, plan.interval)}
+                          </p>
+                        </div>
+                        <ul className="space-y-2 text-sm text-muted-foreground mb-4">
+                          {getPlanFeatures(plan).map((feature, i) => (
+                            <li key={i} className="flex items-center gap-2">
+                              <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                        {!isCurrentPlan(plan) && (
+                          <Button
+                            className="w-full"
+                            variant={isUpgrade(plan) ? 'default' : 'outline'}
+                            onClick={() => handleUpgrade(plan.id)}
+                            disabled={upgradeSubscription.isPending || subscription?.cancelAtPeriodEnd}
+                          >
+                            {upgradeSubscription.isPending
+                              ? 'Processing...'
+                              : isUpgrade(plan)
+                              ? 'Upgrade'
+                              : 'Switch'}
+                          </Button>
+                        )}
+                        {isCurrentPlan(plan) && (
+                          <Button className="w-full" variant="outline" disabled>
+                            Current Plan
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Usage */}
             <Card>
               <CardHeader>
                 <CardTitle>Usage</CardTitle>

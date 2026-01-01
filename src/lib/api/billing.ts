@@ -1,5 +1,19 @@
 import { apiClient } from './client';
 
+export interface Plan {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  currency: string;
+  interval: string;
+  entitlements: Record<string, unknown>;
+}
+
+export interface PlansResponse {
+  plans: Plan[];
+}
+
 export interface Subscription {
   id: string;
   status: string;
@@ -38,6 +52,11 @@ export interface CancelResponse {
 }
 
 export const billingApi = {
+  getPlans: async (): Promise<PlansResponse> => {
+    const response = await apiClient.get<PlansResponse>('/auth/plans');
+    return response.data;
+  },
+
   getSubscription: async (): Promise<SubscriptionResponse> => {
     const response = await apiClient.get<SubscriptionResponse>('/auth/subscription');
     return response.data;

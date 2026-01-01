@@ -4,8 +4,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { billingApi, UpgradeRequest, CancelRequest } from '@/lib/api/billing';
 
 export const billingKeys = {
+  plans: ['plans'] as const,
   subscription: ['subscription'] as const,
 };
+
+export function usePlans() {
+  return useQuery({
+    queryKey: billingKeys.plans,
+    queryFn: billingApi.getPlans,
+    staleTime: 1000 * 60 * 60, // 1 hour - plans don't change often
+  });
+}
 
 export function useSubscription() {
   return useQuery({
