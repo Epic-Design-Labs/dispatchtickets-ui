@@ -8,4 +8,6 @@ export { billingApi } from './billing';
 export { profileApi } from './profile';
 export { customersApi } from './customers';
 export { companiesApi } from './companies';
+export { featureRequestsApi } from './feature-requests';
 export type { Profile, UpdateProfileInput, AvatarUploadInput } from './profile';
+export type { FeatureRequest, FeatureRequestsResponse, FeatureActivityResponse, CreateFeatureRequestInput } from './feature-requests';

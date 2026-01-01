@@ -7,3 +7,4 @@ export * from './use-ticket-notifications';
 export * from './use-profile';
 export * from './use-customers';
 export * from './use-companies';
+export * from './use-feature-requests';
