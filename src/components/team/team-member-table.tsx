@@ -23,8 +23,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RoleBadge } from './role-badge';
 import { BrandAssignmentsDialog } from './brand-assignments-dialog';
 import { TeamMember, OrgRole } from '@/types';
-import { useUpdateMember, useRemoveMember } from '@/lib/hooks';
+import { useUpdateMember, useRemoveMember, useResendInvite } from '@/lib/hooks';
 import { toast } from 'sonner';
+import { RotateCw } from 'lucide-react';
 
 interface TeamMemberTableProps {
   members: TeamMember[];
@@ -41,10 +42,23 @@ export function TeamMemberTable({
 }: TeamMemberTableProps) {
   const updateMember = useUpdateMember();
   const removeMember = useRemoveMember();
+  const resendInvite = useResendInvite();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [brandDialogMember, setBrandDialogMember] = useState<TeamMember | null>(null);
 
   const canManageMembers = currentUserRole === 'owner' || currentUserRole === 'admin';
+
+  const handleResendInvite = async (memberId: string, email: string) => {
+    setPendingAction(memberId);
+    try {
+      await resendInvite.mutateAsync(memberId);
+      toast.success(`Invite resent to ${email}`);
+    } catch (error) {
+      toast.error('Failed to resend invite');
+    } finally {
+      setPendingAction(null);
+    }
+  };
 
   const handleRoleChange = async (memberId: string, newRole: OrgRole) => {
     setPendingAction(memberId);
@@ -231,6 +245,17 @@ export function TeamMemberTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {isPending && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleResendInvite(member.id, member.email)}
+                            >
+                              <RotateCw className="mr-2 h-4 w-4" />
+                              Resend Invite
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
                         {!isPending && (
                           <>
                             <DropdownMenuLabel>Change Role</DropdownMenuLabel>

@@ -29,6 +29,17 @@ export function useInviteMember() {
   });
 }
 
+export function useResendInvite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (memberId: string) => teamApi.resendInvite(memberId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: teamKeys.members() });
+    },
+  });
+}
+
 export function useUpdateMember() {
   const queryClient = useQueryClient();
 

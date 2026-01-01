@@ -26,6 +26,13 @@ export const teamApi = {
     return response.data;
   },
 
+  resendInvite: async (memberId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      `/auth/members/${memberId}/resend-invite`
+    );
+    return response.data;
+  },
+
   updateMember: async (
     memberId: string,
     data: UpdateMemberInput
