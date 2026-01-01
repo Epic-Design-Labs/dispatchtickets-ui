@@ -83,8 +83,10 @@ export default function BillingPage() {
       });
       // Redirect to Stripe checkout
       window.location.href = result.url;
-    } catch {
-      toast.error('Failed to start upgrade process');
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to start upgrade: ${message}`);
       setUpgradingPlanId(null);
     }
   };
