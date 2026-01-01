@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -13,14 +14,26 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
+import { MoreHorizontal, Trash2, ShieldAlert } from 'lucide-react';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -28,9 +41,12 @@ export default function TicketDetailPage() {
   const workspaceId = params.workspaceId as string;
   const ticketId = params.ticketId as string;
 
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   const { data: ticket, isLoading: ticketLoading } = useTicket(workspaceId, ticketId);
   const { data: comments, isLoading: commentsLoading } = useComments(workspaceId, ticketId, { polling: true });
   const updateTicket = useUpdateTicket(workspaceId, ticketId);
+  const deleteTicket = useDeleteTicket(workspaceId);
 
   const handleStatusChange = async (status: string) => {
     try {
@@ -47,6 +63,26 @@ export default function TicketDetailPage() {
       toast.success('Priority updated');
     } catch {
       toast.error('Failed to update priority');
+    }
+  };
+
+  const handleMarkAsSpam = async () => {
+    try {
+      await updateTicket.mutateAsync({ isSpam: true, status: 'resolved' });
+      toast.success('Ticket marked as spam');
+      router.push(`/brands/${workspaceId}`);
+    } catch {
+      toast.error('Failed to mark as spam');
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteTicket.mutateAsync(ticketId);
+      toast.success('Ticket deleted');
+      router.push(`/brands/${workspaceId}`);
+    } catch {
+      toast.error('Failed to delete ticket');
     }
   };
 
@@ -120,7 +156,33 @@ export default function TicketDetailPage() {
             <span>/</span>
             <span>{ticket.id.slice(0, 12)}</span>
           </div>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight">{ticket.title}</h2>
+          <div className="mt-2 flex items-center justify-between">
+            <h2 className="text-2xl font-bold tracking-tight">{ticket.title}</h2>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleMarkAsSpam}
+                  disabled={updateTicket.isPending}
+                >
+                  <ShieldAlert className="mr-2 h-4 w-4" />
+                  Mark as Spam
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Ticket
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -185,9 +247,6 @@ export default function TicketDetailPage() {
                           </DropdownMenuRadioItem>
                           <DropdownMenuRadioItem value="resolved">
                             Resolved
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="closed">
-                            Closed
                           </DropdownMenuRadioItem>
                         </DropdownMenuRadioGroup>
                       </DropdownMenuContent>
@@ -283,6 +342,26 @@ export default function TicketDetailPage() {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Ticket</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this ticket? This action cannot be undone and will permanently remove the ticket along with all its comments and attachments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

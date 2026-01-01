@@ -106,25 +106,10 @@ export default function ProfilePage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState('');
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('default');
-  const [desktopNotificationsEnabled, setDesktopNotificationsEnabled] = useState(false);
-
   // Notification preferences state
   const [notifyEmail, setNotifyEmail] = useState(true);
   const [notifyToast, setNotifyToast] = useState(true);
-  const [notifyDesktop, setNotifyDesktop] = useState(true);
-
-  // Check notification support and permission on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotificationPermission(Notification.permission);
-      // Check if user has enabled desktop notifications in localStorage
-      const enabled = localStorage.getItem('desktop_notifications_enabled') === 'true';
-      setDesktopNotificationsEnabled(enabled && Notification.permission === 'granted');
-    } else {
-      setNotificationPermission('unsupported');
-    }
-  }, []);
+  const [notifyDesktop, setNotifyDesktop] = useState(false);
 
   // Initialize form with profile data
   useEffect(() => {
@@ -132,46 +117,9 @@ export default function ProfilePage() {
       setDisplayName(profile.displayName || '');
       setNotifyEmail(profile.notifyEmail ?? true);
       setNotifyToast(profile.notifyToast ?? true);
-      setNotifyDesktop(profile.notifyDesktop ?? true);
+      setNotifyDesktop(profile.notifyDesktop ?? false);
     }
   }, [profile]);
-
-  const handleEnableNotifications = async () => {
-    if (notificationPermission === 'unsupported') {
-      toast.error('Desktop notifications are not supported in this browser');
-      return;
-    }
-
-    try {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-
-      if (permission === 'granted') {
-        setDesktopNotificationsEnabled(true);
-        localStorage.setItem('desktop_notifications_enabled', 'true');
-        // Show a test notification
-        new Notification('Notifications Enabled', {
-          body: 'You will now receive desktop notifications for new tickets and replies.',
-          icon: '/icon.svg',
-        });
-        toast.success('Desktop notifications enabled');
-      } else if (permission === 'denied') {
-        toast.error('Notification permission denied. You can enable it in your browser settings.');
-      }
-    } catch {
-      toast.error('Failed to request notification permission');
-    }
-  };
-
-  const handleToggleNotifications = (enabled: boolean) => {
-    setDesktopNotificationsEnabled(enabled);
-    localStorage.setItem('desktop_notifications_enabled', enabled ? 'true' : 'false');
-    if (enabled) {
-      toast.success('Desktop notifications enabled');
-    } else {
-      toast.success('Desktop notifications disabled');
-    }
-  };
 
   const handleNotifyEmailChange = async (checked: boolean) => {
     setNotifyEmail(checked);
@@ -194,6 +142,41 @@ export default function ProfilePage() {
   };
 
   const handleNotifyDesktopChange = async (checked: boolean) => {
+    // If turning ON, first request browser permission
+    if (checked) {
+      // Check if browser supports notifications
+      if (typeof window === 'undefined' || !('Notification' in window)) {
+        toast.error('Desktop notifications are not supported in this browser');
+        return;
+      }
+
+      // Check current permission status
+      if (Notification.permission === 'denied') {
+        toast.error('Notification permission was denied. Please enable it in your browser settings.');
+        return;
+      }
+
+      // Request permission if not already granted
+      if (Notification.permission !== 'granted') {
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission !== 'granted') {
+            toast.error('Notification permission is required for desktop notifications');
+            return;
+          }
+          // Show a test notification
+          new Notification('Notifications Enabled', {
+            body: 'You will now receive desktop notifications for new tickets and replies.',
+            icon: '/icon.svg',
+          });
+        } catch {
+          toast.error('Failed to request notification permission');
+          return;
+        }
+      }
+    }
+
+    // Permission granted (or turning off), update the setting
     setNotifyDesktop(checked);
     try {
       await updateProfile.mutateAsync({ notifyDesktop: checked });
@@ -467,59 +450,6 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Browser Notification Permission Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Browser Permissions</CardTitle>
-            <CardDescription>
-              Enable browser notifications to receive alerts outside this tab
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {notificationPermission === 'unsupported' ? (
-              <p className="text-sm text-muted-foreground">
-                Desktop notifications are not supported in this browser.
-              </p>
-            ) : notificationPermission === 'denied' ? (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Notification permission was denied. To enable notifications, you'll need to:
-                </p>
-                <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-                  <li>Click the lock/info icon in your browser's address bar</li>
-                  <li>Find "Notifications" and change it to "Allow"</li>
-                  <li>Refresh this page</li>
-                </ol>
-              </div>
-            ) : notificationPermission === 'granted' ? (
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="desktop-notifications">Browser Permission</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Permission granted - desktop notifications will work when enabled above
-                  </p>
-                </div>
-                <Switch
-                  id="desktop-notifications"
-                  checked={desktopNotificationsEnabled}
-                  onCheckedChange={handleToggleNotifications}
-                />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Enable browser notification permission to receive alerts even when you're in another tab.
-                </p>
-                <Button onClick={handleEnableNotifications} variant="outline">
-                  <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  Enable Browser Notifications
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

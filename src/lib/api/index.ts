@@ -6,4 +6,6 @@ export { webhooksApi } from './webhooks';
 export { teamApi } from './team';
 export { billingApi } from './billing';
 export { profileApi } from './profile';
+export { customersApi } from './customers';
+export { companiesApi } from './companies';
 export type { Profile, UpdateProfileInput, AvatarUploadInput } from './profile';

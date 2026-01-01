@@ -42,6 +42,7 @@ export interface UpdateTicketInput {
   priority?: TicketPriority;
   assigneeId?: string;
   customFields?: Record<string, unknown>;
+  isSpam?: boolean;
 }
 
 export interface TicketFilters {

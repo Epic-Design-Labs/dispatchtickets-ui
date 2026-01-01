@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useBrands, useCreateBrand } from '@/lib/hooks';
@@ -27,6 +27,13 @@ export default function BrandsPage() {
   const createBrand = useCreateBrand();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState('');
+
+  // Auto-redirect to single brand
+  useEffect(() => {
+    if (!isLoading && brands && brands.length === 1) {
+      router.replace(`/brands/${brands[0].id}`);
+    }
+  }, [brands, isLoading, router]);
 
   const handleCreateBrand = async () => {
     if (!newBrandName.trim()) {
