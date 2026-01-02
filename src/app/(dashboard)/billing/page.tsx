@@ -130,18 +130,45 @@ export default function BillingPage() {
     }
   };
 
+  // Plan feature mapping based on plan name (tickets/support not stored in entitlements)
+  const planDetails: Record<string, { tickets: string; support: string; sla?: string }> = {
+    'Free': { tickets: '100 tickets/mo', support: 'Email support' },
+    'Starter': { tickets: '1,000 tickets/mo', support: 'Email support' },
+    'Pro': { tickets: '10,000 tickets/mo', support: 'Priority support' },
+    'Enterprise': { tickets: '100,000 tickets/mo', support: 'Dedicated support', sla: '99.9% SLA' },
+  };
+
   const getPlanFeatures = (plan: Plan) => {
     const features: string[] = [];
     const entitlements = plan.entitlements as Record<string, number | boolean>;
+    const details = planDetails[plan.name] || planDetails['Free'];
 
+    // Tickets per month
+    features.push(details.tickets);
+
+    // Brands limit
     if (entitlements.brands_limit === -1) {
       features.push('Unlimited brands');
     } else if (typeof entitlements.brands_limit === 'number') {
       features.push(`${entitlements.brands_limit} brand${entitlements.brands_limit === 1 ? '' : 's'}`);
     }
 
+    // Custom domain
     if (entitlements.custom_domain) {
-      features.push('Custom domain');
+      features.push('Custom email domains');
+    }
+
+    // Support level
+    features.push(details.support);
+
+    // SLA (Enterprise only)
+    if (details.sla) {
+      features.push(details.sla);
+    }
+
+    // Overage billing (paid plans only)
+    if (plan.price > 0) {
+      features.push('Overage billing available');
     }
 
     return features;
