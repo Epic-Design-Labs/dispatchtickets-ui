@@ -368,11 +368,11 @@ export default function BillingPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-4 md:grid-cols-3 items-stretch">
                     {plans.map((plan) => (
                       <div
                         key={plan.id}
-                        className={`relative rounded-lg border p-4 ${
+                        className={`relative rounded-lg border p-4 flex flex-col ${
                           isCurrentPlan(plan) ? 'border-primary bg-primary/5' : ''
                         }`}
                       >
@@ -387,10 +387,10 @@ export default function BillingPage() {
                             {formatPrice(plan.price, plan.currency, plan.interval)}
                           </p>
                         </div>
-                        <ul className="space-y-2 text-sm text-muted-foreground mb-4">
+                        <ul className="space-y-2 text-sm text-muted-foreground mb-4 flex-1">
                           {getPlanFeatures(plan).map((feature, i) => (
                             <li key={i} className="flex items-center gap-2">
-                              <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
                               {feature}
