@@ -10,8 +10,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { useBrand, useUpdateBrand } from '@/lib/hooks';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  useBrand,
+  useUpdateBrand,
+  useDomains,
+  useSetInboundDomain,
+  useVerifyInboundDomain,
+  useRemoveInboundDomain,
+  useSetOutboundDomain,
+  useVerifyOutboundDomain,
+  useUpdateSender,
+  useRemoveOutboundDomain,
+} from '@/lib/hooks';
 import { toast } from 'sonner';
+import { CheckCircle, XCircle, Clock, Copy, Trash2 } from 'lucide-react';
 
 export default function SettingsPage() {
   const params = useParams();
@@ -19,6 +40,16 @@ export default function SettingsPage() {
 
   const { data: brand, isLoading } = useBrand(workspaceId);
   const updateBrand = useUpdateBrand(workspaceId);
+  const { data: domains, isLoading: domainsLoading } = useDomains(workspaceId);
+
+  // Domain mutations
+  const setInboundDomain = useSetInboundDomain();
+  const verifyInboundDomain = useVerifyInboundDomain();
+  const removeInboundDomain = useRemoveInboundDomain();
+  const setOutboundDomain = useSetOutboundDomain();
+  const verifyOutboundDomain = useVerifyOutboundDomain();
+  const updateSender = useUpdateSender();
+  const removeOutboundDomain = useRemoveOutboundDomain();
 
   const [name, setName] = useState('');
   const [ticketPrefix, setTicketPrefix] = useState('');
@@ -33,7 +64,9 @@ export default function SettingsPage() {
   const [url, setUrl] = useState('');
   const [iconUrl, setIconUrl] = useState('');
 
-  // Outbound email state
+  // Domain state
+  const [inboundDomainInput, setInboundDomainInput] = useState('');
+  const [outboundDomainInput, setOutboundDomainInput] = useState('');
   const [fromName, setFromName] = useState('');
   const [fromEmail, setFromEmail] = useState('');
 
@@ -50,11 +83,108 @@ export default function SettingsPage() {
       // Brand identity
       setUrl(brand.url || '');
       setIconUrl(brand.iconUrl || '');
-      // Outbound email
-      setFromName(brand.fromName || '');
-      setFromEmail(brand.fromEmail || '');
     }
   }, [brand]);
+
+  // Initialize domain form data
+  useEffect(() => {
+    if (domains) {
+      setFromName(domains.outbound.fromName || '');
+      setFromEmail(domains.outbound.fromEmail || '');
+    }
+  }, [domains]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+
+  const handleSetInboundDomain = async () => {
+    if (!inboundDomainInput.trim()) {
+      toast.error('Please enter a domain');
+      return;
+    }
+    try {
+      await setInboundDomain.mutateAsync({ workspaceId, domain: inboundDomainInput.trim() });
+      toast.success('Inbound domain configured');
+      setInboundDomainInput('');
+    } catch {
+      toast.error('Failed to configure domain');
+    }
+  };
+
+  const handleVerifyInboundDomain = async () => {
+    try {
+      const result = await verifyInboundDomain.mutateAsync(workspaceId);
+      if (result.verified) {
+        toast.success('Domain verified!');
+      } else {
+        toast.error(result.error || 'Verification failed');
+      }
+    } catch {
+      toast.error('Failed to verify domain');
+    }
+  };
+
+  const handleRemoveInboundDomain = async () => {
+    try {
+      await removeInboundDomain.mutateAsync(workspaceId);
+      toast.success('Inbound domain removed');
+    } catch {
+      toast.error('Failed to remove domain');
+    }
+  };
+
+  const handleSetOutboundDomain = async () => {
+    if (!outboundDomainInput.trim()) {
+      toast.error('Please enter a domain');
+      return;
+    }
+    try {
+      await setOutboundDomain.mutateAsync({ workspaceId, domain: outboundDomainInput.trim() });
+      toast.success('Outbound domain configured - add the DNS records shown below');
+      setOutboundDomainInput('');
+    } catch {
+      toast.error('Failed to configure domain');
+    }
+  };
+
+  const handleVerifyOutboundDomain = async () => {
+    try {
+      const result = await verifyOutboundDomain.mutateAsync(workspaceId);
+      if (result.verified) {
+        toast.success('Domain verified!');
+      } else {
+        toast.error(result.error || 'Verification failed - DNS may take time to propagate');
+      }
+    } catch {
+      toast.error('Failed to verify domain');
+    }
+  };
+
+  const handleRemoveOutboundDomain = async () => {
+    try {
+      await removeOutboundDomain.mutateAsync(workspaceId);
+      toast.success('Outbound domain removed');
+    } catch {
+      toast.error('Failed to remove domain');
+    }
+  };
+
+  const handleUpdateSender = async () => {
+    try {
+      await updateSender.mutateAsync({
+        workspaceId,
+        data: {
+          fromEmail: fromEmail.trim() || undefined,
+          fromName: fromName.trim() || undefined,
+        },
+      });
+      toast.success('Sender settings updated');
+    } catch {
+      toast.error('Failed to update sender settings');
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -286,82 +416,332 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Outbound Email Settings */}
+        {/* Outbound Email Domain */}
         <Card>
           <CardHeader>
-            <CardTitle>Outbound Email</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Outbound Email Domain
+              {domains?.outbound.verified ? (
+                <Badge variant="default" className="bg-green-600">
+                  <CheckCircle className="mr-1 h-3 w-3" /> Verified
+                </Badge>
+              ) : domains?.outbound.domain ? (
+                <Badge variant="secondary">
+                  <Clock className="mr-1 h-3 w-3" /> Pending
+                </Badge>
+              ) : null}
+            </CardTitle>
             <CardDescription>
-              Configure how emails are sent from this brand
+              Send emails from your own domain instead of dispatchtickets.com
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fromName">Sender Name</Label>
-              <Input
-                id="fromName"
-                placeholder="e.g., Epic Design Labs Support"
-                value={fromName}
-                onChange={(e) => setFromName(e.target.value)}
-                maxLength={100}
-              />
-              <p className="text-sm text-muted-foreground">
-                The name that appears in the "From" field of outbound emails
-              </p>
-            </div>
+            {!domains?.outbound.domain ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="outboundDomain">Domain</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="outboundDomain"
+                      placeholder="e.g., acme.com"
+                      value={outboundDomainInput}
+                      onChange={(e) => setOutboundDomainInput(e.target.value)}
+                    />
+                    <Button
+                      onClick={handleSetOutboundDomain}
+                      disabled={setOutboundDomain.isPending}
+                    >
+                      {setOutboundDomain.isPending ? 'Adding...' : 'Add Domain'}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Enter your domain to configure email sending
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{domains.outbound.domain}</p>
+                    {domains.outbound.verifiedAt && (
+                      <p className="text-sm text-muted-foreground">
+                        Verified on {new Date(domains.outbound.verifiedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {!domains.outbound.verified && (
+                      <Button
+                        variant="outline"
+                        onClick={handleVerifyOutboundDomain}
+                        disabled={verifyOutboundDomain.isPending}
+                      >
+                        {verifyOutboundDomain.isPending ? 'Verifying...' : 'Verify'}
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRemoveOutboundDomain}
+                      disabled={removeOutboundDomain.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="fromEmail">Sender Email</Label>
-              <Input
-                id="fromEmail"
-                type="email"
-                placeholder="support@yourdomain.com"
-                value={fromEmail}
-                onChange={(e) => setFromEmail(e.target.value)}
-              />
-              <p className="text-sm text-muted-foreground">
-                Custom sender email address. Requires domain verification with Resend.
-              </p>
+                {domains.outbound.records.length > 0 && !domains.outbound.verified && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="mb-2 text-sm font-medium">DNS Records</p>
+                      <p className="mb-3 text-sm text-muted-foreground">
+                        Add these records to your DNS provider, then click Verify
+                      </p>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-20">Type</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Value</TableHead>
+                            <TableHead className="w-20">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {domains.outbound.records.map((record, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="font-mono text-xs">{record.type}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <code className="text-xs break-all">{record.name}</code>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => copyToClipboard(record.name)}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <code className="text-xs break-all max-w-[300px]">{record.value}</code>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => copyToClipboard(record.value)}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {record.status === 'verified' ? (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                ) : record.status === 'failed' ? (
+                                  <XCircle className="h-4 w-4 text-red-600" />
+                                ) : (
+                                  <Clock className="h-4 w-4 text-yellow-600" />
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                )}
+
+                {domains.outbound.verified && (
+                  <>
+                    <Separator />
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="fromName">Sender Name</Label>
+                        <Input
+                          id="fromName"
+                          placeholder="e.g., Acme Support"
+                          value={fromName}
+                          onChange={(e) => setFromName(e.target.value)}
+                          maxLength={100}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fromEmail">Sender Email</Label>
+                        <Input
+                          id="fromEmail"
+                          type="email"
+                          placeholder={`support@${domains.outbound.domain}`}
+                          value={fromEmail}
+                          onChange={(e) => setFromEmail(e.target.value)}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Must be an address on {domains.outbound.domain}
+                        </p>
+                      </div>
+                      <Button onClick={handleUpdateSender} disabled={updateSender.isPending}>
+                        {updateSender.isPending ? 'Saving...' : 'Save Sender Settings'}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Inbound Email Domain */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Inbound Email Domain
+              {domains?.inbound.verified ? (
+                <Badge variant="default" className="bg-green-600">
+                  <CheckCircle className="mr-1 h-3 w-3" /> Verified
+                </Badge>
+              ) : domains?.inbound.domain ? (
+                <Badge variant="secondary">
+                  <Clock className="mr-1 h-3 w-3" /> Pending
+                </Badge>
+              ) : null}
+            </CardTitle>
+            <CardDescription>
+              Receive tickets from a custom email address
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg bg-muted p-4">
+              <p className="text-sm font-medium">Default Inbound Address</p>
+              <div className="flex items-center gap-2">
+                <code className="text-sm">{workspaceId}@inbound.dispatchtickets.com</code>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => copyToClipboard(`${workspaceId}@inbound.dispatchtickets.com`)}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
 
             <Separator />
 
-            <Button
-              onClick={async () => {
-                try {
-                  await updateBrand.mutateAsync({
-                    fromName: fromName.trim() || undefined,
-                    fromEmail: fromEmail.trim() || undefined,
-                  });
-                  toast.success('Outbound email settings saved');
-                } catch {
-                  toast.error('Failed to save outbound email settings');
-                }
-              }}
-              disabled={updateBrand.isPending}
-            >
-              {updateBrand.isPending ? 'Saving...' : 'Save Email Settings'}
-            </Button>
-          </CardContent>
-        </Card>
+            {!domains?.inbound.domain ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="inboundDomain">Custom Domain</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="inboundDomain"
+                      placeholder="e.g., support.acme.com"
+                      value={inboundDomainInput}
+                      onChange={(e) => setInboundDomainInput(e.target.value)}
+                    />
+                    <Button
+                      onClick={handleSetInboundDomain}
+                      disabled={setInboundDomain.isPending}
+                    >
+                      {setInboundDomain.isPending ? 'Adding...' : 'Add Domain'}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Use a subdomain like support.acme.com for inbound emails
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{domains.inbound.domain}</p>
+                    {domains.inbound.verifiedAt && (
+                      <p className="text-sm text-muted-foreground">
+                        Verified on {new Date(domains.inbound.verifiedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {!domains.inbound.verified && (
+                      <Button
+                        variant="outline"
+                        onClick={handleVerifyInboundDomain}
+                        disabled={verifyInboundDomain.isPending}
+                      >
+                        {verifyInboundDomain.isPending ? 'Verifying...' : 'Verify'}
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleRemoveInboundDomain}
+                      disabled={removeInboundDomain.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
 
-        {/* Inbound Email */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Inbound Email</CardTitle>
-            <CardDescription>
-              Email address for creating tickets via email
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg bg-muted p-4">
-              <p className="text-sm font-medium">Inbound Address</p>
-              <code className="text-sm text-muted-foreground">
-                {workspaceId}@inbound.dispatchtickets.com
-              </code>
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Forward emails to this address to automatically create tickets
-            </p>
+                {domains.inbound.records.length > 0 && !domains.inbound.verified && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="mb-2 text-sm font-medium">DNS Records</p>
+                      <p className="mb-3 text-sm text-muted-foreground">
+                        Add this MX record to your DNS provider, then click Verify
+                      </p>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-20">Type</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Value</TableHead>
+                            <TableHead className="w-24">Priority</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {domains.inbound.records.map((record, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="font-mono text-xs">{record.type}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <code className="text-xs">{record.name}</code>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => copyToClipboard(record.name)}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <code className="text-xs">{record.value}</code>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => copyToClipboard(record.value)}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">{record.priority}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 

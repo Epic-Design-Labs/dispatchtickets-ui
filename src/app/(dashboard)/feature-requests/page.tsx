@@ -58,11 +58,11 @@ export default function FeatureRequestsPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
 
-  const { data: requestsData, isLoading } = useFeatureRequests({
+  const { data: requestsData, isLoading, error } = useFeatureRequests({
     status: statusFilter === 'all' ? undefined : statusFilter,
     sortBy,
   });
-  const { data: activityData } = useFeatureActivity();
+  const { data: activityData, error: activityError } = useFeatureActivity();
   const createRequest = useCreateFeatureRequest();
   const voteRequest = useVoteFeatureRequest();
   const unvoteRequest = useUnvoteFeatureRequest();
@@ -143,7 +143,19 @@ export default function FeatureRequestsPage() {
           </Button>
         </div>
 
-        {isLoading ? (
+        {error || activityError ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <h3 className="mt-4 text-lg font-medium text-destructive">Error loading feature requests</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {error?.message || activityError?.message || 'An unexpected error occurred'}
+              </p>
+              <Button className="mt-4" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        ) : isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <Card key={i}>

@@ -8,3 +8,4 @@ export * from './use-profile';
 export * from './use-customers';
 export * from './use-companies';
 export * from './use-feature-requests';
+export * from './use-domains';
