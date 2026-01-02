@@ -114,15 +114,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">General Settings</h1>
-        <p className="text-muted-foreground">
-          Configure your brand name, identity, and preferences
-        </p>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid gap-6 lg:grid-cols-2">
         {/* Brand Settings */}
         <Card>
           <CardHeader>
@@ -263,6 +255,5 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
   );
 }

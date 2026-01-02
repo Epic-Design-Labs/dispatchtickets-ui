@@ -137,20 +137,20 @@ function DomainCard({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">Type</TableHead>
-                  <TableHead>Name</TableHead>
+                  <TableHead className="w-14">Type</TableHead>
+                  <TableHead className="w-32">Name</TableHead>
                   <TableHead>Value</TableHead>
                   {domain.type === 'INBOUND' && <TableHead className="w-20">Priority</TableHead>}
-                  <TableHead className="w-16">Status</TableHead>
+                  <TableHead className="w-14">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {domain.records.map((record, i) => (
                   <TableRow key={i}>
                     <TableCell className="font-mono text-xs">{record.type}</TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-32">
                       <div className="flex items-center gap-1">
-                        <code className="text-xs break-all">{record.name}</code>
+                        <code className="text-xs truncate" title={record.name}>{record.name}</code>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -161,9 +161,9 @@ function DomainCard({
                         </Button>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-xs">
                       <div className="flex items-center gap-1">
-                        <code className="text-xs break-all">{record.value}</code>
+                        <code className="text-xs truncate" title={record.value}>{record.value}</code>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -389,29 +389,15 @@ export default function EmailSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="mb-6">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="mt-2 h-4 w-64" />
-        </div>
-        <div className="space-y-6">
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
+      <div className="space-y-6">
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Email Settings</h1>
-        <p className="text-muted-foreground">
-          Configure email domains and autoresponse settings
-        </p>
-      </div>
-
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Outbound Email Domains */}
         <Card>
           <CardHeader>
@@ -600,7 +586,6 @@ export default function EmailSettingsPage() {
             </Button>
           </CardContent>
         </Card>
-      </div>
 
       {/* Add Domain Dialog */}
       <Dialog open={addDomainDialogOpen} onOpenChange={setAddDomainDialogOpen}>

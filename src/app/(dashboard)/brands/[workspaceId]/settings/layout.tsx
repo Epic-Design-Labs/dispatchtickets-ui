@@ -3,21 +3,10 @@
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Settings, Mail } from 'lucide-react';
 
 const settingsNav = [
-  {
-    title: 'General',
-    href: '',
-    icon: Settings,
-    description: 'Brand name, identity, and preferences',
-  },
-  {
-    title: 'Email',
-    href: '/email',
-    icon: Mail,
-    description: 'Domains and autoresponse settings',
-  },
+  { title: 'General', href: '' },
+  { title: 'Email', href: '/email' },
 ];
 
 export default function SettingsLayout({
@@ -31,10 +20,11 @@ export default function SettingsLayout({
   const basePath = `/brands/${workspaceId}/settings`;
 
   return (
-    <div className="flex flex-1">
-      {/* Settings Sidebar */}
-      <aside className="w-64 border-r bg-muted/30 p-4">
-        <nav className="space-y-1">
+    <div className="flex-1 overflow-auto p-6">
+      {/* Header with inline tabs */}
+      <div className="mb-6 flex items-baseline gap-6">
+        <h1 className="text-2xl font-semibold">Settings</h1>
+        <nav className="flex gap-4">
           {settingsNav.map((item) => {
             const href = `${basePath}${item.href}`;
             const isActive = item.href === ''
@@ -46,27 +36,21 @@ export default function SettingsLayout({
                 key={item.href}
                 href={href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  'text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <item.icon className="h-4 w-4" />
-                <div>
-                  <div className="font-medium">{item.title}</div>
-                  <div className="text-xs text-muted-foreground">{item.description}</div>
-                </div>
+                {item.title}
               </Link>
             );
           })}
         </nav>
-      </aside>
+      </div>
 
       {/* Content Area */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
+      {children}
     </div>
   );
 }

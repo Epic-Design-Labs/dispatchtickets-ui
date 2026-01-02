@@ -55,8 +55,12 @@ export function useVerifyDomain() {
       workspaceId: string;
       domainId: string;
     }) => domainsApi.verify(workspaceId, domainId),
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
+    onSuccess: (result, { workspaceId }) => {
+      // Only invalidate if verification succeeded - this refreshes the domain list
+      // If verification failed, we don't want to refetch as it might lose DNS records
+      if (result.verified) {
+        queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
+      }
     },
   });
 }
