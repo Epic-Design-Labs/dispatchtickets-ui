@@ -36,19 +36,21 @@ import { toast } from 'sonner';
 import { ChevronUp, Plus, Lightbulb } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
-  open: 'bg-blue-100 text-blue-800',
+  new: 'bg-blue-100 text-blue-800',
+  under_review: 'bg-cyan-100 text-cyan-800',
   planned: 'bg-purple-100 text-purple-800',
   in_progress: 'bg-yellow-100 text-yellow-800',
   completed: 'bg-green-100 text-green-800',
-  closed: 'bg-gray-100 text-gray-800',
+  declined: 'bg-gray-100 text-gray-800',
 };
 
 const statusLabels: Record<string, string> = {
-  open: 'Open',
+  new: 'New',
+  under_review: 'Under Review',
   planned: 'Planned',
   in_progress: 'In Progress',
   completed: 'Completed',
-  closed: 'Closed',
+  declined: 'Declined',
 };
 
 export default function FeatureRequestsPage() {
@@ -118,7 +120,8 @@ export default function FeatureRequestsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="under_review">Under Review</SelectItem>
                 <SelectItem value="planned">Planned</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
@@ -211,7 +214,7 @@ export default function FeatureRequestsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <h3 className="font-medium">{request.title}</h3>
-                          <Badge className={statusColors[request.status] || statusColors.open}>
+                          <Badge className={statusColors[request.status] || statusColors.new}>
                             {statusLabels[request.status] || request.status}
                           </Badge>
                         </div>

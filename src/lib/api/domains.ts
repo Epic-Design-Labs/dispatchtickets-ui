@@ -1,5 +1,7 @@
 import { apiClient } from './client';
 
+export type DomainType = 'INBOUND' | 'OUTBOUND';
+
 export interface DnsRecord {
   type: 'MX' | 'TXT' | 'CNAME';
   name: string;
@@ -8,22 +10,31 @@ export interface DnsRecord {
   status: 'pending' | 'verified' | 'failed';
 }
 
-export interface DomainConfig {
-  inbound: {
-    domain: string | null;
-    verified: boolean;
-    verifiedAt: string | null;
-    records: DnsRecord[];
-  };
-  outbound: {
-    domain: string | null;
-    verified: boolean;
-    verifiedAt: string | null;
-    resendDomainId: string | null;
-    records: DnsRecord[];
-    fromEmail: string | null;
-    fromName: string | null;
-  };
+export interface WorkspaceDomain {
+  id: string;
+  workspaceId: string;
+  domain: string;
+  type: DomainType;
+  verified: boolean;
+  verifiedAt: string | null;
+  resendDomainId: string | null;
+  fromName: string | null;
+  fromEmail: string | null;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+  records: DnsRecord[];
+}
+
+export interface AddDomainData {
+  domain: string;
+  type: DomainType;
+}
+
+export interface UpdateDomainData {
+  fromEmail?: string;
+  fromName?: string;
+  isPrimary?: boolean;
 }
 
 export interface VerifyResult {
@@ -32,61 +43,75 @@ export interface VerifyResult {
 }
 
 export const domainsApi = {
-  get: async (workspaceId: string): Promise<DomainConfig> => {
-    const response = await apiClient.get<DomainConfig>(
+  /**
+   * List all domains for a workspace
+   */
+  list: async (workspaceId: string): Promise<WorkspaceDomain[]> => {
+    const response = await apiClient.get<WorkspaceDomain[]>(
       `/workspaces/${workspaceId}/domains`
     );
     return response.data;
   },
 
-  setInboundDomain: async (
+  /**
+   * Add a new domain to a workspace
+   */
+  add: async (
     workspaceId: string,
-    domain: string
-  ): Promise<DomainConfig> => {
-    const response = await apiClient.post<DomainConfig>(
-      `/workspaces/${workspaceId}/domains/inbound`,
-      { domain }
+    data: AddDomainData
+  ): Promise<WorkspaceDomain> => {
+    const response = await apiClient.post<WorkspaceDomain>(
+      `/workspaces/${workspaceId}/domains`,
+      data
     );
     return response.data;
   },
 
-  verifyInboundDomain: async (workspaceId: string): Promise<VerifyResult> => {
+  /**
+   * Get a single domain by ID
+   */
+  get: async (
+    workspaceId: string,
+    domainId: string
+  ): Promise<WorkspaceDomain> => {
+    const response = await apiClient.get<WorkspaceDomain>(
+      `/workspaces/${workspaceId}/domains/${domainId}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Verify a domain's DNS configuration
+   */
+  verify: async (
+    workspaceId: string,
+    domainId: string
+  ): Promise<VerifyResult> => {
     const response = await apiClient.post<VerifyResult>(
-      `/workspaces/${workspaceId}/domains/inbound/verify`
+      `/workspaces/${workspaceId}/domains/${domainId}/verify`
     );
     return response.data;
   },
 
-  removeInboundDomain: async (workspaceId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/domains/inbound`);
-  },
-
-  setOutboundDomain: async (
+  /**
+   * Update domain settings (sender info, primary status)
+   */
+  update: async (
     workspaceId: string,
-    domain: string
-  ): Promise<DomainConfig> => {
-    const response = await apiClient.post<DomainConfig>(
-      `/workspaces/${workspaceId}/domains/outbound`,
-      { domain }
+    domainId: string,
+    data: UpdateDomainData
+  ): Promise<WorkspaceDomain> => {
+    const response = await apiClient.patch<WorkspaceDomain>(
+      `/workspaces/${workspaceId}/domains/${domainId}`,
+      data
     );
     return response.data;
   },
 
-  verifyOutboundDomain: async (workspaceId: string): Promise<VerifyResult> => {
-    const response = await apiClient.post<VerifyResult>(
-      `/workspaces/${workspaceId}/domains/outbound/verify`
-    );
-    return response.data;
-  },
-
-  updateSender: async (
-    workspaceId: string,
-    data: { fromEmail?: string; fromName?: string }
-  ): Promise<void> => {
-    await apiClient.post(`/workspaces/${workspaceId}/domains/outbound/sender`, data);
-  },
-
-  removeOutboundDomain: async (workspaceId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/domains/outbound`);
+  /**
+   * Remove a domain from a workspace
+   */
+  remove: async (workspaceId: string, domainId: string): Promise<void> => {
+    await apiClient.delete(`/workspaces/${workspaceId}/domains/${domainId}`);
   },
 };

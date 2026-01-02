@@ -1,79 +1,30 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { domainsApi } from '@/lib/api/domains';
+import { domainsApi, AddDomainData, UpdateDomainData } from '@/lib/api/domains';
 
 export const domainKeys = {
   all: ['domains'] as const,
-  detail: (workspaceId: string) => ['domains', workspaceId] as const,
+  list: (workspaceId: string) => ['domains', 'list', workspaceId] as const,
+  detail: (workspaceId: string, domainId: string) =>
+    ['domains', 'detail', workspaceId, domainId] as const,
 };
 
+/**
+ * Hook to list all domains for a workspace
+ */
 export function useDomains(workspaceId: string) {
   return useQuery({
-    queryKey: domainKeys.detail(workspaceId),
-    queryFn: () => domainsApi.get(workspaceId),
+    queryKey: domainKeys.list(workspaceId),
+    queryFn: () => domainsApi.list(workspaceId),
     enabled: !!workspaceId,
   });
 }
 
-export function useSetInboundDomain() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ workspaceId, domain }: { workspaceId: string; domain: string }) =>
-      domainsApi.setInboundDomain(workspaceId, domain),
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.detail(workspaceId) });
-    },
-  });
-}
-
-export function useVerifyInboundDomain() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (workspaceId: string) => domainsApi.verifyInboundDomain(workspaceId),
-    onSuccess: (_, workspaceId) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.detail(workspaceId) });
-    },
-  });
-}
-
-export function useRemoveInboundDomain() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (workspaceId: string) => domainsApi.removeInboundDomain(workspaceId),
-    onSuccess: (_, workspaceId) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.detail(workspaceId) });
-    },
-  });
-}
-
-export function useSetOutboundDomain() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ workspaceId, domain }: { workspaceId: string; domain: string }) =>
-      domainsApi.setOutboundDomain(workspaceId, domain),
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.detail(workspaceId) });
-    },
-  });
-}
-
-export function useVerifyOutboundDomain() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (workspaceId: string) => domainsApi.verifyOutboundDomain(workspaceId),
-    onSuccess: (_, workspaceId) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.detail(workspaceId) });
-    },
-  });
-}
-
-export function useUpdateSender() {
+/**
+ * Hook to add a new domain
+ */
+export function useAddDomain() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -82,21 +33,72 @@ export function useUpdateSender() {
       data,
     }: {
       workspaceId: string;
-      data: { fromEmail?: string; fromName?: string };
-    }) => domainsApi.updateSender(workspaceId, data),
+      data: AddDomainData;
+    }) => domainsApi.add(workspaceId, data),
     onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.detail(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
     },
   });
 }
 
-export function useRemoveOutboundDomain() {
+/**
+ * Hook to verify a domain
+ */
+export function useVerifyDomain() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (workspaceId: string) => domainsApi.removeOutboundDomain(workspaceId),
-    onSuccess: (_, workspaceId) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.detail(workspaceId) });
+    mutationFn: ({
+      workspaceId,
+      domainId,
+    }: {
+      workspaceId: string;
+      domainId: string;
+    }) => domainsApi.verify(workspaceId, domainId),
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
+    },
+  });
+}
+
+/**
+ * Hook to update domain settings
+ */
+export function useUpdateDomain() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      workspaceId,
+      domainId,
+      data,
+    }: {
+      workspaceId: string;
+      domainId: string;
+      data: UpdateDomainData;
+    }) => domainsApi.update(workspaceId, domainId, data),
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
+    },
+  });
+}
+
+/**
+ * Hook to remove a domain
+ */
+export function useRemoveDomain() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      workspaceId,
+      domainId,
+    }: {
+      workspaceId: string;
+      domainId: string;
+    }) => domainsApi.remove(workspaceId, domainId),
+    onSuccess: (_, { workspaceId }) => {
+      queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
     },
   });
 }

@@ -20,19 +20,240 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   useBrand,
   useUpdateBrand,
   useDomains,
-  useSetInboundDomain,
-  useVerifyInboundDomain,
-  useRemoveInboundDomain,
-  useSetOutboundDomain,
-  useVerifyOutboundDomain,
-  useUpdateSender,
-  useRemoveOutboundDomain,
+  useAddDomain,
+  useVerifyDomain,
+  useUpdateDomain,
+  useRemoveDomain,
 } from '@/lib/hooks';
+import { WorkspaceDomain, DomainType } from '@/lib/api/domains';
 import { toast } from 'sonner';
-import { CheckCircle, XCircle, Clock, Copy, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Copy, Trash2, Plus, Star } from 'lucide-react';
+
+interface DomainCardProps {
+  domain: WorkspaceDomain;
+  workspaceId: string;
+  onVerify: () => void;
+  onSetPrimary: () => void;
+  onUpdateSender: (fromName?: string, fromEmail?: string) => void;
+  onRemove: () => void;
+  isVerifying: boolean;
+  isUpdating: boolean;
+  isRemoving: boolean;
+}
+
+function DomainCard({
+  domain,
+  workspaceId,
+  onVerify,
+  onSetPrimary,
+  onUpdateSender,
+  onRemove,
+  isVerifying,
+  isUpdating,
+  isRemoving,
+}: DomainCardProps) {
+  const [fromName, setFromName] = useState(domain.fromName || '');
+  const [fromEmail, setFromEmail] = useState(domain.fromEmail || '');
+  const [showSenderForm, setShowSenderForm] = useState(false);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+
+  return (
+    <div className="rounded-lg border p-4 space-y-4">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <p className="font-medium">{domain.domain}</p>
+          {domain.isPrimary && (
+            <Badge variant="outline" className="text-xs">
+              <Star className="mr-1 h-3 w-3 fill-current" /> Primary
+            </Badge>
+          )}
+          {domain.verified ? (
+            <Badge variant="default" className="bg-green-600">
+              <CheckCircle className="mr-1 h-3 w-3" /> Verified
+            </Badge>
+          ) : (
+            <Badge variant="secondary">
+              <Clock className="mr-1 h-3 w-3" /> Pending
+            </Badge>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {!domain.verified && (
+            <Button variant="outline" size="sm" onClick={onVerify} disabled={isVerifying}>
+              {isVerifying ? 'Verifying...' : 'Verify'}
+            </Button>
+          )}
+          {domain.verified && !domain.isPrimary && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSetPrimary}
+              disabled={isUpdating}
+            >
+              Set Primary
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRemove}
+            disabled={isRemoving}
+            className="h-8 w-8"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {domain.verifiedAt && (
+        <p className="text-sm text-muted-foreground">
+          Verified on {new Date(domain.verifiedAt).toLocaleDateString()}
+        </p>
+      )}
+
+      {/* DNS Records for pending domains */}
+      {!domain.verified && domain.records.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">DNS Records</p>
+          <p className="text-sm text-muted-foreground">
+            Add these records to your DNS provider, then click Verify
+          </p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">Type</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Value</TableHead>
+                {domain.type === 'INBOUND' && <TableHead className="w-20">Priority</TableHead>}
+                <TableHead className="w-16">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {domain.records.map((record, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-mono text-xs">{record.type}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <code className="text-xs break-all">{record.name}</code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => copyToClipboard(record.name)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <code className="text-xs break-all max-w-[250px]">{record.value}</code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => copyToClipboard(record.value)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  {domain.type === 'INBOUND' && (
+                    <TableCell className="font-mono text-xs">{record.priority}</TableCell>
+                  )}
+                  <TableCell>
+                    {record.status === 'verified' ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : record.status === 'failed' ? (
+                      <XCircle className="h-4 w-4 text-red-600" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Sender Settings for verified outbound domains */}
+      {domain.type === 'OUTBOUND' && domain.verified && (
+        <div className="space-y-4 pt-2 border-t">
+          {!showSenderForm ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Sender:</p>
+                <p className="text-sm">
+                  {domain.fromName || 'Not set'} &lt;{domain.fromEmail || `support@${domain.domain}`}&gt;
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowSenderForm(true)}>
+                Edit Sender
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor={`fromName-${domain.id}`}>Sender Name</Label>
+                <Input
+                  id={`fromName-${domain.id}`}
+                  placeholder="e.g., Acme Support"
+                  value={fromName}
+                  onChange={(e) => setFromName(e.target.value)}
+                  maxLength={100}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`fromEmail-${domain.id}`}>Sender Email</Label>
+                <Input
+                  id={`fromEmail-${domain.id}`}
+                  type="email"
+                  placeholder={`support@${domain.domain}`}
+                  value={fromEmail}
+                  onChange={(e) => setFromEmail(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Must be an address on {domain.domain}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onUpdateSender(fromName || undefined, fromEmail || undefined);
+                    setShowSenderForm(false);
+                  }}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? 'Saving...' : 'Save'}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowSenderForm(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const params = useParams();
@@ -43,13 +264,10 @@ export default function SettingsPage() {
   const { data: domains, isLoading: domainsLoading } = useDomains(workspaceId);
 
   // Domain mutations
-  const setInboundDomain = useSetInboundDomain();
-  const verifyInboundDomain = useVerifyInboundDomain();
-  const removeInboundDomain = useRemoveInboundDomain();
-  const setOutboundDomain = useSetOutboundDomain();
-  const verifyOutboundDomain = useVerifyOutboundDomain();
-  const updateSender = useUpdateSender();
-  const removeOutboundDomain = useRemoveOutboundDomain();
+  const addDomain = useAddDomain();
+  const verifyDomain = useVerifyDomain();
+  const updateDomain = useUpdateDomain();
+  const removeDomain = useRemoveDomain();
 
   const [name, setName] = useState('');
   const [ticketPrefix, setTicketPrefix] = useState('');
@@ -64,11 +282,10 @@ export default function SettingsPage() {
   const [url, setUrl] = useState('');
   const [iconUrl, setIconUrl] = useState('');
 
-  // Domain state
-  const [inboundDomainInput, setInboundDomainInput] = useState('');
-  const [outboundDomainInput, setOutboundDomainInput] = useState('');
-  const [fromName, setFromName] = useState('');
-  const [fromEmail, setFromEmail] = useState('');
+  // Add domain dialog state
+  const [addDomainDialogOpen, setAddDomainDialogOpen] = useState(false);
+  const [addDomainType, setAddDomainType] = useState<DomainType>('OUTBOUND');
+  const [newDomainInput, setNewDomainInput] = useState('');
 
   // Initialize form with brand data
   useEffect(() => {
@@ -86,36 +303,32 @@ export default function SettingsPage() {
     }
   }, [brand]);
 
-  // Initialize domain form data
-  useEffect(() => {
-    if (domains) {
-      setFromName(domains.outbound.fromName || '');
-      setFromEmail(domains.outbound.fromEmail || '');
-    }
-  }, [domains]);
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard');
   };
 
-  const handleSetInboundDomain = async () => {
-    if (!inboundDomainInput.trim()) {
+  const handleAddDomain = async () => {
+    if (!newDomainInput.trim()) {
       toast.error('Please enter a domain');
       return;
     }
     try {
-      await setInboundDomain.mutateAsync({ workspaceId, domain: inboundDomainInput.trim() });
-      toast.success('Inbound domain configured');
-      setInboundDomainInput('');
-    } catch {
-      toast.error('Failed to configure domain');
+      await addDomain.mutateAsync({
+        workspaceId,
+        data: { domain: newDomainInput.trim(), type: addDomainType },
+      });
+      toast.success(`${addDomainType === 'INBOUND' ? 'Inbound' : 'Outbound'} domain added`);
+      setNewDomainInput('');
+      setAddDomainDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to add domain');
     }
   };
 
-  const handleVerifyInboundDomain = async () => {
+  const handleVerifyDomain = async (domainId: string) => {
     try {
-      const result = await verifyInboundDomain.mutateAsync(workspaceId);
+      const result = await verifyDomain.mutateAsync({ workspaceId, domainId });
       if (result.verified) {
         toast.success('Domain verified!');
       } else {
@@ -126,63 +339,34 @@ export default function SettingsPage() {
     }
   };
 
-  const handleRemoveInboundDomain = async () => {
+  const handleSetPrimary = async (domainId: string) => {
     try {
-      await removeInboundDomain.mutateAsync(workspaceId);
-      toast.success('Inbound domain removed');
+      await updateDomain.mutateAsync({ workspaceId, domainId, data: { isPrimary: true } });
+      toast.success('Domain set as primary');
     } catch {
-      toast.error('Failed to remove domain');
+      toast.error('Failed to set primary domain');
     }
   };
 
-  const handleSetOutboundDomain = async () => {
-    if (!outboundDomainInput.trim()) {
-      toast.error('Please enter a domain');
-      return;
-    }
+  const handleUpdateSender = async (domainId: string, fromName?: string, fromEmail?: string) => {
     try {
-      await setOutboundDomain.mutateAsync({ workspaceId, domain: outboundDomainInput.trim() });
-      toast.success('Outbound domain configured - add the DNS records shown below');
-      setOutboundDomainInput('');
-    } catch {
-      toast.error('Failed to configure domain');
-    }
-  };
-
-  const handleVerifyOutboundDomain = async () => {
-    try {
-      const result = await verifyOutboundDomain.mutateAsync(workspaceId);
-      if (result.verified) {
-        toast.success('Domain verified!');
-      } else {
-        toast.error(result.error || 'Verification failed - DNS may take time to propagate');
-      }
-    } catch {
-      toast.error('Failed to verify domain');
-    }
-  };
-
-  const handleRemoveOutboundDomain = async () => {
-    try {
-      await removeOutboundDomain.mutateAsync(workspaceId);
-      toast.success('Outbound domain removed');
-    } catch {
-      toast.error('Failed to remove domain');
-    }
-  };
-
-  const handleUpdateSender = async () => {
-    try {
-      await updateSender.mutateAsync({
+      await updateDomain.mutateAsync({
         workspaceId,
-        data: {
-          fromEmail: fromEmail.trim() || undefined,
-          fromName: fromName.trim() || undefined,
-        },
+        domainId,
+        data: { fromName, fromEmail },
       });
       toast.success('Sender settings updated');
     } catch {
       toast.error('Failed to update sender settings');
+    }
+  };
+
+  const handleRemoveDomain = async (domainId: string) => {
+    try {
+      await removeDomain.mutateAsync({ workspaceId, domainId });
+      toast.success('Domain removed');
+    } catch {
+      toast.error('Failed to remove domain');
     }
   };
 
@@ -197,13 +381,11 @@ export default function SettingsPage() {
       return;
     }
 
-    // Validate ticket prefix format
     if (!/^[A-Z0-9]+$/i.test(ticketPrefix)) {
       toast.error('Ticket prefix must contain only letters and numbers');
       return;
     }
 
-    // Validate next ticket number
     if (nextTicketNumber < (brand?.nextTicketNumber || 1)) {
       toast.error('Next ticket number cannot be lower than current value');
       return;
@@ -213,7 +395,6 @@ export default function SettingsPage() {
       await updateBrand.mutateAsync({
         name: name.trim(),
         ticketPrefix: ticketPrefix.trim().toUpperCase(),
-        // Only send if changed (to avoid unnecessary updates)
         ...(nextTicketNumber !== brand?.nextTicketNumber && {
           ticketNumberStart: nextTicketNumber,
         }),
@@ -225,7 +406,6 @@ export default function SettingsPage() {
   };
 
   const handleSaveAutoresponse = async () => {
-    // Validate if enabled
     if (autoresponseEnabled) {
       if (!autoresponseSubject.trim()) {
         toast.error('Autoresponse subject is required when enabled');
@@ -248,6 +428,10 @@ export default function SettingsPage() {
       toast.error('Failed to save autoresponse settings');
     }
   };
+
+  // Filter domains by type
+  const outboundDomains = domains?.filter((d) => d.type === 'OUTBOUND') || [];
+  const inboundDomains = domains?.filter((d) => d.type === 'INBOUND') || [];
 
   if (isLoading) {
     return (
@@ -286,9 +470,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Brand Settings</CardTitle>
-            <CardDescription>
-              General brand configuration
-            </CardDescription>
+            <CardDescription>General brand configuration</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -316,7 +498,7 @@ export default function SettingsPage() {
                   maxLength={10}
                 />
                 <span className="text-muted-foreground">
-                  → {ticketPrefix || 'XXX'}-{nextTicketNumber}
+                  {ticketPrefix || 'XXX'}-{nextTicketNumber}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -335,7 +517,7 @@ export default function SettingsPage() {
                 min={brand?.nextTicketNumber || 1}
               />
               <p className="text-sm text-muted-foreground">
-                The next ticket created will use this number. Useful when migrating from another platform to avoid ID collisions.
+                The next ticket created will use this number.
               </p>
             </div>
 
@@ -351,9 +533,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Brand Identity</CardTitle>
-            <CardDescription>
-              Website URL and icon for your brand
-            </CardDescription>
+            <CardDescription>Website URL and icon for your brand</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -378,7 +558,9 @@ export default function SettingsPage() {
                     src={iconUrl}
                     alt="Brand icon"
                     className="h-8 w-8 rounded object-contain"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 )}
                 <Input
@@ -416,203 +598,82 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Outbound Email Domain */}
+        {/* Outbound Email Domains */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Outbound Email Domain
-              {domains?.outbound.verified ? (
-                <Badge variant="default" className="bg-green-600">
-                  <CheckCircle className="mr-1 h-3 w-3" /> Verified
-                </Badge>
-              ) : domains?.outbound.domain ? (
-                <Badge variant="secondary">
-                  <Clock className="mr-1 h-3 w-3" /> Pending
-                </Badge>
-              ) : null}
-            </CardTitle>
-            <CardDescription>
-              Send emails from your own domain instead of dispatchtickets.com
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Outbound Email Domains</CardTitle>
+                <CardDescription>
+                  Send emails from your own domains instead of dispatchtickets.com
+                </CardDescription>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setAddDomainType('OUTBOUND');
+                  setAddDomainDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 h-4 w-4" /> Add Domain
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!domains?.outbound.domain ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="outboundDomain">Domain</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="outboundDomain"
-                      placeholder="e.g., acme.com"
-                      value={outboundDomainInput}
-                      onChange={(e) => setOutboundDomainInput(e.target.value)}
-                    />
-                    <Button
-                      onClick={handleSetOutboundDomain}
-                      disabled={setOutboundDomain.isPending}
-                    >
-                      {setOutboundDomain.isPending ? 'Adding...' : 'Add Domain'}
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Enter your domain to configure email sending
-                  </p>
-                </div>
+            {domainsLoading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : outboundDomains.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No outbound domains configured. Add one to send emails from your own domain.
+                </p>
               </div>
             ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{domains.outbound.domain}</p>
-                    {domains.outbound.verifiedAt && (
-                      <p className="text-sm text-muted-foreground">
-                        Verified on {new Date(domains.outbound.verifiedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {!domains.outbound.verified && (
-                      <Button
-                        variant="outline"
-                        onClick={handleVerifyOutboundDomain}
-                        disabled={verifyOutboundDomain.isPending}
-                      >
-                        {verifyOutboundDomain.isPending ? 'Verifying...' : 'Verify'}
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleRemoveOutboundDomain}
-                      disabled={removeOutboundDomain.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {domains.outbound.records.length > 0 && !domains.outbound.verified && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="mb-2 text-sm font-medium">DNS Records</p>
-                      <p className="mb-3 text-sm text-muted-foreground">
-                        Add these records to your DNS provider, then click Verify
-                      </p>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-20">Type</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Value</TableHead>
-                            <TableHead className="w-20">Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {domains.outbound.records.map((record, i) => (
-                            <TableRow key={i}>
-                              <TableCell className="font-mono text-xs">{record.type}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <code className="text-xs break-all">{record.name}</code>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => copyToClipboard(record.name)}
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <code className="text-xs break-all max-w-[300px]">{record.value}</code>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => copyToClipboard(record.value)}
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {record.status === 'verified' ? (
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
-                                ) : record.status === 'failed' ? (
-                                  <XCircle className="h-4 w-4 text-red-600" />
-                                ) : (
-                                  <Clock className="h-4 w-4 text-yellow-600" />
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </>
-                )}
-
-                {domains.outbound.verified && (
-                  <>
-                    <Separator />
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="fromName">Sender Name</Label>
-                        <Input
-                          id="fromName"
-                          placeholder="e.g., Acme Support"
-                          value={fromName}
-                          onChange={(e) => setFromName(e.target.value)}
-                          maxLength={100}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="fromEmail">Sender Email</Label>
-                        <Input
-                          id="fromEmail"
-                          type="email"
-                          placeholder={`support@${domains.outbound.domain}`}
-                          value={fromEmail}
-                          onChange={(e) => setFromEmail(e.target.value)}
-                        />
-                        <p className="text-sm text-muted-foreground">
-                          Must be an address on {domains.outbound.domain}
-                        </p>
-                      </div>
-                      <Button onClick={handleUpdateSender} disabled={updateSender.isPending}>
-                        {updateSender.isPending ? 'Saving...' : 'Save Sender Settings'}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </>
+              <div className="space-y-4">
+                {outboundDomains.map((domain) => (
+                  <DomainCard
+                    key={domain.id}
+                    domain={domain}
+                    workspaceId={workspaceId}
+                    onVerify={() => handleVerifyDomain(domain.id)}
+                    onSetPrimary={() => handleSetPrimary(domain.id)}
+                    onUpdateSender={(fromName, fromEmail) =>
+                      handleUpdateSender(domain.id, fromName, fromEmail)
+                    }
+                    onRemove={() => handleRemoveDomain(domain.id)}
+                    isVerifying={verifyDomain.isPending}
+                    isUpdating={updateDomain.isPending}
+                    isRemoving={removeDomain.isPending}
+                  />
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Inbound Email Domain */}
+        {/* Inbound Email Domains */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Inbound Email Domain
-              {domains?.inbound.verified ? (
-                <Badge variant="default" className="bg-green-600">
-                  <CheckCircle className="mr-1 h-3 w-3" /> Verified
-                </Badge>
-              ) : domains?.inbound.domain ? (
-                <Badge variant="secondary">
-                  <Clock className="mr-1 h-3 w-3" /> Pending
-                </Badge>
-              ) : null}
-            </CardTitle>
-            <CardDescription>
-              Receive tickets from a custom email address
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Inbound Email Domains</CardTitle>
+                <CardDescription>
+                  Receive tickets from custom email addresses
+                </CardDescription>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setAddDomainType('INBOUND');
+                  setAddDomainDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 h-4 w-4" /> Add Domain
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Default inbound address */}
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium">Default Inbound Address</p>
               <div className="flex items-center gap-2">
@@ -628,119 +689,31 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <Separator />
-
-            {!domains?.inbound.domain ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="inboundDomain">Custom Domain</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="inboundDomain"
-                      placeholder="e.g., support.acme.com"
-                      value={inboundDomainInput}
-                      onChange={(e) => setInboundDomainInput(e.target.value)}
-                    />
-                    <Button
-                      onClick={handleSetInboundDomain}
-                      disabled={setInboundDomain.isPending}
-                    >
-                      {setInboundDomain.isPending ? 'Adding...' : 'Add Domain'}
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Use a subdomain like support.acme.com for inbound emails
-                  </p>
-                </div>
+            {domainsLoading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : inboundDomains.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No custom inbound domains. Add one to receive emails at your own domain.
+                </p>
               </div>
             ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{domains.inbound.domain}</p>
-                    {domains.inbound.verifiedAt && (
-                      <p className="text-sm text-muted-foreground">
-                        Verified on {new Date(domains.inbound.verifiedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {!domains.inbound.verified && (
-                      <Button
-                        variant="outline"
-                        onClick={handleVerifyInboundDomain}
-                        disabled={verifyInboundDomain.isPending}
-                      >
-                        {verifyInboundDomain.isPending ? 'Verifying...' : 'Verify'}
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleRemoveInboundDomain}
-                      disabled={removeInboundDomain.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {domains.inbound.records.length > 0 && !domains.inbound.verified && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="mb-2 text-sm font-medium">DNS Records</p>
-                      <p className="mb-3 text-sm text-muted-foreground">
-                        Add this MX record to your DNS provider, then click Verify
-                      </p>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-20">Type</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Value</TableHead>
-                            <TableHead className="w-24">Priority</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {domains.inbound.records.map((record, i) => (
-                            <TableRow key={i}>
-                              <TableCell className="font-mono text-xs">{record.type}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <code className="text-xs">{record.name}</code>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => copyToClipboard(record.name)}
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <code className="text-xs">{record.value}</code>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() => copyToClipboard(record.value)}
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                              <TableCell className="font-mono text-xs">{record.priority}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </>
-                )}
-              </>
+              <div className="space-y-4">
+                {inboundDomains.map((domain) => (
+                  <DomainCard
+                    key={domain.id}
+                    domain={domain}
+                    workspaceId={workspaceId}
+                    onVerify={() => handleVerifyDomain(domain.id)}
+                    onSetPrimary={() => handleSetPrimary(domain.id)}
+                    onUpdateSender={() => {}}
+                    onRemove={() => handleRemoveDomain(domain.id)}
+                    isVerifying={verifyDomain.isPending}
+                    isUpdating={updateDomain.isPending}
+                    isRemoving={removeDomain.isPending}
+                  />
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -782,7 +755,9 @@ export default function SettingsPage() {
                     maxLength={200}
                   />
                   <p className="text-sm text-muted-foreground">
-                    Use <code className="rounded bg-muted px-1">{'{{ticketNumber}}'}</code> for ticket ID, <code className="rounded bg-muted px-1">{'{{ticketTitle}}'}</code> for subject
+                    Use <code className="rounded bg-muted px-1">{'{{ticketNumber}}'}</code> for
+                    ticket ID, <code className="rounded bg-muted px-1">{'{{ticketTitle}}'}</code>{' '}
+                    for subject
                   </p>
                 </div>
 
@@ -796,7 +771,11 @@ export default function SettingsPage() {
                     rows={6}
                   />
                   <p className="text-sm text-muted-foreground">
-                    Available placeholders: <code className="rounded bg-muted px-1">{'{{ticketNumber}}'}</code>, <code className="rounded bg-muted px-1">{'{{ticketTitle}}'}</code>, <code className="rounded bg-muted px-1">{'{{customerName}}'}</code>, <code className="rounded bg-muted px-1">{'{{brandName}}'}</code>
+                    Available placeholders:{' '}
+                    <code className="rounded bg-muted px-1">{'{{ticketNumber}}'}</code>,{' '}
+                    <code className="rounded bg-muted px-1">{'{{ticketTitle}}'}</code>,{' '}
+                    <code className="rounded bg-muted px-1">{'{{customerName}}'}</code>,{' '}
+                    <code className="rounded bg-muted px-1">{'{{brandName}}'}</code>
                   </p>
                 </div>
               </>
@@ -814,9 +793,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Brand ID</CardTitle>
-            <CardDescription>
-              Unique identifier for API integrations
-            </CardDescription>
+            <CardDescription>Unique identifier for API integrations</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-lg bg-muted p-4">
@@ -825,6 +802,43 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Domain Dialog */}
+      <Dialog open={addDomainDialogOpen} onOpenChange={setAddDomainDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Add {addDomainType === 'INBOUND' ? 'Inbound' : 'Outbound'} Domain
+            </DialogTitle>
+            <DialogDescription>
+              {addDomainType === 'INBOUND'
+                ? 'Use a subdomain like support.acme.com for receiving emails'
+                : 'Add a domain to send emails from your own address'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newDomain">Domain</Label>
+              <Input
+                id="newDomain"
+                placeholder={
+                  addDomainType === 'INBOUND' ? 'e.g., support.acme.com' : 'e.g., acme.com'
+                }
+                value={newDomainInput}
+                onChange={(e) => setNewDomainInput(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDomainDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddDomain} disabled={addDomain.isPending}>
+              {addDomain.isPending ? 'Adding...' : 'Add Domain'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
