@@ -112,6 +112,9 @@ export default function FeatureRequestsPage() {
     <div className="flex flex-col">
       <Header title="Feature Requests" />
       <div className="flex-1 p-6">
+        <p className="mb-6 text-muted-foreground">
+          Loving Dispatch Tickets and have ideas for improvements? Submit your idea here or vote for existing ideas from the community.
+        </p>
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
