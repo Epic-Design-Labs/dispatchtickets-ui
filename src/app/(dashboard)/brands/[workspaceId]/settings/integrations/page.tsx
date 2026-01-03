@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Copy, Plus, Trash2, RotateCcw, Code, Zap, ExternalLink, ShoppingCart } from 'lucide-react';
+import { Copy, Plus, Trash2, Code, Zap, ExternalLink, ShoppingCart, Settings2, TicketIcon } from 'lucide-react';
 import { useForms, useCreateForm, useUpdateForm, useDeleteForm } from '@/lib/hooks';
 import { FormToken, CreateFormTokenDto } from '@/lib/api/forms';
 
@@ -45,10 +45,14 @@ export default function IntegrationsPage() {
   const deleteForm = useDeleteForm(workspaceId);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<FormToken | null>(null);
   const [newFormName, setNewFormName] = useState('');
   const [newFormSuccessUrl, setNewFormSuccessUrl] = useState('');
+  const [editFormName, setEditFormName] = useState('');
+  const [editFormSuccessUrl, setEditFormSuccessUrl] = useState('');
+  const [editFormErrorUrl, setEditFormErrorUrl] = useState('');
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -86,6 +90,37 @@ export default function IntegrationsPage() {
         data: { enabled: !form.enabled },
       });
       toast.success(form.enabled ? 'Form disabled' : 'Form enabled');
+    } catch {
+      toast.error('Failed to update form');
+    }
+  };
+
+  const openEditDialog = (form: FormToken) => {
+    setSelectedForm(form);
+    setEditFormName(form.name);
+    setEditFormSuccessUrl(form.successUrl || '');
+    setEditFormErrorUrl(form.errorUrl || '');
+    setEditDialogOpen(true);
+  };
+
+  const handleEditForm = async () => {
+    if (!selectedForm || !editFormName.trim()) {
+      toast.error('Please enter a form name');
+      return;
+    }
+
+    try {
+      await updateForm.mutateAsync({
+        formId: selectedForm.id,
+        data: {
+          name: editFormName.trim(),
+          successUrl: editFormSuccessUrl.trim() || null,
+          errorUrl: editFormErrorUrl.trim() || null,
+        },
+      });
+      toast.success('Form updated successfully');
+      setEditDialogOpen(false);
+      setSelectedForm(null);
     } catch {
       toast.error('Failed to update form');
     }
@@ -324,6 +359,14 @@ Content-Type: application/json`}
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => openEditDialog(form)}
+                        title="Edit form settings"
+                      >
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => {
                           setSelectedForm(form);
                           setDeleteDialogOpen(true);
@@ -353,14 +396,29 @@ Content-Type: application/json`}
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Stats</Label>
-                      <p className="mt-1">
-                        {form.submissionCount} submissions
-                        {form.lastSubmissionAt && (
-                          <span className="text-muted-foreground">
-                            {' '}· Last: {new Date(form.lastSubmissionAt).toLocaleDateString()}
-                          </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span>
+                          {form.submissionCount} submissions
+                          {form.lastSubmissionAt && (
+                            <span className="text-muted-foreground">
+                              {' '}· Last: {new Date(form.lastSubmissionAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </span>
+                        {form.submissionCount > 0 && (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-xs"
+                            asChild
+                          >
+                            <a href={`/brands/${workspaceId}?source=web&formId=${form.id}`}>
+                              <TicketIcon className="h-3 w-3 mr-1" />
+                              View tickets
+                            </a>
+                          </Button>
                         )}
-                      </p>
+                      </div>
                     </div>
                   </div>
 
@@ -502,7 +560,7 @@ Content-Type: application/json`}
                 onChange={(e) => setNewFormSuccessUrl(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Where to redirect after successful submission. Leave empty to return JSON.
+                Where to redirect after successful submission. Leave empty to show a thank you page.
               </p>
             </div>
           </div>
@@ -512,6 +570,63 @@ Content-Type: application/json`}
             </Button>
             <Button onClick={handleCreateForm} disabled={createForm.isPending}>
               {createForm.isPending ? 'Creating...' : 'Create Form'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Form Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Form</DialogTitle>
+            <DialogDescription>
+              Update form settings and redirect URLs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editName">Form Name</Label>
+              <Input
+                id="editName"
+                placeholder="e.g., Contact Form, Support Request"
+                value={editFormName}
+                onChange={(e) => setEditFormName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editSuccessUrl">Success Redirect URL</Label>
+              <Input
+                id="editSuccessUrl"
+                type="url"
+                placeholder="https://yoursite.com/thank-you"
+                value={editFormSuccessUrl}
+                onChange={(e) => setEditFormSuccessUrl(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Where to redirect after successful submission. Leave empty to show a thank you page.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editErrorUrl">Error Redirect URL</Label>
+              <Input
+                id="editErrorUrl"
+                type="url"
+                placeholder="https://yoursite.com/error"
+                value={editFormErrorUrl}
+                onChange={(e) => setEditFormErrorUrl(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Where to redirect if submission fails. Leave empty to show an error message.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditForm} disabled={updateForm.isPending}>
+              {updateForm.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
