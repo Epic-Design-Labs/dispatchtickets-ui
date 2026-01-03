@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +16,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
-import { useProfile } from '@/lib/hooks';
+import { useProfile, useBrands, useDashboardStats } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
+import { Inbox, User, AlertCircle } from 'lucide-react';
 
 interface SidebarProps {
   workspaceId?: string;
@@ -24,9 +26,38 @@ interface SidebarProps {
 
 export function Sidebar({ workspaceId }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { session, logout } = useAuth();
   const { data: profile } = useProfile();
+  const { data: brands } = useBrands();
   const email = session?.email;
+
+  // Dashboard state from URL
+  const isDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard');
+  const view = searchParams.get('view') || 'all';
+  const brandsParam = searchParams.get('brands');
+  const selectedBrands = brandsParam ? brandsParam.split(',').filter(Boolean) : [];
+
+  // Only fetch stats when on dashboard
+  const { data: stats } = useDashboardStats(isDashboard ? selectedBrands : undefined);
+
+  // Brand filter toggle
+  const toggleBrand = (brandId: string) => {
+    const current = new URLSearchParams(searchParams.toString());
+    let newBrands: string[];
+    if (selectedBrands.includes(brandId)) {
+      newBrands = selectedBrands.filter((id) => id !== brandId);
+    } else {
+      newBrands = [...selectedBrands, brandId];
+    }
+    if (newBrands.length > 0) {
+      current.set('brands', newBrands.join(','));
+    } else {
+      current.delete('brands');
+    }
+    router.push(`/dashboard?${current.toString()}`);
+  };
 
   // Get display name: profile > email-derived > email
   const displayName = profile?.displayName || (email ? email.split('@')[0].split(/[._-]/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User');
@@ -110,27 +141,85 @@ export function Sidebar({ workspaceId }: SidebarProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">
-        {/* Global Dashboard */}
-        <div className="px-3 mb-4">
-          <Button
-            variant={pathname === '/dashboard' || pathname.startsWith('/dashboard') ? 'secondary' : 'ghost'}
-            className={cn(
-              'w-full justify-start gap-2',
-              (pathname === '/dashboard' || pathname.startsWith('/dashboard')) && 'bg-secondary'
-            )}
-            asChild
-          >
-            <Link href="/dashboard">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-              </svg>
-              Dashboard
+        {/* Dashboard Views */}
+        <div className="px-3 mb-2">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-2">
+            Queue
+          </h3>
+          <nav className="space-y-1">
+            <Link
+              href="/dashboard"
+              className={cn(
+                'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
+                isDashboard && view === 'all'
+                  ? 'bg-secondary text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Inbox className="h-4 w-4" />
+              All Open
+              {isDashboard && stats && (
+                <span className="ml-auto text-xs opacity-70">{stats.open}</span>
+              )}
             </Link>
-          </Button>
+            <Link
+              href="/dashboard?view=mine"
+              className={cn(
+                'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
+                isDashboard && view === 'mine'
+                  ? 'bg-secondary text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <User className="h-4 w-4" />
+              My Tickets
+            </Link>
+            <Link
+              href="/dashboard?view=unassigned"
+              className={cn(
+                'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
+                isDashboard && view === 'unassigned'
+                  ? 'bg-secondary text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <AlertCircle className="h-4 w-4" />
+              Unassigned
+            </Link>
+          </nav>
         </div>
+
+        {/* Brand Filters (only on dashboard) */}
+        {isDashboard && brands && brands.length > 0 && (
+          <div className="px-3 mb-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-2">
+              Filter by Brand
+            </h3>
+            <div className="space-y-1">
+              {brands.map((brand) => (
+                <label
+                  key={brand.id}
+                  className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-muted rounded-md"
+                >
+                  <Checkbox
+                    checked={selectedBrands.includes(brand.id)}
+                    onCheckedChange={() => toggleBrand(brand.id)}
+                  />
+                  <span className="truncate">{brand.name}</span>
+                  {stats?.byWorkspace[brand.id] && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {stats.byWorkspace[brand.id].open}
+                    </span>
+                  )}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         <Separator className="mb-4" />
 
+        {/* Brand Switcher (for brand-specific pages) */}
         <div className="px-3">
           <BrandSwitcher />
         </div>
