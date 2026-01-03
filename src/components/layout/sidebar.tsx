@@ -96,7 +96,7 @@ export function Sidebar({ workspaceId }: SidebarProps) {
   return (
     <div className="flex h-full w-64 flex-col border-r bg-background">
       <div className="flex h-14 items-center border-b px-4">
-        <Link href="/brands" className="flex items-center gap-2 font-semibold">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
           <svg className="h-6 w-6" viewBox="0 0 95 95" fill="none">
             <rect x="33.3721" y="8.86157" width="32.9085" height="46.3896" transform="rotate(0.0597011 33.3721 8.86157)" fill="#F9B200"/>
             <rect x="52.7118" y="19.0376" width="32.9085" height="46.3896" transform="rotate(6.28711 52.7118 19.0376)" fill="#00CDFB"/>
