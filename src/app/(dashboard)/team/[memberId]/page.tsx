@@ -193,7 +193,7 @@ export default function MemberDetailPage() {
       : null;
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 max-w-4xl">
       <Button variant="ghost" onClick={() => router.push('/team')} className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Team

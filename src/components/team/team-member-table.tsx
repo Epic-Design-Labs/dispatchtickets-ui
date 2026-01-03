@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Table,
@@ -10,21 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RoleBadge } from './role-badge';
 import { TeamMember, OrgRole } from '@/types';
-import { useRemoveMember, useResendInvite } from '@/lib/hooks';
-import { toast } from 'sonner';
-import { RotateCw, MoreVertical, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 interface TeamMemberTableProps {
   members: TeamMember[];
@@ -37,40 +26,8 @@ export function TeamMemberTable({
   members,
   invites,
   isLoading,
-  currentUserRole,
 }: TeamMemberTableProps) {
   const router = useRouter();
-  const removeMember = useRemoveMember();
-  const resendInvite = useResendInvite();
-  const [pendingAction, setPendingAction] = useState<string | null>(null);
-
-  const canManageMembers = currentUserRole === 'owner' || currentUserRole === 'admin';
-
-  const handleResendInvite = async (memberId: string, email: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPendingAction(memberId);
-    try {
-      await resendInvite.mutateAsync(memberId);
-      toast.success(`Invite resent to ${email}`);
-    } catch (error) {
-      toast.error('Failed to resend invite');
-    } finally {
-      setPendingAction(null);
-    }
-  };
-
-  const handleRemove = async (memberId: string, email: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPendingAction(memberId);
-    try {
-      await removeMember.mutateAsync(memberId);
-      toast.success(`${email} has been removed`);
-    } catch (error) {
-      toast.error('Failed to remove member');
-    } finally {
-      setPendingAction(null);
-    }
-  };
 
   const handleRowClick = (memberId: string) => {
     router.push(`/team/${memberId}`);
@@ -163,7 +120,6 @@ export function TeamMemberTable({
               member.firstName || member.lastName
                 ? `${member.firstName || ''} ${member.lastName || ''}`.trim()
                 : null;
-            const isOwner = member.role === 'owner';
             const isPending = member.status === 'pending';
 
             return (
@@ -208,41 +164,7 @@ export function TeamMemberTable({
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center justify-end gap-2">
-                    {canManageMembers && !isOwner && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            disabled={pendingAction === member.id}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {isPending && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={(e) => handleResendInvite(member.id, member.email, e as unknown as React.MouseEvent)}
-                              >
-                                <RotateCw className="mr-2 h-4 w-4" />
-                                Resend Invite
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={(e) => handleRemove(member.id, member.email, e as unknown as React.MouseEvent)}
-                          >
-                            {isPending ? 'Cancel Invite' : 'Remove'}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                  <div className="flex items-center justify-end">
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </TableCell>
