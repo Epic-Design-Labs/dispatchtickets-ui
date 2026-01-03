@@ -74,11 +74,14 @@ export function TeamMemberTable({
   };
 
   const handleRoleChange = async (memberId: string, newRole: OrgRole) => {
+    console.log('handleRoleChange called:', { memberId, newRole });
     setPendingAction(memberId);
     try {
-      await updateMember.mutateAsync({ memberId, data: { role: newRole } });
+      const result = await updateMember.mutateAsync({ memberId, data: { role: newRole } });
+      console.log('updateMember result:', result);
       toast.success('Role updated successfully');
     } catch (error) {
+      console.error('updateMember error:', error);
       toast.error('Failed to update role');
     } finally {
       setPendingAction(null);
