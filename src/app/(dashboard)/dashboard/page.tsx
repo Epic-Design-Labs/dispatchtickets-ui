@@ -174,7 +174,7 @@ export default function DashboardPage() {
                   key={ticket.id}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() =>
-                    router.push(`/brands/${ticket.workspaceId}/${ticket.id}`)
+                    router.push(`/brands/${ticket.workspaceId}/tickets/${ticket.id}`)
                   }
                 >
                   <TableCell>
