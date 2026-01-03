@@ -19,12 +19,10 @@ interface ShortcutGroup {
 
 const shortcutGroups: ShortcutGroup[] = [
   {
-    title: 'Navigation',
+    title: 'Ticket Navigation',
     shortcuts: [
       { keys: ['j'], description: 'Next ticket' },
       { keys: ['k'], description: 'Previous ticket' },
-      { keys: ['Shift', 'D'], description: 'Go to dashboard' },
-      { keys: ['Shift', 'B'], description: 'Go to brands' },
     ],
   },
   {

@@ -17,11 +17,8 @@ export default function DashboardLayout({
   const { isAuthenticated, isConnected, isLoading } = useAuth();
   const workspaceId = params.workspaceId as string | undefined;
 
-  // Global keyboard shortcuts
-  useKeyboardShortcuts([
-    { key: 'd', description: 'Go to dashboard', action: () => router.push('/dashboard'), modifier: 'shift' },
-    { key: 'b', description: 'Go to brands', action: () => router.push('/brands'), modifier: 'shift' },
-  ]);
+  // Global keyboard shortcuts (just ? for help modal, handled in the hook)
+  useKeyboardShortcuts([]);
 
   useEffect(() => {
     if (!isLoading) {
