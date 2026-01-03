@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/providers';
 import { Sidebar } from '@/components/layout';
+import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
+import { useKeyboardShortcuts } from '@/lib/hooks';
 
 export default function DashboardLayout({
   children,
@@ -14,6 +16,12 @@ export default function DashboardLayout({
   const params = useParams();
   const { isAuthenticated, isConnected, isLoading } = useAuth();
   const workspaceId = params.workspaceId as string | undefined;
+
+  // Global keyboard shortcuts
+  useKeyboardShortcuts([
+    { key: 'd', description: 'Go to dashboard', action: () => router.push('/dashboard'), modifier: 'shift' },
+    { key: 'b', description: 'Go to brands', action: () => router.push('/brands'), modifier: 'shift' },
+  ]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -53,6 +61,7 @@ export default function DashboardLayout({
     <div className="flex h-screen">
       <Sidebar workspaceId={workspaceId} />
       <main className="flex-1 overflow-y-auto">{children}</main>
+      <KeyboardShortcutsModal />
     </div>
   );
 }

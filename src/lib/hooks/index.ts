@@ -11,3 +11,4 @@ export * from './use-feature-requests';
 export * from './use-domains';
 export * from './use-forms';
 export * from './use-dashboard';
+export * from './use-keyboard-shortcuts';

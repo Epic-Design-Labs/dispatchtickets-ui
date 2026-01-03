@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useDashboardTickets, useDashboardStats } from '@/lib/hooks';
+import { useAuth } from '@/providers';
 import { DashboardTicketFilters } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -70,6 +71,7 @@ function getPriorityColor(priority: string | null) {
 export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { session } = useAuth();
 
   // Parse URL params
   const view = (searchParams.get('view') || 'all') as ViewType;
@@ -77,15 +79,37 @@ export default function DashboardPage() {
   const brandsParam = searchParams.get('brands');
   const selectedBrands = brandsParam ? brandsParam.split(',').filter(Boolean) : [];
 
-  // Build filters
-  const filters: DashboardTicketFilters = useMemo(() => ({
-    status: status || (view === 'all' ? 'open' : undefined),
-    workspaceIds: selectedBrands.length > 0 ? selectedBrands : undefined,
-    // TODO: Add assigneeId filter for "mine" view once we have current user ID
-    // assigneeId: view === 'mine' ? currentUserId : undefined,
-    // For unassigned, we'd need to filter where assigneeId is null
-    limit: 50,
-  }), [status, selectedBrands, view]);
+  // Build filters based on view
+  const filters: DashboardTicketFilters = useMemo(() => {
+    const baseFilters: DashboardTicketFilters = {
+      workspaceIds: selectedBrands.length > 0 ? selectedBrands : undefined,
+      limit: 50,
+    };
+
+    switch (view) {
+      case 'mine':
+        // Show tickets assigned to current user (non-closed)
+        return {
+          ...baseFilters,
+          assigneeId: session?.customerId,
+          status: status || undefined, // Show all non-closed statuses
+        };
+      case 'unassigned':
+        // Show tickets with no assignee
+        return {
+          ...baseFilters,
+          assigneeId: 'null', // Special value to filter for null assignee
+          status: status || 'open',
+        };
+      case 'all':
+      default:
+        // Show all open tickets
+        return {
+          ...baseFilters,
+          status: status || 'open',
+        };
+    }
+  }, [status, selectedBrands, view, session?.customerId]);
 
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(filters);
   const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBrands);

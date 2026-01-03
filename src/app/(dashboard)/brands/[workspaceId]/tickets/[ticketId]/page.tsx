@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
-import { Trash2, ShieldAlert, Building2 } from 'lucide-react';
+import { Trash2, ShieldAlert, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -45,10 +45,26 @@ export default function TicketDetailPage() {
 
   const { data: ticket, isLoading: ticketLoading } = useTicket(workspaceId, ticketId);
   const { data: comments, isLoading: commentsLoading } = useComments(workspaceId, ticketId, { polling: true });
+  const { data: ticketsData } = useTickets(workspaceId, { status: 'open', limit: 100 });
   const updateTicket = useUpdateTicket(workspaceId, ticketId);
   const deleteTicket = useDeleteTicket(workspaceId);
   const markAsSpam = useMarkAsSpam(workspaceId);
   const updateCustomer = useUpdateCustomer(workspaceId, ticket?.customerId || '');
+
+  // Find prev/next tickets for j/k navigation
+  const { prevTicketId, nextTicketId, currentIndex, totalCount } = useMemo(() => {
+    const tickets = ticketsData?.data || [];
+    const idx = tickets.findIndex(t => t.id === ticketId);
+    return {
+      prevTicketId: idx > 0 ? tickets[idx - 1].id : null,
+      nextTicketId: idx >= 0 && idx < tickets.length - 1 ? tickets[idx + 1].id : null,
+      currentIndex: idx >= 0 ? idx + 1 : 0,
+      totalCount: tickets.length,
+    };
+  }, [ticketsData, ticketId]);
+
+  // Enable j/k keyboard navigation
+  const { goToPrev, goToNext } = useTicketNavigation(prevTicketId, nextTicketId, workspaceId);
 
   const handleStatusChange = async (status: string) => {
     try {
@@ -173,6 +189,32 @@ export default function TicketDetailPage() {
           <div className="mt-2 flex items-center justify-between">
             <h2 className="text-2xl font-bold tracking-tight">{ticket.title}</h2>
             <div className="flex items-center gap-2">
+              {/* Prev/Next navigation */}
+              {totalCount > 0 && (
+                <div className="flex items-center gap-1 mr-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={goToPrev}
+                    disabled={!prevTicketId}
+                    title="Previous ticket (k)"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground min-w-[60px] text-center">
+                    {currentIndex} / {totalCount}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={goToNext}
+                    disabled={!nextTicketId}
+                    title="Next ticket (j)"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <Button
                 variant="outline"
                 size="sm"
