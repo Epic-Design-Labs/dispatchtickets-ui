@@ -312,7 +312,7 @@ export default function BillingPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex items-center gap-4">
                       {subscription.cancelAtPeriodEnd && (
                         <Button
                           onClick={handleReactivate}
@@ -322,22 +322,22 @@ export default function BillingPage() {
                         </Button>
                       )}
                       {!subscription.cancelAtPeriodEnd && freePlan && !isCurrentPlan(freePlan) && (
-                        <Button
-                          variant="outline"
+                        <button
                           onClick={() => handleDowngrade(freePlan)}
                           disabled={upgradeSubscription.isPending || !!getDowngradeBlockReason(freePlan)}
                           title={getDowngradeBlockReason(freePlan) || undefined}
+                          className="text-sm text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Downgrade to Free
-                        </Button>
+                        </button>
                       )}
                       {!subscription.cancelAtPeriodEnd && (
-                        <Button
-                          variant="destructive"
+                        <button
                           onClick={() => setCancelDialogOpen(true)}
+                          className="text-sm text-muted-foreground hover:text-destructive hover:underline"
                         >
                           Cancel Subscription
-                        </Button>
+                        </button>
                       )}
                     </div>
                   </div>

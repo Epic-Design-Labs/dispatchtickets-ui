@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -13,29 +14,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { RoleBadge } from './role-badge';
-import { BrandAssignmentsDialog } from './brand-assignments-dialog';
 import { TeamMember, OrgRole } from '@/types';
-import { useUpdateMember, useRemoveMember, useResendInvite, useTransferOwnership } from '@/lib/hooks';
+import { useRemoveMember, useResendInvite } from '@/lib/hooks';
 import { toast } from 'sonner';
-import { RotateCw, Crown } from 'lucide-react';
+import { RotateCw, MoreVertical, ChevronRight } from 'lucide-react';
 
 interface TeamMemberTableProps {
   members: TeamMember[];
@@ -50,18 +39,15 @@ export function TeamMemberTable({
   isLoading,
   currentUserRole,
 }: TeamMemberTableProps) {
-  const updateMember = useUpdateMember();
+  const router = useRouter();
   const removeMember = useRemoveMember();
   const resendInvite = useResendInvite();
-  const transferOwnership = useTransferOwnership();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [brandDialogMember, setBrandDialogMember] = useState<TeamMember | null>(null);
-  const [transferTarget, setTransferTarget] = useState<TeamMember | null>(null);
 
   const canManageMembers = currentUserRole === 'owner' || currentUserRole === 'admin';
-  const isCurrentUserOwner = currentUserRole === 'owner';
 
-  const handleResendInvite = async (memberId: string, email: string) => {
+  const handleResendInvite = async (memberId: string, email: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setPendingAction(memberId);
     try {
       await resendInvite.mutateAsync(memberId);
@@ -73,22 +59,8 @@ export function TeamMemberTable({
     }
   };
 
-  const handleRoleChange = async (memberId: string, newRole: OrgRole) => {
-    console.log('handleRoleChange called:', { memberId, newRole });
-    setPendingAction(memberId);
-    try {
-      const result = await updateMember.mutateAsync({ memberId, data: { role: newRole } });
-      console.log('updateMember result:', result);
-      toast.success('Role updated successfully');
-    } catch (error) {
-      console.error('updateMember error:', error);
-      toast.error('Failed to update role');
-    } finally {
-      setPendingAction(null);
-    }
-  };
-
-  const handleRemove = async (memberId: string, email: string) => {
+  const handleRemove = async (memberId: string, email: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setPendingAction(memberId);
     try {
       await removeMember.mutateAsync(memberId);
@@ -100,18 +72,8 @@ export function TeamMemberTable({
     }
   };
 
-  const handleTransferOwnership = async () => {
-    if (!transferTarget) return;
-    setPendingAction(transferTarget.id);
-    try {
-      await transferOwnership.mutateAsync(transferTarget.id);
-      toast.success(`Ownership transferred to ${transferTarget.email}`);
-      setTransferTarget(null);
-    } catch (error) {
-      toast.error('Failed to transfer ownership');
-    } finally {
-      setPendingAction(null);
-    }
+  const handleRowClick = (memberId: string) => {
+    router.push(`/team/${memberId}`);
   };
 
   if (isLoading) {
@@ -184,18 +146,17 @@ export function TeamMemberTable({
   }
 
   return (
-    <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Member</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Brands</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
-            </TableRow>
-          </TableHeader>
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Member</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Brands</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="w-[100px]"></TableHead>
+          </TableRow>
+        </TableHeader>
         <TableBody>
           {allMembers.map((member) => {
             const name =
@@ -206,7 +167,11 @@ export function TeamMemberTable({
             const isPending = member.status === 'pending';
 
             return (
-              <TableRow key={member.id}>
+              <TableRow
+                key={member.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleRowClick(member.id)}
+              >
                 <TableCell>
                   <div>
                     {name && <p className="font-medium">{name}</p>}
@@ -222,20 +187,13 @@ export function TeamMemberTable({
                   {isPending ? (
                     <span className="text-sm text-muted-foreground">—</span>
                   ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto p-1"
-                      onClick={() => setBrandDialogMember(member)}
-                    >
-                      <Badge variant="secondary">
-                        {member.brandAssignment?.allBrands
-                          ? 'All'
-                          : member.brandAssignment?.workspaceIds?.length
-                            ? `${member.brandAssignment.workspaceIds.length} brand${member.brandAssignment.workspaceIds.length === 1 ? '' : 's'}`
-                            : 'All'}
-                      </Badge>
-                    </Button>
+                    <Badge variant="secondary">
+                      {member.brandAssignment?.allBrands
+                        ? 'All brands'
+                        : member.brandAssignment?.workspaceIds?.length
+                          ? `${member.brandAssignment.workspaceIds.length} brand${member.brandAssignment.workspaceIds.length === 1 ? '' : 's'}`
+                          : 'All brands'}
+                    </Badge>
                   )}
                 </TableCell>
                 <TableCell>
@@ -250,79 +208,43 @@ export function TeamMemberTable({
                   )}
                 </TableCell>
                 <TableCell>
-                  {canManageMembers && !isOwner && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          disabled={pendingAction === member.id}
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                  <div className="flex items-center justify-end gap-2">
+                    {canManageMembers && !isOwner && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            disabled={pendingAction === member.id}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                            />
-                          </svg>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {isPending && (
-                          <>
-                            <DropdownMenuItem
-                              onClick={() => handleResendInvite(member.id, member.email)}
-                            >
-                              <RotateCw className="mr-2 h-4 w-4" />
-                              Resend Invite
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        {!isPending && (
-                          <>
-                            <DropdownMenuLabel>Change Role</DropdownMenuLabel>
-                            {member.role !== 'admin' && (
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {isPending && (
+                            <>
                               <DropdownMenuItem
-                                onClick={() => handleRoleChange(member.id, 'admin')}
+                                onClick={(e) => handleResendInvite(member.id, member.email, e as unknown as React.MouseEvent)}
                               >
-                                Make Admin
+                                <RotateCw className="mr-2 h-4 w-4" />
+                                Resend Invite
                               </DropdownMenuItem>
-                            )}
-                            {member.role !== 'member' && (
-                              <DropdownMenuItem
-                                onClick={() => handleRoleChange(member.id, 'member')}
-                              >
-                                Make Member
-                              </DropdownMenuItem>
-                            )}
-                            {isCurrentUserOwner && (
-                              <DropdownMenuItem
-                                onClick={() => setTransferTarget(member)}
-                              >
-                                <Crown className="mr-2 h-4 w-4" />
-                                Transfer Ownership
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => handleRemove(member.id, member.email)}
-                        >
-                          {isPending ? 'Cancel Invite' : 'Remove'}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={(e) => handleRemove(member.id, member.email, e as unknown as React.MouseEvent)}
+                          >
+                            {isPending ? 'Cancel Invite' : 'Remove'}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </TableCell>
               </TableRow>
             );
@@ -330,39 +252,5 @@ export function TeamMemberTable({
         </TableBody>
       </Table>
     </div>
-
-      {brandDialogMember && (
-        <BrandAssignmentsDialog
-          member={brandDialogMember}
-          open={!!brandDialogMember}
-          onOpenChange={(open) => !open && setBrandDialogMember(null)}
-          currentUserRole={currentUserRole}
-        />
-      )}
-
-      <AlertDialog open={!!transferTarget} onOpenChange={(open) => !open && setTransferTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Transfer Ownership</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to transfer ownership to{' '}
-              <span className="font-medium">{transferTarget?.email}</span>?
-              <br /><br />
-              This action will make them the owner of this organization. You will become an admin
-              and will no longer have owner privileges.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleTransferOwnership}
-              disabled={transferOwnership.isPending}
-            >
-              {transferOwnership.isPending ? 'Transferring...' : 'Transfer Ownership'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
   );
 }
