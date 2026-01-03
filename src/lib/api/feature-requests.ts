@@ -2,6 +2,11 @@ import { apiClient } from './client';
 
 export type FeatureCategory = 'billing' | 'auth' | 'api' | 'dashboard' | 'analytics' | 'other';
 
+export interface FeatureRequestImage {
+  url: string;
+  name?: string;
+}
+
 export interface FeatureRequest {
   id: string;
   title: string;
@@ -10,6 +15,7 @@ export interface FeatureRequest {
   currentBehavior?: string;
   whyItMatters?: string;
   category?: FeatureCategory;
+  images?: FeatureRequestImage[];
   status: 'new' | 'under_review' | 'planned' | 'in_progress' | 'completed' | 'declined';
   voteCount: number;
   authorId: string;
@@ -32,6 +38,7 @@ export interface CreateFeatureRequestInput {
   currentBehavior?: string;
   whyItMatters?: string;
   category?: FeatureCategory;
+  images?: FeatureRequestImage[];
 }
 
 export const featureRequestsApi = {

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
-import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage } from '@/lib/hooks';
+import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useInvoices } from '@/lib/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,8 +18,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Plan } from '@/lib/api/billing';
+import { Plan, Invoice } from '@/lib/api/billing';
+import { FileText, Download, ExternalLink } from 'lucide-react';
+
+// Plan group types
+interface PlanGroup {
+  baseName: string;
+  monthly: Plan | null;
+  annual: Plan | null;
+}
 
 export default function BillingPage() {
   const searchParams = useSearchParams();
@@ -27,6 +43,7 @@ export default function BillingPage() {
   const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError, refetch } = useSubscription();
   const { data: plansData, isLoading: plansLoading } = usePlans();
   const { data: usageData, isLoading: usageLoading } = useUsage();
+  const { data: invoicesData, isLoading: invoicesLoading } = useInvoices(10);
 
   // Handle upgrade success URL param
   useEffect(() => {
@@ -47,11 +64,49 @@ export default function BillingPage() {
   const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
   const [selectedDowngradePlan, setSelectedDowngradePlan] = useState<Plan | null>(null);
   const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
 
   const subscription = subscriptionData?.subscription;
   const allPlans = plansData?.plans || [];
-  // Filter out free plan from cards - it will have its own button
-  const plans = allPlans.filter(p => p.price > 0);
+  const invoices = invoicesData?.invoices || [];
+
+  // Detect current billing period from subscription
+  useEffect(() => {
+    if (subscription?.planInterval === 'year') {
+      setBillingPeriod('annual');
+    }
+  }, [subscription]);
+
+  // Group plans by base name (Starter, Pro, Enterprise)
+  const planGroups = useMemo(() => {
+    const groups: Record<string, PlanGroup> = {};
+
+    allPlans.forEach((plan) => {
+      // Skip free plan from grouping
+      if (plan.price === 0) return;
+
+      // Extract base name (remove "Monthly" or "Annual" suffix)
+      const baseName = plan.name.replace(/ (Monthly|Annual)$/i, '');
+
+      if (!groups[baseName]) {
+        groups[baseName] = { baseName, monthly: null, annual: null };
+      }
+
+      if (plan.interval === 'month') {
+        groups[baseName].monthly = plan;
+      } else if (plan.interval === 'year') {
+        groups[baseName].annual = plan;
+      }
+    });
+
+    // Sort by price (using monthly price as reference)
+    return Object.values(groups).sort((a, b) => {
+      const priceA = a.monthly?.price || 0;
+      const priceB = b.monthly?.price || 0;
+      return priceA - priceB;
+    });
+  }, [allPlans]);
+
   const freePlan = allPlans.find(p => p.price === 0);
 
   const handleCancel = async () => {
@@ -95,22 +150,34 @@ export default function BillingPage() {
   };
 
   const formatPrice = (price: number | null | undefined, currency: string, interval: string) => {
-    // If price is 0 or null, try to get it from the plan in plansData
-    let displayPrice = price;
-    if ((!price || price === 0) && subscription && plansData) {
-      const matchingPlan = plansData.plans.find(p => p.id === subscription.planId);
-      if (matchingPlan) {
-        displayPrice = matchingPlan.price;
-      }
-    }
-
-    if (!displayPrice && displayPrice !== 0) return 'Not available';
+    if (!price && price !== 0) return 'Not available';
 
     const formatted = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency?.toUpperCase() || 'USD',
-    }).format((displayPrice || 0) / 100);
+      minimumFractionDigits: 0,
+    }).format(price / 100);
+
+    if (interval === 'year') {
+      const monthly = Math.round(price / 12);
+      const monthlyFormatted = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency?.toUpperCase() || 'USD',
+        minimumFractionDigits: 0,
+      }).format(monthly / 100);
+      return `${monthlyFormatted}/mo`;
+    }
+
     return `${formatted}/${interval || 'month'}`;
+  };
+
+  const formatAnnualTotal = (price: number, currency: string) => {
+    const formatted = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency?.toUpperCase() || 'USD',
+      minimumFractionDigits: 0,
+    }).format(price / 100);
+    return `${formatted}/year`;
   };
 
   const formatDate = (dateString: string | null | undefined) => {
@@ -125,6 +192,24 @@ export default function BillingPage() {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const formatShortDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const formatInvoiceAmount = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency?.toUpperCase() || 'USD',
+    }).format(amount / 100);
   };
 
   const getStatusBadge = (status: string, cancelAtPeriodEnd: boolean) => {
@@ -147,18 +232,34 @@ export default function BillingPage() {
     }
   };
 
-  // Plan feature mapping based on plan name (tickets/support not stored in entitlements)
+  const getInvoiceStatusBadge = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return <Badge className="bg-green-500">Paid</Badge>;
+      case 'open':
+        return <Badge className="bg-yellow-500">Open</Badge>;
+      case 'draft':
+        return <Badge variant="secondary">Draft</Badge>;
+      case 'void':
+        return <Badge variant="secondary">Void</Badge>;
+      case 'uncollectible':
+        return <Badge variant="destructive">Uncollectible</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  // Plan feature mapping based on plan name
   const planDetails: Record<string, { tickets: string; support: string; sla?: string }> = {
-    'Free': { tickets: '100 tickets/mo', support: 'Email support' },
     'Starter': { tickets: '1,000 tickets/mo', support: 'Email support' },
     'Pro': { tickets: '10,000 tickets/mo', support: 'Priority support' },
     'Enterprise': { tickets: '100,000 tickets/mo', support: 'Dedicated support', sla: '99.9% SLA' },
   };
 
-  const getPlanFeatures = (plan: Plan) => {
+  const getPlanFeatures = (plan: Plan, baseName: string) => {
     const features: string[] = [];
     const entitlements = plan.entitlements as Record<string, number | boolean>;
-    const details = planDetails[plan.name] || planDetails['Free'];
+    const details = planDetails[baseName] || planDetails['Starter'];
 
     // Tickets per month
     features.push(details.tickets);
@@ -181,11 +282,6 @@ export default function BillingPage() {
     // SLA (Enterprise only)
     if (details.sla) {
       features.push(details.sla);
-    }
-
-    // Overage billing (paid plans only)
-    if (plan.price > 0) {
-      features.push('Overage billing available');
     }
 
     return features;
@@ -249,6 +345,15 @@ export default function BillingPage() {
     }
   };
 
+  // Calculate savings for annual plans
+  const getAnnualSavings = (group: PlanGroup): number | null => {
+    if (!group.monthly || !group.annual) return null;
+    const monthlyYearlyTotal = group.monthly.price * 12;
+    const annualPrice = group.annual.price;
+    const savings = Math.round(((monthlyYearlyTotal - annualPrice) / monthlyYearlyTotal) * 100);
+    return savings > 0 ? savings : null;
+  };
+
   return (
     <div className="flex flex-col">
       <Header title="Billing" />
@@ -289,47 +394,51 @@ export default function BillingPage() {
         {!subscriptionLoading && !subscriptionError && (
           <div className="space-y-6">
             {/* Current Plan */}
-            <Card>
+            <Card className={subscription ? 'border-primary/50 bg-primary/5' : ''}>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex items-center gap-3">
                     <CardTitle>Current Plan</CardTitle>
-                    <CardDescription>
-                      Your current subscription details
-                    </CardDescription>
+                    {subscription && getStatusBadge(subscription.status, subscription.cancelAtPeriodEnd)}
                   </div>
-                  {subscription && getStatusBadge(subscription.status, subscription.cancelAtPeriodEnd)}
                 </div>
               </CardHeader>
               <CardContent>
                 {subscription ? (
                   <div className="space-y-6">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Plan</p>
-                        <p className="text-lg font-semibold">{subscription.planName}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Price</p>
-                        <p className="text-lg font-semibold">
-                          {formatPrice(subscription.planPrice, subscription.planCurrency, subscription.planInterval)}
+                    <div className="flex items-baseline gap-4">
+                      <h3 className="text-3xl font-bold">{subscription.planName}</h3>
+                      <span className="text-xl text-muted-foreground">
+                        {formatPrice(subscription.planPrice, subscription.planCurrency, subscription.planInterval)}
+                        {subscription.planInterval === 'year' && (
+                          <span className="text-sm ml-1">
+                            ({formatAnnualTotal(subscription.planPrice, subscription.planCurrency)})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3 text-sm">
+                      <div className="rounded-lg border p-3 bg-background">
+                        <p className="text-muted-foreground mb-1">Current Period</p>
+                        <p className="font-medium">
+                          {formatDate(subscription.currentPeriodStart)}
                         </p>
+                        <p className="text-muted-foreground">to {formatDate(subscription.currentPeriodEnd)}</p>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Current Period</p>
-                        <p className="text-sm">
-                          {formatDate(subscription.currentPeriodStart)} - {formatDate(subscription.currentPeriodEnd)}
+                      <div className="rounded-lg border p-3 bg-background">
+                        <p className="text-muted-foreground mb-1">
+                          {subscription.cancelAtPeriodEnd ? 'Ends On' : 'Next Renewal'}
                         </p>
+                        <p className="font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          {subscription.cancelAtPeriodEnd ? 'Ends On' : 'Renews On'}
-                        </p>
-                        <p className="text-sm">{formatDate(subscription.currentPeriodEnd)}</p>
+                      <div className="rounded-lg border p-3 bg-background">
+                        <p className="text-muted-foreground mb-1">Billing Cycle</p>
+                        <p className="font-medium capitalize">{subscription.planInterval === 'year' ? 'Annual' : 'Monthly'}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 pt-2">
                       {subscription.cancelAtPeriodEnd && (
                         <Button
                           onClick={handleReactivate}
@@ -372,76 +481,132 @@ export default function BillingPage() {
             {/* Available Plans */}
             <Card>
               <CardHeader>
-                <CardTitle>Available Plans</CardTitle>
-                <CardDescription>
-                  {subscription ? 'Upgrade or change your plan' : 'Choose a plan to get started'}
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Available Plans</CardTitle>
+                    <CardDescription>
+                      {subscription ? 'Upgrade or change your plan' : 'Choose a plan to get started'}
+                    </CardDescription>
+                  </div>
+                  {/* Billing Period Toggle */}
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-medium transition-colors ${billingPeriod === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      Monthly
+                    </span>
+                    <button
+                      onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
+                      className="relative h-6 w-11 rounded-full bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      role="switch"
+                      aria-checked={billingPeriod === 'annual'}
+                    >
+                      <span
+                        className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-primary shadow-sm transition-transform duration-200 ${
+                          billingPeriod === 'annual' ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-sm font-medium transition-colors ${billingPeriod === 'annual' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        Annual
+                      </span>
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                        Save up to 34%
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {plansLoading ? (
                   <div className="grid gap-4 md:grid-cols-3">
                     {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-48 w-full" />
+                      <Skeleton key={i} className="h-64 w-full" />
                     ))}
                   </div>
                 ) : (
                   <div className="grid gap-4 md:grid-cols-3 items-stretch">
-                    {plans.map((plan) => (
-                      <div
-                        key={plan.id}
-                        className={`relative rounded-lg border p-4 flex flex-col ${
-                          isCurrentPlan(plan) ? 'border-primary bg-primary/5' : ''
-                        }`}
-                      >
-                        {isCurrentPlan(plan) && (
-                          <Badge className="absolute -top-2 right-2 bg-primary">
-                            Current
-                          </Badge>
-                        )}
-                        <div className="mb-4">
-                          <h3 className="font-semibold">{plan.name}</h3>
-                          <p className="text-2xl font-bold mt-1">
-                            {formatPrice(plan.price, plan.currency, plan.interval)}
-                          </p>
-                        </div>
-                        <ul className="space-y-2 text-sm text-muted-foreground mb-4 flex-1">
-                          {getPlanFeatures(plan).map((feature, i) => (
-                            <li key={i} className="flex items-center gap-2">
-                              <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    {planGroups.map((group) => {
+                      const plan = billingPeriod === 'annual' ? group.annual : group.monthly;
+                      if (!plan) return null;
+
+                      const savings = getAnnualSavings(group);
+                      const isCurrent = isCurrentPlan(plan);
+                      const isUpgradeAction = isUpgrade(plan);
+
+                      return (
+                        <div
+                          key={group.baseName}
+                          className={`relative rounded-lg border p-4 flex flex-col ${
+                            isCurrent ? 'border-primary bg-primary/5' : ''
+                          }`}
+                        >
+                          {isCurrent && (
+                            <Badge className="absolute -top-2 right-2 bg-primary">
+                              Current
+                            </Badge>
+                          )}
+                          {billingPeriod === 'annual' && savings && !isCurrent && (
+                            <Badge className="absolute -top-2 left-2 bg-green-600">
+                              Save {savings}%
+                            </Badge>
+                          )}
+                          <div className="mb-4">
+                            <h3 className="font-semibold">{group.baseName}</h3>
+                            <p className="text-2xl font-bold mt-1">
+                              {formatPrice(plan.price, plan.currency, plan.interval)}
+                            </p>
+                            {billingPeriod === 'annual' && (
+                              <p className="text-sm text-muted-foreground">
+                                {formatAnnualTotal(plan.price, plan.currency)}
+                              </p>
+                            )}
+                          </div>
+                          <ul className="space-y-2 text-sm text-muted-foreground mb-4 flex-1">
+                            {getPlanFeatures(plan, group.baseName).map((feature, i) => (
+                              <li key={i} className="flex items-center gap-2">
+                                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                {feature}
+                              </li>
+                            ))}
+                            {/* Overage pricing */}
+                            <li className="flex items-center gap-2 pt-2 border-t">
+                              <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               </svg>
-                              {feature}
+                              <span>$0.02/ticket overage</span>
                             </li>
-                          ))}
-                        </ul>
-                        {!isCurrentPlan(plan) && (
-                          <Button
-                            className="w-full"
-                            variant={isUpgrade(plan) ? 'default' : 'outline'}
-                            onClick={() => {
-                              if (isUpgrade(plan)) {
-                                handleUpgrade(plan.id);
-                              } else {
-                                handleDowngrade(plan);
-                              }
-                            }}
-                            disabled={upgradingPlanId !== null || (!isUpgrade(plan) && (subscription?.cancelAtPeriodEnd || !!getDowngradeBlockReason(plan)))}
-                            title={!isUpgrade(plan) ? getDowngradeBlockReason(plan) || undefined : undefined}
-                          >
-                            {upgradingPlanId === plan.id
-                              ? 'Processing...'
-                              : isUpgrade(plan)
-                              ? 'Upgrade'
-                              : 'Downgrade'}
-                          </Button>
-                        )}
-                        {isCurrentPlan(plan) && (
-                          <Button className="w-full" variant="outline" disabled>
-                            Current Plan
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+                          </ul>
+                          {!isCurrent && (
+                            <Button
+                              className="w-full"
+                              variant={isUpgradeAction ? 'default' : 'outline'}
+                              onClick={() => {
+                                if (isUpgradeAction) {
+                                  handleUpgrade(plan.id);
+                                } else {
+                                  handleDowngrade(plan);
+                                }
+                              }}
+                              disabled={upgradingPlanId !== null || (!isUpgradeAction && (subscription?.cancelAtPeriodEnd || !!getDowngradeBlockReason(plan)))}
+                              title={!isUpgradeAction ? getDowngradeBlockReason(plan) || undefined : undefined}
+                            >
+                              {upgradingPlanId === plan.id
+                                ? 'Processing...'
+                                : isUpgradeAction
+                                ? 'Upgrade'
+                                : 'Downgrade'}
+                            </Button>
+                          )}
+                          {isCurrent && (
+                            <Button className="w-full" variant="outline" disabled>
+                              Current Plan
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -492,6 +657,12 @@ export default function BillingPage() {
                         />
                       </div>
                     )}
+                    {usageData.ticketCount > (usageData.planLimit || 0) && usageData.planLimit && (
+                      <p className="text-sm text-amber-600">
+                        You&apos;re {usageData.ticketCount - usageData.planLimit} tickets over your limit.
+                        Overage charges: ${((usageData.ticketCount - usageData.planLimit) * 0.02).toFixed(2)}
+                      </p>
+                    )}
                     {usageData.billingPeriodStart && (
                       <p className="text-xs text-muted-foreground">
                         Period started: {formatDate(usageData.billingPeriodStart)}
@@ -502,6 +673,86 @@ export default function BillingPage() {
                   <p className="text-sm text-muted-foreground">
                     No usage data available.
                   </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Invoice History */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Invoice History</CardTitle>
+                <CardDescription>
+                  Your past payments and invoices
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {invoicesLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : invoices.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      No invoices yet. Your payment history will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {invoices.map((invoice: Invoice) => (
+                        <TableRow key={invoice.id}>
+                          <TableCell className="font-medium">
+                            {invoice.number || invoice.id.slice(-8)}
+                          </TableCell>
+                          <TableCell>{formatShortDate(invoice.created)}</TableCell>
+                          <TableCell>
+                            {formatShortDate(invoice.periodStart)} - {formatShortDate(invoice.periodEnd)}
+                          </TableCell>
+                          <TableCell>
+                            {formatInvoiceAmount(invoice.amountPaid || invoice.amountDue, invoice.currency)}
+                          </TableCell>
+                          <TableCell>{getInvoiceStatusBadge(invoice.status)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              {invoice.invoiceUrl && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => window.open(invoice.invoiceUrl!, '_blank')}
+                                  title="View invoice"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {invoice.invoicePdf && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => window.open(invoice.invoicePdf!, '_blank')}
+                                  title="Download PDF"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
               </CardContent>
             </Card>

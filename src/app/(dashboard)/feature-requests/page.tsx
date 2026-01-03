@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { ChevronUp, Plus, Lightbulb } from 'lucide-react';
+import { ChevronUp, Plus, Lightbulb, X, Image as ImageIcon } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
   new: 'bg-blue-100 text-blue-800',
@@ -62,6 +62,8 @@ export default function FeatureRequestsPage() {
   const [newFeatureDetails, setNewFeatureDetails] = useState('');
   const [newWhyItMatters, setNewWhyItMatters] = useState('');
   const [newCategory, setNewCategory] = useState<FeatureCategory | ''>('');
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [newImages, setNewImages] = useState<Array<{ url: string; name?: string }>>([]);
 
   const { data: requestsData, isLoading, error } = useFeatureRequests({
     status: statusFilter === 'all' ? undefined : statusFilter,
@@ -92,6 +94,7 @@ export default function FeatureRequestsPage() {
         currentBehavior: newCurrentBehavior.trim() || undefined,
         whyItMatters: newWhyItMatters.trim() || undefined,
         category: newCategory || undefined,
+        images: newImages.length > 0 ? newImages : undefined,
       });
       toast.success('Feature request submitted');
       setCreateDialogOpen(false);
@@ -100,9 +103,26 @@ export default function FeatureRequestsPage() {
       setNewFeatureDetails('');
       setNewWhyItMatters('');
       setNewCategory('');
+      setNewImages([]);
+      setNewImageUrl('');
     } catch {
       toast.error('Failed to submit feature request');
     }
+  };
+
+  const handleAddImage = () => {
+    if (!newImageUrl.trim()) return;
+    try {
+      new URL(newImageUrl); // Validate URL
+      setNewImages([...newImages, { url: newImageUrl.trim() }]);
+      setNewImageUrl('');
+    } catch {
+      toast.error('Please enter a valid URL');
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setNewImages(newImages.filter((_, i) => i !== index));
   };
 
   const handleVote = async (request: FeatureRequest) => {
@@ -239,6 +259,25 @@ export default function FeatureRequestsPage() {
                             {request.featureDetails || request.description}
                           </p>
                         )}
+                        {request.images && request.images.length > 0 && (
+                          <div className="flex gap-2 mt-2">
+                            {request.images.map((img, i) => (
+                              <a
+                                key={i}
+                                href={img.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                              >
+                                <img
+                                  src={img.url}
+                                  alt={img.name || `Image ${i + 1}`}
+                                  className="h-12 w-12 object-cover rounded border hover:opacity-80 transition-opacity"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                         {request.category && (
                           <Badge variant="outline" className="mt-2 text-xs">
                             {request.category}
@@ -327,6 +366,43 @@ export default function FeatureRequestsPage() {
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="images">
+                Images <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="images"
+                  placeholder="Paste image URL (e.g., screenshot, mockup)"
+                  value={newImageUrl}
+                  onChange={(e) => setNewImageUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImage())}
+                />
+                <Button type="button" variant="outline" onClick={handleAddImage}>
+                  <ImageIcon className="h-4 w-4" />
+                </Button>
+              </div>
+              {newImages.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {newImages.map((img, i) => (
+                    <div key={i} className="relative group">
+                      <img
+                        src={img.url}
+                        alt={img.name || `Image ${i + 1}`}
+                        className="h-16 w-16 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(i)}
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

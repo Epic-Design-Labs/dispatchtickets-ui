@@ -7,6 +7,7 @@ export const billingKeys = {
   plans: ['plans'] as const,
   subscription: ['subscription'] as const,
   usage: ['usage'] as const,
+  invoices: ['invoices'] as const,
 };
 
 export function usePlans() {
@@ -61,5 +62,13 @@ export function useReactivateSubscription() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billingKeys.subscription });
     },
+  });
+}
+
+export function useInvoices(limit?: number) {
+  return useQuery({
+    queryKey: [...billingKeys.invoices, limit],
+    queryFn: () => billingApi.getInvoices(limit),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
