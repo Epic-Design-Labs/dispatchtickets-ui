@@ -8,7 +8,7 @@ import {
   useVoteFeatureRequest,
   useUnvoteFeatureRequest,
 } from '@/lib/hooks';
-import { FeatureRequest } from '@/lib/api/feature-requests';
+import { FeatureRequest, FeatureCategory } from '@/lib/api/feature-requests';
 import { Header } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +58,10 @@ export default function FeatureRequestsPage() {
   const [sortBy, setSortBy] = useState<string>('votes');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
+  const [newCurrentBehavior, setNewCurrentBehavior] = useState('');
+  const [newFeatureDetails, setNewFeatureDetails] = useState('');
+  const [newWhyItMatters, setNewWhyItMatters] = useState('');
+  const [newCategory, setNewCategory] = useState<FeatureCategory | ''>('');
 
   const { data: requestsData, isLoading, error } = useFeatureRequests({
     status: statusFilter === 'all' ? undefined : statusFilter,
@@ -77,16 +80,26 @@ export default function FeatureRequestsPage() {
       toast.error('Please enter a title');
       return;
     }
+    if (!newFeatureDetails.trim()) {
+      toast.error('Please enter feature details');
+      return;
+    }
 
     try {
       await createRequest.mutateAsync({
         title: newTitle.trim(),
-        description: newDescription.trim() || undefined,
+        featureDetails: newFeatureDetails.trim(),
+        currentBehavior: newCurrentBehavior.trim() || undefined,
+        whyItMatters: newWhyItMatters.trim() || undefined,
+        category: newCategory || undefined,
       });
       toast.success('Feature request submitted');
       setCreateDialogOpen(false);
       setNewTitle('');
-      setNewDescription('');
+      setNewCurrentBehavior('');
+      setNewFeatureDetails('');
+      setNewWhyItMatters('');
+      setNewCategory('');
     } catch {
       toast.error('Failed to submit feature request');
     }
@@ -221,10 +234,15 @@ export default function FeatureRequestsPage() {
                             {statusLabels[request.status] || request.status}
                           </Badge>
                         </div>
-                        {request.description && (
+                        {(request.featureDetails || request.description) && (
                           <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                            {request.description}
+                            {request.featureDetails || request.description}
                           </p>
+                        )}
+                        {request.category && (
+                          <Badge variant="outline" className="mt-2 text-xs">
+                            {request.category}
+                          </Badge>
                         )}
                         <p className="mt-2 text-xs text-muted-foreground">
                           {new Date(request.createdAt).toLocaleDateString()}
@@ -241,40 +259,74 @@ export default function FeatureRequestsPage() {
 
       {/* Create Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Submit Feature Request</DialogTitle>
             <DialogDescription>
               Suggest a new feature or improvement. Other users can vote on your request.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
             <div className="grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
-                placeholder="Short, descriptive title"
+                placeholder="Brief summary of your request"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleCreate();
-                  }
-                }}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">
-                Description <span className="text-muted-foreground">(optional)</span>
+              <Label htmlFor="currentBehavior">
+                Current Behavior <span className="text-muted-foreground">(optional)</span>
               </Label>
               <Textarea
-                id="description"
-                placeholder="Describe your feature request in detail..."
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
+                id="currentBehavior"
+                placeholder="What currently happens that you'd like to change?"
+                value={newCurrentBehavior}
+                onChange={(e) => setNewCurrentBehavior(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="featureDetails">Feature Details</Label>
+              <Textarea
+                id="featureDetails"
+                placeholder="Detailed description of the feature you'd like to see..."
+                value={newFeatureDetails}
+                onChange={(e) => setNewFeatureDetails(e.target.value)}
                 rows={4}
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="whyItMatters">
+                Why It Matters <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Textarea
+                id="whyItMatters"
+                placeholder="Why is this feature important to you?"
+                value={newWhyItMatters}
+                onChange={(e) => setNewWhyItMatters(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="category">
+                Category <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Select value={newCategory} onValueChange={(v) => setNewCategory(v as FeatureCategory)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="billing">Billing</SelectItem>
+                  <SelectItem value="auth">Auth</SelectItem>
+                  <SelectItem value="api">API</SelectItem>
+                  <SelectItem value="dashboard">Dashboard</SelectItem>
+                  <SelectItem value="analytics">Analytics</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
