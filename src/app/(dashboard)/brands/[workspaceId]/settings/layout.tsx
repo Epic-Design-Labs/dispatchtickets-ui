@@ -8,6 +8,7 @@ const settingsNav = [
   { title: 'General', href: '' },
   { title: 'Email', href: '/email' },
   { title: 'Integrations', href: '/integrations' },
+  { title: 'Webhooks', href: '/webhooks' },
 ];
 
 export default function SettingsLayout({
