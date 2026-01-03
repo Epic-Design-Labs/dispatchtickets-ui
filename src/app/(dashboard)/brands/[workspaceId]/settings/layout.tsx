@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 const settingsNav = [
   { title: 'General', href: '' },
   { title: 'Email', href: '/email' },
+  { title: 'Integrations', href: '/integrations' },
 ];
 
 export default function SettingsLayout({
