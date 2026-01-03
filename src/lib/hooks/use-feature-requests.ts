@@ -35,7 +35,11 @@ export function useCreateFeatureRequest() {
     mutationFn: (data: CreateFeatureRequestInput) =>
       featureRequestsApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: featureRequestKeys.all });
+      // Force refetch all feature request queries
+      queryClient.invalidateQueries({
+        queryKey: ['feature-requests'],
+        refetchType: 'all',
+      });
     },
   });
 }
