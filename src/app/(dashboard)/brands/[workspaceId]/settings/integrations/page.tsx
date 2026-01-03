@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Copy, Plus, Trash2, RotateCcw, Code, Zap, ExternalLink } from 'lucide-react';
+import { Copy, Plus, Trash2, RotateCcw, Code, Zap, ExternalLink, ShoppingCart } from 'lucide-react';
 import { useForms, useCreateForm, useUpdateForm, useDeleteForm } from '@/lib/hooks';
 import { FormToken, CreateFormTokenDto } from '@/lib/api/forms';
 
@@ -404,6 +404,72 @@ Content-Type: application/json`}
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* E-commerce Connections Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle>E-commerce Connections</CardTitle>
+              <CardDescription>
+                Connect your e-commerce platform to sync customer data and create tickets from orders
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* BigCommerce */}
+            <div className="border rounded-lg p-6 relative overflow-hidden">
+              <div className="absolute top-3 right-3">
+                <Badge variant="secondary">Coming Soon</Badge>
+              </div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-10 w-10 rounded bg-[#121118] flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6 text-white" fill="currentColor">
+                    <path d="M12.006 18.985L3.607 12.88l1.876-1.397 6.523 4.854 6.52-4.856 1.877 1.4-8.397 6.104zm0-4.166L3.607 8.714l8.399-6.103 8.397 6.103-8.397 6.105z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold">BigCommerce</h3>
+                  <p className="text-sm text-muted-foreground">Sync orders and customers</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Automatically create tickets from BigCommerce orders and access customer purchase history.
+              </p>
+              <Button variant="outline" className="mt-4 w-full" disabled>
+                Connect BigCommerce
+              </Button>
+            </div>
+
+            {/* Shopify */}
+            <div className="border rounded-lg p-6 relative overflow-hidden">
+              <div className="absolute top-3 right-3">
+                <Badge variant="secondary">Coming Soon</Badge>
+              </div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-10 w-10 rounded bg-[#95BF47] flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6 text-white" fill="currentColor">
+                    <path d="M15.337 3.415c-.022-.165-.181-.247-.301-.259-.12-.011-2.448-.18-2.448-.18l-1.8-1.8c-.18-.18-.533-.126-.67-.087L8.93 1.5c-.373-1.07-1.03-2.053-2.185-2.053h-.101C6.252-.782 5.786-1 5.384-1 2.079-1-.001 2.456-.001 6.796c0 3.327 1.16 6.326 3.108 8.216l.053.05 3.625 12.938 7.168-1.55s-3.886-25.928-3.916-26.128l5.3.093zm-4.2-1.7l-.938.292c-.01-.078-.02-.155-.034-.232-.343-1.656-1.496-2.455-2.768-2.455h-.003c-.08 0-.16.006-.24.016.036-.046.072-.09.11-.132.713-.796 1.62-1.183 2.698-1.153.853.025 1.713.295 2.173.538-.316.97-.651 2.365-.998 3.126zM8.047.896c.082-.022.168-.032.255-.032.912 0 1.778.69 2.177 1.865.254.748.41 1.68.492 2.414l-2.47.765c.264-1.615.03-3.663-.454-5.012zm-1.8.587c.14-.425.34-.807.59-1.123.089.025.172.07.244.134.797.717 1.13 1.94.863 3.36l-2.11.654c.123-.955.258-2.157.413-3.025z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Shopify</h3>
+                  <p className="text-sm text-muted-foreground">Sync orders and customers</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Automatically create tickets from Shopify orders and access customer purchase history.
+              </p>
+              <Button variant="outline" className="mt-4 w-full" disabled>
+                Connect Shopify
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
