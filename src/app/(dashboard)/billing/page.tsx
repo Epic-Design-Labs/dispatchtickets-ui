@@ -94,16 +94,33 @@ export default function BillingPage() {
     }
   };
 
-  const formatPrice = (price: number, currency: string, interval: string) => {
+  const formatPrice = (price: number | null | undefined, currency: string, interval: string) => {
+    // If price is 0 or null, try to get it from the plan in plansData
+    let displayPrice = price;
+    if ((!price || price === 0) && subscription && plansData) {
+      const matchingPlan = plansData.plans.find(p => p.id === subscription.planId);
+      if (matchingPlan) {
+        displayPrice = matchingPlan.price;
+      }
+    }
+
+    if (!displayPrice && displayPrice !== 0) return 'Not available';
+
     const formatted = new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency.toUpperCase(),
-    }).format(price / 100);
-    return `${formatted}/${interval}`;
+      currency: currency?.toUpperCase() || 'USD',
+    }).format((displayPrice || 0) / 100);
+    return `${formatted}/${interval || 'month'}`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'Not available';
+    const date = new Date(dateString);
+    // Check for invalid date or Unix epoch (indicates null/undefined from API)
+    if (isNaN(date.getTime()) || date.getFullYear() < 2000) {
+      return 'Not available';
+    }
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
