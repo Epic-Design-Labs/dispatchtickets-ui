@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useBrands, useCreateBrand, useUsage } from '@/lib/hooks';
@@ -40,13 +40,6 @@ export default function BrandsPage() {
     usageData?.brandLimit !== -1 &&
     usageData?.brandCount !== undefined &&
     usageData.brandCount >= usageData.brandLimit;
-
-  // Auto-redirect to single brand
-  useEffect(() => {
-    if (!isLoading && brands && brands.length === 1) {
-      router.replace(`/brands/${brands[0].id}`);
-    }
-  }, [brands, isLoading, router]);
 
   const handleCreateBrand = async () => {
     if (!newBrandName.trim()) {
