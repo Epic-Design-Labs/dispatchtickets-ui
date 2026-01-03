@@ -60,3 +60,38 @@ export interface TicketFilters {
   limit?: number;
   isSpam?: boolean;
 }
+
+// Dashboard types for cross-workspace tickets
+export interface DashboardTicketFilters extends TicketFilters {
+  workspaceIds?: string[];
+  customerId?: string;
+}
+
+export interface WorkspaceInfo {
+  id: string;
+  name: string;
+  slug: string;
+  ticketPrefix: string;
+  iconUrl?: string;
+}
+
+export interface DashboardTicket extends Ticket {
+  workspace: WorkspaceInfo;
+}
+
+export interface WorkspaceStats {
+  name: string;
+  prefix: string;
+  total: number;
+  open: number;
+  pending: number;
+}
+
+export interface DashboardStats {
+  total: number;
+  open: number;
+  pending: number;
+  resolved: number;
+  closed: number;
+  byWorkspace: Record<string, WorkspaceStats>;
+}

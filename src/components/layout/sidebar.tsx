@@ -110,6 +110,27 @@ export function Sidebar({ workspaceId }: SidebarProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">
+        {/* Global Dashboard */}
+        <div className="px-3 mb-4">
+          <Button
+            variant={pathname === '/dashboard' || pathname.startsWith('/dashboard') ? 'secondary' : 'ghost'}
+            className={cn(
+              'w-full justify-start gap-2',
+              (pathname === '/dashboard' || pathname.startsWith('/dashboard')) && 'bg-secondary'
+            )}
+            asChild
+          >
+            <Link href="/dashboard">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+              </svg>
+              Dashboard
+            </Link>
+          </Button>
+        </div>
+
+        <Separator className="mb-4" />
+
         <div className="px-3">
           <BrandSwitcher />
         </div>

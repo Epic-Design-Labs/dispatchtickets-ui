@@ -114,8 +114,8 @@ export default function IntegrationsPage() {
         formId: selectedForm.id,
         data: {
           name: editFormName.trim(),
-          successUrl: editFormSuccessUrl.trim() || null,
-          errorUrl: editFormErrorUrl.trim() || null,
+          successUrl: editFormSuccessUrl.trim() || undefined,
+          errorUrl: editFormErrorUrl.trim() || undefined,
         },
       });
       toast.success('Form updated successfully');

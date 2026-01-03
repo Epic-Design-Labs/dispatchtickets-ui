@@ -10,3 +10,4 @@ export * from './use-companies';
 export * from './use-feature-requests';
 export * from './use-domains';
 export * from './use-forms';
+export * from './use-dashboard';
