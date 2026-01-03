@@ -394,7 +394,7 @@ export default function BillingPage() {
         {!subscriptionLoading && !subscriptionError && (
           <div className="space-y-6">
             {/* Current Plan */}
-            <Card className={subscription ? 'border-primary/50 bg-primary/5' : ''}>
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -418,27 +418,22 @@ export default function BillingPage() {
                       </span>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-3 text-sm">
-                      <div className="rounded-lg border p-3 bg-background">
-                        <p className="text-muted-foreground mb-1">Current Period</p>
-                        <p className="font-medium">
-                          {formatDate(subscription.currentPeriodStart)}
-                        </p>
-                        <p className="text-muted-foreground">to {formatDate(subscription.currentPeriodEnd)}</p>
-                      </div>
-                      <div className="rounded-lg border p-3 bg-background">
-                        <p className="text-muted-foreground mb-1">
-                          {subscription.cancelAtPeriodEnd ? 'Ends On' : 'Next Renewal'}
-                        </p>
-                        <p className="font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
-                      </div>
-                      <div className="rounded-lg border p-3 bg-background">
+                    <div className="flex flex-wrap gap-6 text-sm">
+                      <div>
                         <p className="text-muted-foreground mb-1">Billing Cycle</p>
                         <p className="font-medium capitalize">{subscription.planInterval === 'year' ? 'Annual' : 'Monthly'}</p>
                       </div>
+                      {subscription.currentPeriodEnd && (
+                        <div>
+                          <p className="text-muted-foreground mb-1">
+                            {subscription.cancelAtPeriodEnd ? 'Ends On' : 'Next Renewal'}
+                          </p>
+                          <p className="font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-4 pt-2">
+                    <div className="flex items-center gap-4">
                       {subscription.cancelAtPeriodEnd && (
                         <Button
                           onClick={handleReactivate}
