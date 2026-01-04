@@ -23,14 +23,14 @@ import { Search, Building2, Plus } from 'lucide-react';
 
 export default function CompaniesPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
   const [search, setSearch] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState('');
   const [newCompanyDomain, setNewCompanyDomain] = useState('');
 
-  const { data, isLoading } = useCompanies(workspaceId, { search: search || undefined });
-  const createCompany = useCreateCompany(workspaceId);
+  const { data, isLoading } = useCompanies(brandId, { search: search || undefined });
+  const createCompany = useCreateCompany(brandId);
 
   const companies = data?.data || [];
 
@@ -129,7 +129,7 @@ export default function CompaniesPage() {
                         </p>
                       </div>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/brands/${workspaceId}/companies/${company.id}`}>
+                        <Link href={`/brands/${brandId}/companies/${company.id}`}>
                           View
                         </Link>
                       </Button>

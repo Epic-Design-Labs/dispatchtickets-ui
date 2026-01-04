@@ -32,7 +32,7 @@ import { ArrowLeft, Building2, Globe, Trash2, Users, Mail } from 'lucide-react';
 export default function CompanyDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
   const companyId = params.companyId as string;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -40,10 +40,10 @@ export default function CompanyDetailPage() {
   const [editDomain, setEditDomain] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const { data: company, isLoading } = useCompany(workspaceId, companyId);
-  const { data: customersData, isLoading: customersLoading } = useCustomers(workspaceId);
-  const updateCompany = useUpdateCompany(workspaceId, companyId);
-  const deleteCompany = useDeleteCompany(workspaceId);
+  const { data: company, isLoading } = useCompany(brandId, companyId);
+  const { data: customersData, isLoading: customersLoading } = useCustomers(brandId);
+  const updateCompany = useUpdateCompany(brandId, companyId);
+  const deleteCompany = useDeleteCompany(brandId);
 
   // Filter customers belonging to this company
   const companyCustomers = customersData?.data?.filter(
@@ -73,7 +73,7 @@ export default function CompanyDetailPage() {
     try {
       await deleteCompany.mutateAsync(companyId);
       toast.success('Company deleted');
-      router.push(`/brands/${workspaceId}/companies`);
+      router.push(`/brands/${brandId}/companies`);
     } catch {
       toast.error('Failed to delete company');
     }
@@ -121,7 +121,7 @@ export default function CompanyDetailPage() {
         {/* Breadcrumb */}
         <div className="mb-6">
           <Link
-            href={`/brands/${workspaceId}/companies`}
+            href={`/brands/${brandId}/companies`}
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -256,7 +256,7 @@ export default function CompanyDetailPage() {
                   {companyCustomers.map((customer) => (
                     <Link
                       key={customer.id}
-                      href={`/brands/${workspaceId}/customers/${customer.id}`}
+                      href={`/brands/${brandId}/customers/${customer.id}`}
                       className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                     >
                       <Avatar className="h-10 w-10">

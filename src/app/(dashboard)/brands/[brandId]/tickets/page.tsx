@@ -12,17 +12,17 @@ import { TicketFilters as TicketFiltersType } from '@/types';
 
 export default function BrandDashboardPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
   const [filters, setFilters] = useState<TicketFiltersType>({});
 
-  const { data: brand, isLoading: brandLoading } = useBrand(workspaceId);
+  const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   // Fetch all tickets for stats (without filters)
-  const { data: allTicketsData, isLoading: allTicketsLoading } = useTickets(workspaceId, {});
+  const { data: allTicketsData, isLoading: allTicketsLoading } = useTickets(brandId, {});
   // Fetch filtered tickets for display
-  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(workspaceId, filters);
+  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, filters);
 
   // Enable real-time notifications for ticket updates
-  useTicketNotifications(workspaceId);
+  useTicketNotifications(brandId);
 
   const isLoading = brandLoading || allTicketsLoading;
 
@@ -167,7 +167,7 @@ export default function BrandDashboardPage() {
               </span>
             )}
           </h3>
-          <CreateTicketDialog workspaceId={workspaceId}>
+          <CreateTicketDialog brandId={brandId}>
             <Button size="sm">
               <svg
                 className="mr-2 h-4 w-4"
@@ -195,7 +195,7 @@ export default function BrandDashboardPage() {
         {/* Ticket Table */}
         <TicketTable
           tickets={tickets}
-          workspaceId={workspaceId}
+          brandId={brandId}
           isLoading={ticketsLoading}
         />
 

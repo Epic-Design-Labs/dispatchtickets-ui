@@ -82,7 +82,7 @@ export default function DashboardPage() {
   // Build filters based on view
   const filters: DashboardTicketFilters = useMemo(() => {
     const baseFilters: DashboardTicketFilters = {
-      workspaceIds: selectedBrands.length > 0 ? selectedBrands : undefined,
+      brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
       limit: 50,
     };
 
@@ -198,7 +198,7 @@ export default function DashboardPage() {
                   key={ticket.id}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() =>
-                    router.push(`/brands/${ticket.workspaceId}/tickets/${ticket.id}`)
+                    router.push(`/brands/${ticket.brandId}/tickets/${ticket.id}`)
                   }
                 >
                   <TableCell>
@@ -206,7 +206,7 @@ export default function DashboardPage() {
                       variant="outline"
                       className="font-mono text-xs"
                     >
-                      {ticket.workspace.ticketPrefix}
+                      {ticket.brand.ticketPrefix}
                     </Badge>
                   </TableCell>
                   <TableCell>

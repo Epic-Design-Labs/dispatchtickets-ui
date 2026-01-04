@@ -2,25 +2,25 @@ import { apiClient } from './client';
 import { Webhook, CreateWebhookInput } from '@/types';
 
 export const webhooksApi = {
-  list: async (workspaceId: string): Promise<Webhook[]> => {
+  list: async (brandId: string): Promise<Webhook[]> => {
     const response = await apiClient.get<Webhook[]>(
-      `/workspaces/${workspaceId}/webhooks`
+      `/brands/${brandId}/webhooks`
     );
     return response.data;
   },
 
   create: async (
-    workspaceId: string,
+    brandId: string,
     data: CreateWebhookInput
   ): Promise<Webhook> => {
     const response = await apiClient.post<Webhook>(
-      `/workspaces/${workspaceId}/webhooks`,
+      `/brands/${brandId}/webhooks`,
       data
     );
     return response.data;
   },
 
-  delete: async (workspaceId: string, webhookId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/webhooks/${webhookId}`);
+  delete: async (brandId: string, webhookId: string): Promise<void> => {
+    await apiClient.delete(`/brands/${brandId}/webhooks/${webhookId}`);
   },
 };

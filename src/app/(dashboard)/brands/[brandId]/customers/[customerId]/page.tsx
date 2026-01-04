@@ -34,7 +34,7 @@ import { ArrowLeft, Building2, Mail, Trash2 } from 'lucide-react';
 export default function CustomerDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
   const customerId = params.customerId as string;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -43,12 +43,12 @@ export default function CustomerDetailPage() {
   const [editCompanyName, setEditCompanyName] = useState<string | undefined>();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const { data: customer, isLoading } = useCustomer(workspaceId, customerId);
-  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(workspaceId, {
+  const { data: customer, isLoading } = useCustomer(brandId, customerId);
+  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, {
     // Filter tickets by this customer's email
   });
-  const updateCustomer = useUpdateCustomer(workspaceId, customerId);
-  const deleteCustomer = useDeleteCustomer(workspaceId);
+  const updateCustomer = useUpdateCustomer(brandId, customerId);
+  const deleteCustomer = useDeleteCustomer(brandId);
 
   // Filter tickets for this customer
   const customerTickets = ticketsData?.data?.filter(
@@ -79,7 +79,7 @@ export default function CustomerDetailPage() {
     try {
       await deleteCustomer.mutateAsync(customerId);
       toast.success('Customer deleted');
-      router.push(`/brands/${workspaceId}/customers`);
+      router.push(`/brands/${brandId}/customers`);
     } catch {
       toast.error('Failed to delete customer');
     }
@@ -127,7 +127,7 @@ export default function CustomerDetailPage() {
         {/* Breadcrumb */}
         <div className="mb-6">
           <Link
-            href={`/brands/${workspaceId}/customers`}
+            href={`/brands/${brandId}/customers`}
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -213,7 +213,7 @@ export default function CustomerDetailPage() {
                 </div>
                 {isEditing ? (
                   <CompanyCombobox
-                    workspaceId={workspaceId}
+                    brandId={brandId}
                     value={editCompanyId}
                     companyName={editCompanyName}
                     onChange={(id, name) => {
@@ -224,7 +224,7 @@ export default function CustomerDetailPage() {
                   />
                 ) : customer.company ? (
                   <Link
-                    href={`/brands/${workspaceId}/companies/${customer.company.id}`}
+                    href={`/brands/${brandId}/companies/${customer.company.id}`}
                     className="text-primary hover:underline"
                   >
                     {customer.company.name}
@@ -268,7 +268,7 @@ export default function CustomerDetailPage() {
               ) : (
                 <TicketTable
                   tickets={customerTickets}
-                  workspaceId={workspaceId}
+                  brandId={brandId}
                   isLoading={ticketsLoading}
                 />
               )}

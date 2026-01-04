@@ -8,7 +8,7 @@ import {
 
 export const companiesApi = {
   list: async (
-    workspaceId: string,
+    brandId: string,
     params?: { search?: string; limit?: number; cursor?: string }
   ): Promise<PaginatedResponse<Company>> => {
     const searchParams = new URLSearchParams();
@@ -20,40 +20,40 @@ export const companiesApi = {
       });
     }
     const response = await apiClient.get<PaginatedResponse<Company>>(
-      `/workspaces/${workspaceId}/companies`,
+      `/brands/${brandId}/companies`,
       { params: searchParams }
     );
     return response.data;
   },
 
-  get: async (workspaceId: string, companyId: string): Promise<Company> => {
+  get: async (brandId: string, companyId: string): Promise<Company> => {
     const response = await apiClient.get<Company>(
-      `/workspaces/${workspaceId}/companies/${companyId}`
+      `/brands/${brandId}/companies/${companyId}`
     );
     return response.data;
   },
 
-  create: async (workspaceId: string, data: CreateCompanyInput): Promise<Company> => {
+  create: async (brandId: string, data: CreateCompanyInput): Promise<Company> => {
     const response = await apiClient.post<Company>(
-      `/workspaces/${workspaceId}/companies`,
+      `/brands/${brandId}/companies`,
       data
     );
     return response.data;
   },
 
   update: async (
-    workspaceId: string,
+    brandId: string,
     companyId: string,
     data: UpdateCompanyInput
   ): Promise<Company> => {
     const response = await apiClient.patch<Company>(
-      `/workspaces/${workspaceId}/companies/${companyId}`,
+      `/brands/${brandId}/companies/${companyId}`,
       data
     );
     return response.data;
   },
 
-  delete: async (workspaceId: string, companyId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/companies/${companyId}`);
+  delete: async (brandId: string, companyId: string): Promise<void> => {
+    await apiClient.delete(`/brands/${brandId}/companies/${companyId}`);
   },
 };

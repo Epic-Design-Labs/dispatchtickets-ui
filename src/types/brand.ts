@@ -1,4 +1,3 @@
-// Brand is the UI term for Workspace (backend still uses workspace)
 export interface Brand {
   id: string;
   accountId: string;
@@ -50,7 +49,3 @@ export interface UpdateBrandInput {
   fromEmail?: string;
 }
 
-// Aliases for backward compatibility with API code
-export type Workspace = Brand;
-export type CreateWorkspaceInput = CreateBrandInput;
-export type UpdateWorkspaceInput = UpdateBrandInput;

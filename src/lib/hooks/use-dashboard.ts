@@ -8,8 +8,8 @@ export const dashboardKeys = {
   all: ['dashboard'] as const,
   tickets: (filters?: DashboardTicketFilters) =>
     ['dashboard', 'tickets', filters] as const,
-  stats: (workspaceIds?: string[]) =>
-    ['dashboard', 'stats', workspaceIds] as const,
+  stats: (brandIds?: string[]) =>
+    ['dashboard', 'stats', brandIds] as const,
 };
 
 export function useDashboardTickets(filters?: DashboardTicketFilters) {
@@ -20,10 +20,10 @@ export function useDashboardTickets(filters?: DashboardTicketFilters) {
   });
 }
 
-export function useDashboardStats(workspaceIds?: string[]) {
+export function useDashboardStats(brandIds?: string[]) {
   return useQuery({
-    queryKey: dashboardKeys.stats(workspaceIds),
-    queryFn: () => dashboardApi.getStats(workspaceIds),
+    queryKey: dashboardKeys.stats(brandIds),
+    queryFn: () => dashboardApi.getStats(brandIds),
     staleTime: 60000, // Consider stats fresh for 1 minute
   });
 }

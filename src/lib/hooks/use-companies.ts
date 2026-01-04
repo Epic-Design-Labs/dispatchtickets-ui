@@ -5,67 +5,67 @@ import { companiesApi } from '@/lib/api';
 import { CreateCompanyInput, UpdateCompanyInput } from '@/types';
 
 export const companyKeys = {
-  all: (workspaceId: string) => ['companies', workspaceId] as const,
-  list: (workspaceId: string, params?: { search?: string }) =>
-    ['companies', workspaceId, 'list', params] as const,
-  detail: (workspaceId: string, companyId: string) =>
-    ['companies', workspaceId, companyId] as const,
+  all: (brandId: string) => ['companies', brandId] as const,
+  list: (brandId: string, params?: { search?: string }) =>
+    ['companies', brandId, 'list', params] as const,
+  detail: (brandId: string, companyId: string) =>
+    ['companies', brandId, companyId] as const,
 };
 
 export function useCompanies(
-  workspaceId: string,
+  brandId: string,
   params?: { search?: string }
 ) {
   return useQuery({
-    queryKey: companyKeys.list(workspaceId, params),
-    queryFn: () => companiesApi.list(workspaceId, params),
-    enabled: !!workspaceId,
+    queryKey: companyKeys.list(brandId, params),
+    queryFn: () => companiesApi.list(brandId, params),
+    enabled: !!brandId,
   });
 }
 
-export function useCompany(workspaceId: string, companyId: string) {
+export function useCompany(brandId: string, companyId: string) {
   return useQuery({
-    queryKey: companyKeys.detail(workspaceId, companyId),
-    queryFn: () => companiesApi.get(workspaceId, companyId),
-    enabled: !!workspaceId && !!companyId,
+    queryKey: companyKeys.detail(brandId, companyId),
+    queryFn: () => companiesApi.get(brandId, companyId),
+    enabled: !!brandId && !!companyId,
   });
 }
 
-export function useCreateCompany(workspaceId: string) {
+export function useCreateCompany(brandId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateCompanyInput) =>
-      companiesApi.create(workspaceId, data),
+      companiesApi.create(brandId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: companyKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: companyKeys.all(brandId) });
     },
   });
 }
 
-export function useUpdateCompany(workspaceId: string, companyId: string) {
+export function useUpdateCompany(brandId: string, companyId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: UpdateCompanyInput) =>
-      companiesApi.update(workspaceId, companyId, data),
+      companiesApi.update(brandId, companyId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: companyKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: companyKeys.all(brandId) });
       queryClient.invalidateQueries({
-        queryKey: companyKeys.detail(workspaceId, companyId),
+        queryKey: companyKeys.detail(brandId, companyId),
       });
     },
   });
 }
 
-export function useDeleteCompany(workspaceId: string) {
+export function useDeleteCompany(brandId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (companyId: string) =>
-      companiesApi.delete(workspaceId, companyId),
+      companiesApi.delete(brandId, companyId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: companyKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: companyKeys.all(brandId) });
     },
   });
 }

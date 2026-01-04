@@ -1,6 +1,6 @@
 export interface Customer {
   id: string;
-  workspaceId: string;
+  brandId: string;
   email: string;
   name?: string;
   avatarUrl?: string;
@@ -16,7 +16,7 @@ export interface Customer {
 
 export interface Company {
   id: string;
-  workspaceId: string;
+  brandId: string;
   name: string;
   domain?: string;
   metadata?: Record<string, unknown>;

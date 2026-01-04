@@ -14,10 +14,10 @@ import { Copy } from 'lucide-react';
 
 export default function SettingsPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
 
-  const { data: brand, isLoading } = useBrand(workspaceId);
-  const updateBrand = useUpdateBrand(workspaceId);
+  const { data: brand, isLoading } = useBrand(brandId);
+  const updateBrand = useUpdateBrand(brandId);
 
   const [name, setName] = useState('');
   const [ticketPrefix, setTicketPrefix] = useState('');
@@ -242,12 +242,12 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2 rounded-lg bg-muted p-4">
-              <code className="flex-1 text-sm text-muted-foreground">{workspaceId}</code>
+              <code className="flex-1 text-sm text-muted-foreground">{brandId}</code>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => copyToClipboard(workspaceId)}
+                onClick={() => copyToClipboard(brandId)}
               >
                 <Copy className="h-4 w-4" />
               </Button>

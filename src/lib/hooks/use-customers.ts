@@ -5,77 +5,77 @@ import { customersApi } from '@/lib/api';
 import { CreateCustomerInput, UpdateCustomerInput } from '@/types';
 
 export const customerKeys = {
-  all: (workspaceId: string) => ['customers', workspaceId] as const,
-  list: (workspaceId: string, params?: { search?: string; companyId?: string }) =>
-    ['customers', workspaceId, 'list', params] as const,
-  detail: (workspaceId: string, customerId: string) =>
-    ['customers', workspaceId, customerId] as const,
-  search: (workspaceId: string, query: string) =>
-    ['customers', workspaceId, 'search', query] as const,
+  all: (brandId: string) => ['customers', brandId] as const,
+  list: (brandId: string, params?: { search?: string; companyId?: string }) =>
+    ['customers', brandId, 'list', params] as const,
+  detail: (brandId: string, customerId: string) =>
+    ['customers', brandId, customerId] as const,
+  search: (brandId: string, query: string) =>
+    ['customers', brandId, 'search', query] as const,
 };
 
 export function useCustomers(
-  workspaceId: string,
+  brandId: string,
   params?: { search?: string; companyId?: string }
 ) {
   return useQuery({
-    queryKey: customerKeys.list(workspaceId, params),
-    queryFn: () => customersApi.list(workspaceId, params),
-    enabled: !!workspaceId,
+    queryKey: customerKeys.list(brandId, params),
+    queryFn: () => customersApi.list(brandId, params),
+    enabled: !!brandId,
   });
 }
 
-export function useCustomer(workspaceId: string, customerId: string) {
+export function useCustomer(brandId: string, customerId: string) {
   return useQuery({
-    queryKey: customerKeys.detail(workspaceId, customerId),
-    queryFn: () => customersApi.get(workspaceId, customerId),
-    enabled: !!workspaceId && !!customerId,
+    queryKey: customerKeys.detail(brandId, customerId),
+    queryFn: () => customersApi.get(brandId, customerId),
+    enabled: !!brandId && !!customerId,
   });
 }
 
-export function useCustomerSearch(workspaceId: string, query: string) {
+export function useCustomerSearch(brandId: string, query: string) {
   return useQuery({
-    queryKey: customerKeys.search(workspaceId, query),
-    queryFn: () => customersApi.search(workspaceId, query),
-    enabled: !!workspaceId && query.length >= 2,
+    queryKey: customerKeys.search(brandId, query),
+    queryFn: () => customersApi.search(brandId, query),
+    enabled: !!brandId && query.length >= 2,
   });
 }
 
-export function useCreateCustomer(workspaceId: string) {
+export function useCreateCustomer(brandId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateCustomerInput) =>
-      customersApi.create(workspaceId, data),
+      customersApi.create(brandId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: customerKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: customerKeys.all(brandId) });
     },
   });
 }
 
-export function useUpdateCustomer(workspaceId: string, customerId: string) {
+export function useUpdateCustomer(brandId: string, customerId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: UpdateCustomerInput) =>
-      customersApi.update(workspaceId, customerId, data),
+      customersApi.update(brandId, customerId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: customerKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: customerKeys.all(brandId) });
       queryClient.invalidateQueries({
-        queryKey: customerKeys.detail(workspaceId, customerId),
+        queryKey: customerKeys.detail(brandId, customerId),
       });
     },
   });
 }
 
-export function useDeleteCustomer(workspaceId: string) {
+export function useDeleteCustomer(brandId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (customerId: string) =>
-      customersApi.delete(workspaceId, customerId),
+      customersApi.delete(brandId, customerId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: customerKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: customerKeys.all(brandId) });
     },
   });
 }

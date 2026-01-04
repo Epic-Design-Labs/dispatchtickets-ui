@@ -8,16 +8,16 @@ import { toast } from 'sonner';
 import { Send, Clock, CheckCircle } from 'lucide-react';
 
 interface CommentEditorProps {
-  workspaceId: string;
+  brandId: string;
   ticketId: string;
 }
 
 type SubmitAction = 'comment' | 'pending' | 'resolved';
 
-export function CommentEditor({ workspaceId, ticketId }: CommentEditorProps) {
+export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const [body, setBody] = useState('');
   const [isInternal, setIsInternal] = useState(false);
-  const createComment = useCreateComment(workspaceId, ticketId);
+  const createComment = useCreateComment(brandId, ticketId);
   const { session } = useAuth();
   const { data: profile } = useProfile();
 

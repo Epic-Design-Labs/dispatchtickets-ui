@@ -38,18 +38,18 @@ import { Trash2, ShieldAlert, Building2, ChevronLeft, ChevronRight } from 'lucid
 export default function TicketDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
   const ticketId = params.ticketId as string;
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const { data: ticket, isLoading: ticketLoading } = useTicket(workspaceId, ticketId);
-  const { data: comments, isLoading: commentsLoading } = useComments(workspaceId, ticketId, { polling: true });
-  const { data: ticketsData } = useTickets(workspaceId, { status: 'open', limit: 100 });
-  const updateTicket = useUpdateTicket(workspaceId, ticketId);
-  const deleteTicket = useDeleteTicket(workspaceId);
-  const markAsSpam = useMarkAsSpam(workspaceId);
-  const updateCustomer = useUpdateCustomer(workspaceId, ticket?.customerId || '');
+  const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId);
+  const { data: comments, isLoading: commentsLoading } = useComments(brandId, ticketId, { polling: true });
+  const { data: ticketsData } = useTickets(brandId, { status: 'open', limit: 100 });
+  const updateTicket = useUpdateTicket(brandId, ticketId);
+  const deleteTicket = useDeleteTicket(brandId);
+  const markAsSpam = useMarkAsSpam(brandId);
+  const updateCustomer = useUpdateCustomer(brandId, ticket?.customerId || '');
 
   // Find prev/next tickets for j/k navigation
   const { prevTicketId, nextTicketId, currentIndex, totalCount } = useMemo(() => {
@@ -64,7 +64,7 @@ export default function TicketDetailPage() {
   }, [ticketsData, ticketId]);
 
   // Enable j/k keyboard navigation
-  const { goToPrev, goToNext } = useTicketNavigation(prevTicketId, nextTicketId, workspaceId);
+  const { goToPrev, goToNext } = useTicketNavigation(prevTicketId, nextTicketId, brandId);
 
   const handleStatusChange = async (status: string) => {
     try {
@@ -88,7 +88,7 @@ export default function TicketDetailPage() {
     try {
       await markAsSpam.mutateAsync({ ticketId, isSpam: true });
       toast.success('Ticket marked as spam. Future emails from this sender will be auto-spammed.');
-      router.push(`/brands/${workspaceId}`);
+      router.push(`/brands/${brandId}`);
     } catch {
       toast.error('Failed to mark as spam');
     }
@@ -98,7 +98,7 @@ export default function TicketDetailPage() {
     try {
       await deleteTicket.mutateAsync(ticketId);
       toast.success('Ticket deleted');
-      router.push(`/brands/${workspaceId}`);
+      router.push(`/brands/${brandId}`);
     } catch {
       toast.error('Failed to delete ticket');
     }
@@ -178,7 +178,7 @@ export default function TicketDetailPage() {
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link
-              href={`/brands/${workspaceId}`}
+              href={`/brands/${brandId}`}
               className="hover:underline"
             >
               Tickets
@@ -260,7 +260,7 @@ export default function TicketDetailPage() {
                 <CardTitle>Activity</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <CommentEditor workspaceId={workspaceId} ticketId={ticketId} />
+                <CommentEditor brandId={brandId} ticketId={ticketId} />
                 <Separator />
                 <CommentThread
                   comments={comments || []}
@@ -353,7 +353,7 @@ export default function TicketDetailPage() {
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Customer</p>
                       <Link
-                        href={`/brands/${workspaceId}/customers/${ticket.customer.id}`}
+                        href={`/brands/${brandId}/customers/${ticket.customer.id}`}
                         className="mt-1 block text-primary hover:underline"
                       >
                         {ticket.customer.name || ticket.customer.email}
@@ -370,7 +370,7 @@ export default function TicketDetailPage() {
                       </p>
                       <div className="mt-1">
                         <CompanyCombobox
-                          workspaceId={workspaceId}
+                          brandId={brandId}
                           value={ticket.customer.companyId}
                           companyName={ticket.customer.company?.name}
                           onChange={handleCompanyChange}

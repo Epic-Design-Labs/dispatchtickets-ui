@@ -73,7 +73,7 @@ export default function MemberDetailPage() {
   useEffect(() => {
     if (brandData) {
       setAllBrands(brandData.allBrands);
-      setSelectedBrandIds(brandData.workspaceIds || []);
+      setSelectedBrandIds(brandData.brandIds || []);
     }
   }, [brandData]);
 
@@ -88,7 +88,7 @@ export default function MemberDetailPage() {
     if (brandData) {
       const brandsChanged =
         allBrands !== brandData.allBrands ||
-        JSON.stringify(selectedBrandIds.sort()) !== JSON.stringify((brandData.workspaceIds || []).sort());
+        JSON.stringify(selectedBrandIds.sort()) !== JSON.stringify((brandData.brandIds || []).sort());
       setHasBrandChanges(brandsChanged);
     }
   }, [allBrands, selectedBrandIds, brandData]);
@@ -111,7 +111,7 @@ export default function MemberDetailPage() {
         memberId,
         data: {
           allBrands,
-          workspaceIds: allBrands ? [] : selectedBrandIds,
+          brandIds: allBrands ? [] : selectedBrandIds,
         },
       });
       toast.success('Brand access updated');
@@ -351,7 +351,7 @@ export default function MemberDetailPage() {
 
                     {brandData?.availableBrands.length === 0 && (
                       <p className="text-center text-sm text-muted-foreground py-4">
-                        No brands available. Create a workspace first.
+                        No brands available. Create a brand first.
                       </p>
                     )}
                   </div>
@@ -450,7 +450,7 @@ export default function MemberDetailPage() {
                         {!isPending && (
                           <>
                             <br /><br />
-                            They will lose access to all workspaces immediately.
+                            They will lose access to all brands immediately.
                           </>
                         )}
                       </AlertDialogDescription>

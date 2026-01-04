@@ -101,7 +101,7 @@ export default function TeamPage() {
           <CardHeader>
             <CardTitle>Team Members</CardTitle>
             <CardDescription>
-              People who have access to your organization's workspaces and tickets
+              People who have access to your organization's brands and tickets
             </CardDescription>
           </CardHeader>
           <CardContent>

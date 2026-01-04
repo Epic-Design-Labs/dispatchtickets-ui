@@ -146,8 +146,8 @@ export function TeamMemberTable({
                     <Badge variant="secondary">
                       {member.brandAssignment?.allBrands
                         ? 'All brands'
-                        : member.brandAssignment?.workspaceIds?.length
-                          ? `${member.brandAssignment.workspaceIds.length} brand${member.brandAssignment.workspaceIds.length === 1 ? '' : 's'}`
+                        : member.brandAssignment?.brandIds?.length
+                          ? `${member.brandAssignment.brandIds.length} brand${member.brandAssignment.brandIds.length === 1 ? '' : 's'}`
                           : 'All brands'}
                     </Badge>
                   )}

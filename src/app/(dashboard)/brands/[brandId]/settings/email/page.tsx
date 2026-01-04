@@ -42,7 +42,7 @@ import { CheckCircle, XCircle, Clock, Copy, Trash2, Plus, Star } from 'lucide-re
 
 interface DomainCardProps {
   domain: WorkspaceDomain;
-  workspaceId: string;
+  brandId: string;
   onVerify: () => void;
   onSetPrimary: () => void;
   onUpdateSender: (fromName?: string, fromEmail?: string) => void;
@@ -54,7 +54,7 @@ interface DomainCardProps {
 
 function DomainCard({
   domain,
-  workspaceId,
+  brandId,
   onVerify,
   onSetPrimary,
   onUpdateSender,
@@ -259,11 +259,11 @@ function DomainCard({
 
 export default function EmailSettingsPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
 
-  const { data: brand, isLoading: brandLoading } = useBrand(workspaceId);
-  const updateBrand = useUpdateBrand(workspaceId);
-  const { data: domains, isLoading: domainsLoading } = useDomains(workspaceId);
+  const { data: brand, isLoading: brandLoading } = useBrand(brandId);
+  const updateBrand = useUpdateBrand(brandId);
+  const { data: domains, isLoading: domainsLoading } = useDomains(brandId);
 
   // Domain mutations
   const addDomain = useAddDomain();
@@ -302,7 +302,7 @@ export default function EmailSettingsPage() {
     }
     try {
       await addDomain.mutateAsync({
-        workspaceId,
+        brandId,
         data: { domain: newDomainInput.trim(), type: addDomainType },
       });
       toast.success(`${addDomainType === 'INBOUND' ? 'Inbound' : 'Outbound'} domain added`);
@@ -315,7 +315,7 @@ export default function EmailSettingsPage() {
 
   const handleVerifyDomain = async (domainId: string) => {
     try {
-      const result = await verifyDomain.mutateAsync({ workspaceId, domainId });
+      const result = await verifyDomain.mutateAsync({ brandId, domainId });
       if (result.verified) {
         toast.success('Domain verified!');
       } else {
@@ -328,7 +328,7 @@ export default function EmailSettingsPage() {
 
   const handleSetPrimary = async (domainId: string) => {
     try {
-      await updateDomain.mutateAsync({ workspaceId, domainId, data: { isPrimary: true } });
+      await updateDomain.mutateAsync({ brandId, domainId, data: { isPrimary: true } });
       toast.success('Domain set as primary');
     } catch {
       toast.error('Failed to set primary domain');
@@ -338,7 +338,7 @@ export default function EmailSettingsPage() {
   const handleUpdateSender = async (domainId: string, fromName?: string, fromEmail?: string) => {
     try {
       await updateDomain.mutateAsync({
-        workspaceId,
+        brandId,
         domainId,
         data: { fromName, fromEmail },
       });
@@ -350,7 +350,7 @@ export default function EmailSettingsPage() {
 
   const handleRemoveDomain = async (domainId: string) => {
     try {
-      await removeDomain.mutateAsync({ workspaceId, domainId });
+      await removeDomain.mutateAsync({ brandId, domainId });
       toast.success('Domain removed');
     } catch {
       toast.error('Failed to remove domain');
@@ -432,7 +432,7 @@ export default function EmailSettingsPage() {
                   <DomainCard
                     key={domain.id}
                     domain={domain}
-                    workspaceId={workspaceId}
+                    brandId={brandId}
                     onVerify={() => handleVerifyDomain(domain.id)}
                     onSetPrimary={() => handleSetPrimary(domain.id)}
                     onUpdateSender={(fromName, fromEmail) =>
@@ -475,12 +475,12 @@ export default function EmailSettingsPage() {
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium">Default Inbound Address</p>
               <div className="flex items-center gap-2">
-                <code className="text-sm">{workspaceId}@inbound.dispatchtickets.com</code>
+                <code className="text-sm">{brandId}@inbound.dispatchtickets.com</code>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() => copyToClipboard(`${workspaceId}@inbound.dispatchtickets.com`)}
+                  onClick={() => copyToClipboard(`${brandId}@inbound.dispatchtickets.com`)}
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
@@ -499,7 +499,7 @@ export default function EmailSettingsPage() {
                   <DomainCard
                     key={domain.id}
                     domain={domain}
-                    workspaceId={workspaceId}
+                    brandId={brandId}
                     onVerify={() => handleVerifyDomain(domain.id)}
                     onSetPrimary={() => handleSetPrimary(domain.id)}
                     onUpdateSender={() => {}}

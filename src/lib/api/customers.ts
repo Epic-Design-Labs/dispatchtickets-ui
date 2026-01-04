@@ -9,7 +9,7 @@ import {
 
 export const customersApi = {
   list: async (
-    workspaceId: string,
+    brandId: string,
     params?: { search?: string; companyId?: string; limit?: number; cursor?: string }
   ): Promise<PaginatedResponse<Customer>> => {
     const searchParams = new URLSearchParams();
@@ -21,46 +21,46 @@ export const customersApi = {
       });
     }
     const response = await apiClient.get<PaginatedResponse<Customer>>(
-      `/workspaces/${workspaceId}/customers`,
+      `/brands/${brandId}/customers`,
       { params: searchParams }
     );
     return response.data;
   },
 
-  get: async (workspaceId: string, customerId: string): Promise<Customer> => {
+  get: async (brandId: string, customerId: string): Promise<Customer> => {
     const response = await apiClient.get<Customer>(
-      `/workspaces/${workspaceId}/customers/${customerId}`
+      `/brands/${brandId}/customers/${customerId}`
     );
     return response.data;
   },
 
-  create: async (workspaceId: string, data: CreateCustomerInput): Promise<Customer> => {
+  create: async (brandId: string, data: CreateCustomerInput): Promise<Customer> => {
     const response = await apiClient.post<Customer>(
-      `/workspaces/${workspaceId}/customers`,
+      `/brands/${brandId}/customers`,
       data
     );
     return response.data;
   },
 
   update: async (
-    workspaceId: string,
+    brandId: string,
     customerId: string,
     data: UpdateCustomerInput
   ): Promise<Customer> => {
     const response = await apiClient.patch<Customer>(
-      `/workspaces/${workspaceId}/customers/${customerId}`,
+      `/brands/${brandId}/customers/${customerId}`,
       data
     );
     return response.data;
   },
 
-  delete: async (workspaceId: string, customerId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/customers/${customerId}`);
+  delete: async (brandId: string, customerId: string): Promise<void> => {
+    await apiClient.delete(`/brands/${brandId}/customers/${customerId}`);
   },
 
-  search: async (workspaceId: string, query: string): Promise<CustomerSearchResult[]> => {
+  search: async (brandId: string, query: string): Promise<CustomerSearchResult[]> => {
     const response = await apiClient.get<CustomerSearchResult[]>(
-      `/workspaces/${workspaceId}/customers/search`,
+      `/brands/${brandId}/customers/search`,
       { params: { q: query } }
     );
     return response.data;

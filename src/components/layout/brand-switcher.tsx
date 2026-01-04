@@ -45,7 +45,7 @@ import { Plus, Trash2 } from 'lucide-react';
 export function BrandSwitcher() {
   const router = useRouter();
   const params = useParams();
-  const currentBrandId = params.workspaceId as string | undefined;
+  const currentBrandId = params.brandId as string | undefined;
   const { data: brands, isLoading } = useBrands();
   const { data: usageData } = useUsage();
   const createBrand = useCreateBrand();

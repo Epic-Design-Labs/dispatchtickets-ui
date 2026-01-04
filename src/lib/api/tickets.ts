@@ -9,7 +9,7 @@ import {
 
 export const ticketsApi = {
   list: async (
-    workspaceId: string,
+    brandId: string,
     filters?: TicketFilters
   ): Promise<PaginatedResponse<Ticket>> => {
     const params = new URLSearchParams();
@@ -21,53 +21,53 @@ export const ticketsApi = {
       });
     }
     const response = await apiClient.get<PaginatedResponse<Ticket>>(
-      `/workspaces/${workspaceId}/tickets`,
+      `/brands/${brandId}/tickets`,
       { params }
     );
     return response.data;
   },
 
-  get: async (workspaceId: string, ticketId: string): Promise<Ticket> => {
+  get: async (brandId: string, ticketId: string): Promise<Ticket> => {
     const response = await apiClient.get<Ticket>(
-      `/workspaces/${workspaceId}/tickets/${ticketId}`
+      `/brands/${brandId}/tickets/${ticketId}`
     );
     return response.data;
   },
 
   create: async (
-    workspaceId: string,
+    brandId: string,
     data: CreateTicketInput
   ): Promise<Ticket> => {
     const response = await apiClient.post<Ticket>(
-      `/workspaces/${workspaceId}/tickets`,
+      `/brands/${brandId}/tickets`,
       data
     );
     return response.data;
   },
 
   update: async (
-    workspaceId: string,
+    brandId: string,
     ticketId: string,
     data: UpdateTicketInput
   ): Promise<Ticket> => {
     const response = await apiClient.patch<Ticket>(
-      `/workspaces/${workspaceId}/tickets/${ticketId}`,
+      `/brands/${brandId}/tickets/${ticketId}`,
       data
     );
     return response.data;
   },
 
-  delete: async (workspaceId: string, ticketId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/tickets/${ticketId}`);
+  delete: async (brandId: string, ticketId: string): Promise<void> => {
+    await apiClient.delete(`/brands/${brandId}/tickets/${ticketId}`);
   },
 
   markAsSpam: async (
-    workspaceId: string,
+    brandId: string,
     ticketId: string,
     isSpam: boolean
   ): Promise<Ticket> => {
     const response = await apiClient.post<Ticket>(
-      `/workspaces/${workspaceId}/tickets/${ticketId}/spam`,
+      `/brands/${brandId}/tickets/${ticketId}/spam`,
       { isSpam }
     );
     return response.data;

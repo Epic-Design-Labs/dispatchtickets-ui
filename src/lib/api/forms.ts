@@ -2,7 +2,7 @@ import { apiClient } from './client';
 
 export interface FormToken {
   id: string;
-  workspaceId: string;
+  brandId: string;
   name: string;
   token: string;
   successUrl: string | null;
@@ -37,53 +37,53 @@ export interface UpdateFormTokenDto {
 }
 
 export const formsApi = {
-  list: async (workspaceId: string): Promise<FormToken[]> => {
+  list: async (brandId: string): Promise<FormToken[]> => {
     const response = await apiClient.get<FormToken[]>(
-      `/workspaces/${workspaceId}/forms`
+      `/brands/${brandId}/forms`
     );
     return response.data;
   },
 
-  get: async (workspaceId: string, formId: string): Promise<FormToken> => {
+  get: async (brandId: string, formId: string): Promise<FormToken> => {
     const response = await apiClient.get<FormToken>(
-      `/workspaces/${workspaceId}/forms/${formId}`
+      `/brands/${brandId}/forms/${formId}`
     );
     return response.data;
   },
 
   create: async (
-    workspaceId: string,
+    brandId: string,
     data: CreateFormTokenDto
   ): Promise<FormToken> => {
     const response = await apiClient.post<FormToken>(
-      `/workspaces/${workspaceId}/forms`,
+      `/brands/${brandId}/forms`,
       data
     );
     return response.data;
   },
 
   update: async (
-    workspaceId: string,
+    brandId: string,
     formId: string,
     data: UpdateFormTokenDto
   ): Promise<FormToken> => {
     const response = await apiClient.patch<FormToken>(
-      `/workspaces/${workspaceId}/forms/${formId}`,
+      `/brands/${brandId}/forms/${formId}`,
       data
     );
     return response.data;
   },
 
-  delete: async (workspaceId: string, formId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/forms/${formId}`);
+  delete: async (brandId: string, formId: string): Promise<void> => {
+    await apiClient.delete(`/brands/${brandId}/forms/${formId}`);
   },
 
   regenerateToken: async (
-    workspaceId: string,
+    brandId: string,
     formId: string
   ): Promise<FormToken> => {
     const response = await apiClient.post<FormToken>(
-      `/workspaces/${workspaceId}/forms/${formId}/regenerate`
+      `/brands/${brandId}/forms/${formId}/regenerate`
     );
     return response.data;
   },

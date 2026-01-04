@@ -8,7 +8,7 @@ import {
 
 export const dashboardApi = {
   /**
-   * List tickets across all workspaces
+   * List tickets across all brands
    */
   listTickets: async (
     filters?: DashboardTicketFilters
@@ -18,7 +18,7 @@ export const dashboardApi = {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
           if (Array.isArray(value)) {
-            // Handle workspaceIds array
+            // Handle brandIds array
             params.append(key, value.join(','));
           } else {
             params.append(key, String(value));
@@ -34,12 +34,12 @@ export const dashboardApi = {
   },
 
   /**
-   * Get ticket statistics across all workspaces
+   * Get ticket statistics across all brands
    */
-  getStats: async (workspaceIds?: string[]): Promise<DashboardStats> => {
+  getStats: async (brandIds?: string[]): Promise<DashboardStats> => {
     const params = new URLSearchParams();
-    if (workspaceIds?.length) {
-      params.append('workspaceIds', workspaceIds.join(','));
+    if (brandIds?.length) {
+      params.append('brandIds', brandIds.join(','));
     }
     const response = await apiClient.get<DashboardStats>('/tickets/stats', {
       params,

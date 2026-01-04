@@ -18,8 +18,8 @@ export default function SettingsLayout({
 }) {
   const params = useParams();
   const pathname = usePathname();
-  const workspaceId = params.workspaceId as string;
-  const basePath = `/brands/${workspaceId}/settings`;
+  const brandId = params.brandId as string;
+  const basePath = `/brands/${brandId}/settings`;
 
   return (
     <div className="flex-1 overflow-auto p-6">

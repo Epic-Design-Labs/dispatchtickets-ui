@@ -8,7 +8,7 @@ export type WebhookEvent =
 
 export interface Webhook {
   id: string;
-  workspace_id: string;
+  brand_id: string;
   url: string;
   events: WebhookEvent[];
   secret?: string;

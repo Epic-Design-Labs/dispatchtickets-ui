@@ -4,7 +4,7 @@ export type MemberStatus = 'active' | 'pending';
 
 export interface BrandAssignment {
   allBrands: boolean;
-  workspaceIds: string[];
+  brandIds: string[];
 }
 
 export interface AvailableBrand {
@@ -15,13 +15,13 @@ export interface AvailableBrand {
 export interface BrandAssignmentResponse {
   memberId: string;
   allBrands: boolean;
-  workspaceIds: string[];
+  brandIds: string[];
   availableBrands: AvailableBrand[];
 }
 
 export interface UpdateBrandAssignmentsInput {
   allBrands: boolean;
-  workspaceIds?: string[];
+  brandIds?: string[];
 }
 
 export interface TeamMember {

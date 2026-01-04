@@ -37,12 +37,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-ticket
 
 export default function IntegrationsPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
 
-  const { data: forms, isLoading } = useForms(workspaceId);
-  const createForm = useCreateForm(workspaceId);
-  const updateForm = useUpdateForm(workspaceId);
-  const deleteForm = useDeleteForm(workspaceId);
+  const { data: forms, isLoading } = useForms(brandId);
+  const createForm = useCreateForm(brandId);
+  const updateForm = useUpdateForm(brandId);
+  const deleteForm = useDeleteForm(brandId);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -168,7 +168,7 @@ export default function IntegrationsPage() {
 .then(data => console.log(data));`;
   };
 
-  const apiEndpoint = `${API_BASE_URL}/workspaces/${workspaceId}/tickets`;
+  const apiEndpoint = `${API_BASE_URL}/workspaces/${brandId}/tickets`;
 
   const apiExamplePayload = `{
   "title": "Support request from automation",
@@ -412,7 +412,7 @@ Content-Type: application/json`}
                             className="h-auto p-0 text-xs"
                             asChild
                           >
-                            <a href={`/brands/${workspaceId}?source=web&formId=${form.id}`}>
+                            <a href={`/brands/${brandId}?source=web&formId=${form.id}`}>
                               <TicketIcon className="h-3 w-3 mr-1" />
                               View tickets
                             </a>

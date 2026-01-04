@@ -15,7 +15,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const params = useParams();
   const { isAuthenticated, isConnected, isLoading } = useAuth();
-  const workspaceId = params.workspaceId as string | undefined;
+  const brandId = params.brandId as string | undefined;
 
   // Global keyboard shortcuts (just ? for help modal, handled in the hook)
   useKeyboardShortcuts([]);
@@ -56,7 +56,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen">
-      <Sidebar workspaceId={workspaceId} />
+      <Sidebar brandId={brandId} />
       <main className="flex-1 overflow-y-auto">{children}</main>
       <KeyboardShortcutsModal />
     </div>

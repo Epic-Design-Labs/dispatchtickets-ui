@@ -21,7 +21,7 @@ import { useCompanies, useCreateCompany } from '@/lib/hooks';
 import { toast } from 'sonner';
 
 interface CompanyComboboxProps {
-  workspaceId: string;
+  brandId: string;
   value?: string; // company ID
   companyName?: string; // for display when value is set
   onChange: (companyId: string | undefined, companyName?: string) => void;
@@ -30,7 +30,7 @@ interface CompanyComboboxProps {
 }
 
 export function CompanyCombobox({
-  workspaceId,
+  brandId,
   value,
   companyName,
   onChange,
@@ -40,8 +40,8 @@ export function CompanyCombobox({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const { data: companiesData } = useCompanies(workspaceId);
-  const createCompany = useCreateCompany(workspaceId);
+  const { data: companiesData } = useCompanies(brandId);
+  const createCompany = useCreateCompany(brandId);
 
   const companies = companiesData?.data || [];
 

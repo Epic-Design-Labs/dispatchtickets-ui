@@ -11,11 +11,11 @@ import { ShieldX } from 'lucide-react';
 
 export default function SpamPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
 
-  const { data: brand } = useBrand(workspaceId);
-  const { data: ticketsData, isLoading } = useTickets(workspaceId, { isSpam: true });
-  const markAsSpam = useMarkAsSpam(workspaceId);
+  const { data: brand } = useBrand(brandId);
+  const { data: ticketsData, isLoading } = useTickets(brandId, { isSpam: true });
+  const markAsSpam = useMarkAsSpam(brandId);
 
   const spamTickets = ticketsData?.data || [];
 
@@ -55,7 +55,7 @@ export default function SpamPage() {
           <div className="space-y-4">
             <TicketTable
               tickets={spamTickets}
-              workspaceId={workspaceId}
+              brandId={brandId}
               isLoading={isLoading}
               renderActions={(ticket) => (
                 <Button

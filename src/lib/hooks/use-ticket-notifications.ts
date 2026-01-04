@@ -49,16 +49,16 @@ interface TicketSnapshot {
   updatedAt: string;
 }
 
-export function useTicketNotifications(workspaceId: string | undefined) {
+export function useTicketNotifications(brandId: string | undefined) {
   const queryClient = useQueryClient();
   const previousTicketsRef = useRef<Map<string, TicketSnapshot>>(new Map());
   const isFirstLoadRef = useRef(true);
 
   // Poll tickets
   const { data } = useQuery({
-    queryKey: ['tickets-notifications', workspaceId],
-    queryFn: () => ticketsApi.list(workspaceId!, { limit: 50 }),
-    enabled: !!workspaceId,
+    queryKey: ['tickets-notifications', brandId],
+    queryFn: () => ticketsApi.list(brandId!, { limit: 50 }),
+    enabled: !!brandId,
     refetchInterval: POLL_INTERVAL,
     refetchIntervalInBackground: false,
   });
@@ -117,7 +117,7 @@ export function useTicketNotifications(workspaceId: string | undefined) {
 
     // Helper to navigate to ticket
     const navigateToTicket = (ticket: Ticket) => {
-      window.location.href = `/brands/${ticket.workspaceId}/tickets/${ticket.id}`;
+      window.location.href = `/brands/${ticket.brandId}/tickets/${ticket.id}`;
     };
 
     // Show notifications
@@ -145,7 +145,7 @@ export function useTicketNotifications(workspaceId: string | undefined) {
         case 'comment':
           // Fetch latest comment to check if it's from a customer and get name
           try {
-            const comments = await commentsApi.list(ticket.workspaceId, ticket.id);
+            const comments = await commentsApi.list(ticket.brandId, ticket.id);
             if (comments.length > 0) {
               const latestComment = comments[comments.length - 1];
               // Only notify for customer comments (external), not agent comments (internal)
@@ -189,9 +189,9 @@ export function useTicketNotifications(workspaceId: string | undefined) {
 
     // Invalidate tickets query to refresh the list
     if (notifications.length > 0) {
-      queryClient.invalidateQueries({ queryKey: ['tickets', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['tickets', brandId] });
     }
-  }, [workspaceId, queryClient]);
+  }, [brandId, queryClient]);
 
   useEffect(() => {
     if (data?.data) {
@@ -199,9 +199,9 @@ export function useTicketNotifications(workspaceId: string | undefined) {
     }
   }, [data, checkForUpdates]);
 
-  // Reset when workspace changes
+  // Reset when brand changes
   useEffect(() => {
     isFirstLoadRef.current = true;
     previousTicketsRef.current = new Map();
-  }, [workspaceId]);
+  }, [brandId]);
 }

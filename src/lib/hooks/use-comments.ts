@@ -5,42 +5,42 @@ import { commentsApi } from '@/lib/api';
 import { CreateCommentInput, UpdateCommentInput, Comment } from '@/types';
 
 export const commentKeys = {
-  all: (workspaceId: string, ticketId: string) =>
-    ['comments', workspaceId, ticketId] as const,
+  all: (brandId: string, ticketId: string) =>
+    ['comments', brandId, ticketId] as const,
 };
 
-export function useComments(workspaceId: string, ticketId: string, options?: { polling?: boolean }) {
+export function useComments(brandId: string, ticketId: string, options?: { polling?: boolean }) {
   return useQuery({
-    queryKey: commentKeys.all(workspaceId, ticketId),
-    queryFn: () => commentsApi.list(workspaceId, ticketId),
-    enabled: !!workspaceId && !!ticketId,
+    queryKey: commentKeys.all(brandId, ticketId),
+    queryFn: () => commentsApi.list(brandId, ticketId),
+    enabled: !!brandId && !!ticketId,
     // Poll every 10 seconds when viewing a ticket
     refetchInterval: options?.polling ? 10000 : false,
     refetchIntervalInBackground: false, // Don't poll when tab is not focused
   });
 }
 
-export function useCreateComment(workspaceId: string, ticketId: string) {
+export function useCreateComment(brandId: string, ticketId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateCommentInput) =>
-      commentsApi.create(workspaceId, ticketId, data),
+      commentsApi.create(brandId, ticketId, data),
     onSuccess: (newComment) => {
       // Optimistic update
       queryClient.setQueryData<Comment[]>(
-        commentKeys.all(workspaceId, ticketId),
+        commentKeys.all(brandId, ticketId),
         (old) => (old ? [...old, newComment] : [newComment])
       );
       queryClient.invalidateQueries({
-        queryKey: commentKeys.all(workspaceId, ticketId),
+        queryKey: commentKeys.all(brandId, ticketId),
       });
     },
   });
 }
 
 export function useUpdateComment(
-  workspaceId: string,
+  brandId: string,
   ticketId: string,
   commentId: string
 ) {
@@ -48,24 +48,24 @@ export function useUpdateComment(
 
   return useMutation({
     mutationFn: (data: UpdateCommentInput) =>
-      commentsApi.update(workspaceId, ticketId, commentId, data),
+      commentsApi.update(brandId, ticketId, commentId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: commentKeys.all(workspaceId, ticketId),
+        queryKey: commentKeys.all(brandId, ticketId),
       });
     },
   });
 }
 
-export function useDeleteComment(workspaceId: string, ticketId: string) {
+export function useDeleteComment(brandId: string, ticketId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (commentId: string) =>
-      commentsApi.delete(workspaceId, ticketId, commentId),
+      commentsApi.delete(brandId, ticketId, commentId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: commentKeys.all(workspaceId, ticketId),
+        queryKey: commentKeys.all(brandId, ticketId),
       });
     },
   });

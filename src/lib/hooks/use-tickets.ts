@@ -5,78 +5,78 @@ import { ticketsApi } from '@/lib/api';
 import { CreateTicketInput, UpdateTicketInput, TicketFilters } from '@/types';
 
 export const ticketKeys = {
-  all: (workspaceId: string) => ['tickets', workspaceId] as const,
-  list: (workspaceId: string, filters?: TicketFilters) =>
-    ['tickets', workspaceId, 'list', filters] as const,
-  detail: (workspaceId: string, ticketId: string) =>
-    ['tickets', workspaceId, ticketId] as const,
+  all: (brandId: string) => ['tickets', brandId] as const,
+  list: (brandId: string, filters?: TicketFilters) =>
+    ['tickets', brandId, 'list', filters] as const,
+  detail: (brandId: string, ticketId: string) =>
+    ['tickets', brandId, ticketId] as const,
 };
 
-export function useTickets(workspaceId: string, filters?: TicketFilters) {
+export function useTickets(brandId: string, filters?: TicketFilters) {
   return useQuery({
-    queryKey: ticketKeys.list(workspaceId, filters),
-    queryFn: () => ticketsApi.list(workspaceId, filters),
-    enabled: !!workspaceId,
+    queryKey: ticketKeys.list(brandId, filters),
+    queryFn: () => ticketsApi.list(brandId, filters),
+    enabled: !!brandId,
   });
 }
 
-export function useTicket(workspaceId: string, ticketId: string) {
+export function useTicket(brandId: string, ticketId: string) {
   return useQuery({
-    queryKey: ticketKeys.detail(workspaceId, ticketId),
-    queryFn: () => ticketsApi.get(workspaceId, ticketId),
-    enabled: !!workspaceId && !!ticketId,
+    queryKey: ticketKeys.detail(brandId, ticketId),
+    queryFn: () => ticketsApi.get(brandId, ticketId),
+    enabled: !!brandId && !!ticketId,
   });
 }
 
-export function useCreateTicket(workspaceId: string) {
+export function useCreateTicket(brandId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateTicketInput) =>
-      ticketsApi.create(workspaceId, data),
+      ticketsApi.create(brandId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ticketKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
     },
   });
 }
 
-export function useUpdateTicket(workspaceId: string, ticketId: string) {
+export function useUpdateTicket(brandId: string, ticketId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: UpdateTicketInput) =>
-      ticketsApi.update(workspaceId, ticketId, data),
+      ticketsApi.update(brandId, ticketId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ticketKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
       queryClient.invalidateQueries({
-        queryKey: ticketKeys.detail(workspaceId, ticketId),
+        queryKey: ticketKeys.detail(brandId, ticketId),
       });
     },
   });
 }
 
-export function useDeleteTicket(workspaceId: string) {
+export function useDeleteTicket(brandId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (ticketId: string) =>
-      ticketsApi.delete(workspaceId, ticketId),
+      ticketsApi.delete(brandId, ticketId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ticketKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
     },
   });
 }
 
-export function useMarkAsSpam(workspaceId: string) {
+export function useMarkAsSpam(brandId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ ticketId, isSpam }: { ticketId: string; isSpam: boolean }) =>
-      ticketsApi.markAsSpam(workspaceId, ticketId, isSpam),
+      ticketsApi.markAsSpam(brandId, ticketId, isSpam),
     onSuccess: (_, { ticketId }) => {
-      queryClient.invalidateQueries({ queryKey: ticketKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
       queryClient.invalidateQueries({
-        queryKey: ticketKeys.detail(workspaceId, ticketId),
+        queryKey: ticketKeys.detail(brandId, ticketId),
       });
     },
   });

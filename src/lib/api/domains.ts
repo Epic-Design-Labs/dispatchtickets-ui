@@ -10,9 +10,9 @@ export interface DnsRecord {
   status: 'pending' | 'verified' | 'failed';
 }
 
-export interface WorkspaceDomain {
+export interface BrandDomain {
   id: string;
-  workspaceId: string;
+  brandId: string;
   domain: string;
   type: DomainType;
   verified: boolean;
@@ -44,24 +44,24 @@ export interface VerifyResult {
 
 export const domainsApi = {
   /**
-   * List all domains for a workspace
+   * List all domains for a brand
    */
-  list: async (workspaceId: string): Promise<WorkspaceDomain[]> => {
-    const response = await apiClient.get<WorkspaceDomain[]>(
-      `/workspaces/${workspaceId}/domains`
+  list: async (brandId: string): Promise<BrandDomain[]> => {
+    const response = await apiClient.get<BrandDomain[]>(
+      `/brands/${brandId}/domains`
     );
     return response.data;
   },
 
   /**
-   * Add a new domain to a workspace
+   * Add a new domain to a brand
    */
   add: async (
-    workspaceId: string,
+    brandId: string,
     data: AddDomainData
-  ): Promise<WorkspaceDomain> => {
-    const response = await apiClient.post<WorkspaceDomain>(
-      `/workspaces/${workspaceId}/domains`,
+  ): Promise<BrandDomain> => {
+    const response = await apiClient.post<BrandDomain>(
+      `/brands/${brandId}/domains`,
       data
     );
     return response.data;
@@ -71,11 +71,11 @@ export const domainsApi = {
    * Get a single domain by ID
    */
   get: async (
-    workspaceId: string,
+    brandId: string,
     domainId: string
-  ): Promise<WorkspaceDomain> => {
-    const response = await apiClient.get<WorkspaceDomain>(
-      `/workspaces/${workspaceId}/domains/${domainId}`
+  ): Promise<BrandDomain> => {
+    const response = await apiClient.get<BrandDomain>(
+      `/brands/${brandId}/domains/${domainId}`
     );
     return response.data;
   },
@@ -84,11 +84,11 @@ export const domainsApi = {
    * Verify a domain's DNS configuration
    */
   verify: async (
-    workspaceId: string,
+    brandId: string,
     domainId: string
   ): Promise<VerifyResult> => {
     const response = await apiClient.post<VerifyResult>(
-      `/workspaces/${workspaceId}/domains/${domainId}/verify`
+      `/brands/${brandId}/domains/${domainId}/verify`
     );
     return response.data;
   },
@@ -97,21 +97,24 @@ export const domainsApi = {
    * Update domain settings (sender info, primary status)
    */
   update: async (
-    workspaceId: string,
+    brandId: string,
     domainId: string,
     data: UpdateDomainData
-  ): Promise<WorkspaceDomain> => {
-    const response = await apiClient.patch<WorkspaceDomain>(
-      `/workspaces/${workspaceId}/domains/${domainId}`,
+  ): Promise<BrandDomain> => {
+    const response = await apiClient.patch<BrandDomain>(
+      `/brands/${brandId}/domains/${domainId}`,
       data
     );
     return response.data;
   },
 
   /**
-   * Remove a domain from a workspace
+   * Remove a domain from a brand
    */
-  remove: async (workspaceId: string, domainId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/domains/${domainId}`);
+  remove: async (brandId: string, domainId: string): Promise<void> => {
+    await apiClient.delete(`/brands/${brandId}/domains/${domainId}`);
   },
 };
+
+// Type alias for backward compatibility
+export type WorkspaceDomain = BrandDomain;

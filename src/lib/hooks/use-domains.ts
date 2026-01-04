@@ -5,19 +5,19 @@ import { domainsApi, AddDomainData, UpdateDomainData } from '@/lib/api/domains';
 
 export const domainKeys = {
   all: ['domains'] as const,
-  list: (workspaceId: string) => ['domains', 'list', workspaceId] as const,
-  detail: (workspaceId: string, domainId: string) =>
-    ['domains', 'detail', workspaceId, domainId] as const,
+  list: (brandId: string) => ['domains', 'list', brandId] as const,
+  detail: (brandId: string, domainId: string) =>
+    ['domains', 'detail', brandId, domainId] as const,
 };
 
 /**
- * Hook to list all domains for a workspace
+ * Hook to list all domains for a brand
  */
-export function useDomains(workspaceId: string) {
+export function useDomains(brandId: string) {
   return useQuery({
-    queryKey: domainKeys.list(workspaceId),
-    queryFn: () => domainsApi.list(workspaceId),
-    enabled: !!workspaceId,
+    queryKey: domainKeys.list(brandId),
+    queryFn: () => domainsApi.list(brandId),
+    enabled: !!brandId,
   });
 }
 
@@ -29,14 +29,14 @@ export function useAddDomain() {
 
   return useMutation({
     mutationFn: ({
-      workspaceId,
+      brandId,
       data,
     }: {
-      workspaceId: string;
+      brandId: string;
       data: AddDomainData;
-    }) => domainsApi.add(workspaceId, data),
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
+    }) => domainsApi.add(brandId, data),
+    onSuccess: (_, { brandId }) => {
+      queryClient.invalidateQueries({ queryKey: domainKeys.list(brandId) });
     },
   });
 }
@@ -49,17 +49,17 @@ export function useVerifyDomain() {
 
   return useMutation({
     mutationFn: ({
-      workspaceId,
+      brandId,
       domainId,
     }: {
-      workspaceId: string;
+      brandId: string;
       domainId: string;
-    }) => domainsApi.verify(workspaceId, domainId),
-    onSuccess: (result, { workspaceId }) => {
+    }) => domainsApi.verify(brandId, domainId),
+    onSuccess: (result, { brandId }) => {
       // Only invalidate if verification succeeded - this refreshes the domain list
       // If verification failed, we don't want to refetch as it might lose DNS records
       if (result.verified) {
-        queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
+        queryClient.invalidateQueries({ queryKey: domainKeys.list(brandId) });
       }
     },
   });
@@ -73,16 +73,16 @@ export function useUpdateDomain() {
 
   return useMutation({
     mutationFn: ({
-      workspaceId,
+      brandId,
       domainId,
       data,
     }: {
-      workspaceId: string;
+      brandId: string;
       domainId: string;
       data: UpdateDomainData;
-    }) => domainsApi.update(workspaceId, domainId, data),
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
+    }) => domainsApi.update(brandId, domainId, data),
+    onSuccess: (_, { brandId }) => {
+      queryClient.invalidateQueries({ queryKey: domainKeys.list(brandId) });
     },
   });
 }
@@ -95,14 +95,14 @@ export function useRemoveDomain() {
 
   return useMutation({
     mutationFn: ({
-      workspaceId,
+      brandId,
       domainId,
     }: {
-      workspaceId: string;
+      brandId: string;
       domainId: string;
-    }) => domainsApi.remove(workspaceId, domainId),
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: domainKeys.list(workspaceId) });
+    }) => domainsApi.remove(brandId, domainId),
+    onSuccess: (_, { brandId }) => {
+      queryClient.invalidateQueries({ queryKey: domainKeys.list(brandId) });
     },
   });
 }

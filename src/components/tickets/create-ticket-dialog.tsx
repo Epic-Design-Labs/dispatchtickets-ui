@@ -44,13 +44,13 @@ const createTicketSchema = z.object({
 type CreateTicketForm = z.infer<typeof createTicketSchema>;
 
 interface CreateTicketDialogProps {
-  workspaceId: string;
+  brandId: string;
   children?: React.ReactNode;
 }
 
-export function CreateTicketDialog({ workspaceId, children }: CreateTicketDialogProps) {
+export function CreateTicketDialog({ brandId, children }: CreateTicketDialogProps) {
   const [open, setOpen] = useState(false);
-  const createTicket = useCreateTicket(workspaceId);
+  const createTicket = useCreateTicket(brandId);
 
   const form = useForm<CreateTicketForm>({
     resolver: zodResolver(createTicketSchema),

@@ -67,21 +67,21 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[] = []) {
 export function useTicketNavigation(
   prevTicketId: string | null,
   nextTicketId: string | null,
-  workspaceId: string
+  brandId: string
 ) {
   const router = useRouter();
 
   const goToPrev = useCallback(() => {
     if (prevTicketId) {
-      router.push(`/brands/${workspaceId}/tickets/${prevTicketId}`);
+      router.push(`/brands/${brandId}/tickets/${prevTicketId}`);
     }
-  }, [prevTicketId, workspaceId, router]);
+  }, [prevTicketId, brandId, router]);
 
   const goToNext = useCallback(() => {
     if (nextTicketId) {
-      router.push(`/brands/${workspaceId}/tickets/${nextTicketId}`);
+      router.push(`/brands/${brandId}/tickets/${nextTicketId}`);
     }
-  }, [nextTicketId, workspaceId, router]);
+  }, [nextTicketId, brandId, router]);
 
   useKeyboardShortcuts([
     { key: 'j', description: 'Next ticket', action: goToNext },

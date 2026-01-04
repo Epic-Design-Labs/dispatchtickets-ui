@@ -14,10 +14,10 @@ import { Search, Users } from 'lucide-react';
 
 export default function CustomersPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
   const [search, setSearch] = useState('');
 
-  const { data, isLoading } = useCustomers(workspaceId, { search: search || undefined });
+  const { data, isLoading } = useCustomers(brandId, { search: search || undefined });
 
   const customers = data?.data || [];
 
@@ -101,7 +101,7 @@ export default function CustomersPage() {
                         </p>
                       </div>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/brands/${workspaceId}/customers/${customer.id}`}>
+                        <Link href={`/brands/${brandId}/customers/${customer.id}`}>
                           View
                         </Link>
                       </Button>

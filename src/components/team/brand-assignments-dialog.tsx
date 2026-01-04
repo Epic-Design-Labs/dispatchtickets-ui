@@ -41,7 +41,7 @@ export function BrandAssignmentsDialog({
   useEffect(() => {
     if (data) {
       setAllBrands(data.allBrands);
-      setSelectedBrandIds(data.workspaceIds || []);
+      setSelectedBrandIds(data.brandIds || []);
     }
   }, [data]);
 
@@ -82,7 +82,7 @@ export function BrandAssignmentsDialog({
         memberId: member.id,
         data: {
           allBrands,
-          workspaceIds: allBrands ? [] : selectedBrandIds,
+          brandIds: allBrands ? [] : selectedBrandIds,
         },
       });
       toast.success('Brand assignments updated');

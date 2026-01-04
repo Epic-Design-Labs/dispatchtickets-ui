@@ -6,7 +6,7 @@ import { Customer } from './customer';
 
 export interface Ticket {
   id: string;
-  workspaceId: string;
+  brandId: string;
   ticketNumber: number;  // Sequential number for public ID (e.g., 1001)
   title: string;
   body?: string;
@@ -61,13 +61,13 @@ export interface TicketFilters {
   isSpam?: boolean;
 }
 
-// Dashboard types for cross-workspace tickets
+// Dashboard types for cross-brand tickets
 export interface DashboardTicketFilters extends TicketFilters {
-  workspaceIds?: string[];
+  brandIds?: string[];
   customerId?: string;
 }
 
-export interface WorkspaceInfo {
+export interface BrandInfo {
   id: string;
   name: string;
   slug: string;
@@ -76,10 +76,10 @@ export interface WorkspaceInfo {
 }
 
 export interface DashboardTicket extends Ticket {
-  workspace: WorkspaceInfo;
+  brand: BrandInfo;
 }
 
-export interface WorkspaceStats {
+export interface BrandStats {
   name: string;
   prefix: string;
   total: number;
@@ -93,5 +93,5 @@ export interface DashboardStats {
   pending: number;
   resolved: number;
   closed: number;
-  byWorkspace: Record<string, WorkspaceStats>;
+  byBrand: Record<string, BrandStats>;
 }

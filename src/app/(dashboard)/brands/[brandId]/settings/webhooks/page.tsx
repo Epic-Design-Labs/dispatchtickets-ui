@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 export default function WebhooksPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId as string;
+  const brandId = params.brandId as string;
 
   return (
     <div className="p-6">
@@ -31,7 +31,7 @@ export default function WebhooksPage() {
           </p>
           <div className="mt-4 rounded-lg bg-muted p-4">
             <p className="text-sm font-medium">Brand ID</p>
-            <code className="text-xs text-muted-foreground">{workspaceId}</code>
+            <code className="text-xs text-muted-foreground">{brandId}</code>
           </div>
         </CardContent>
       </Card>

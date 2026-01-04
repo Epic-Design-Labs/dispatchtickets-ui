@@ -16,12 +16,12 @@ import { Ticket } from '@/types';
 
 interface TicketTableProps {
   tickets: Ticket[];
-  workspaceId: string;
+  brandId: string;
   isLoading?: boolean;
   renderActions?: (ticket: Ticket) => React.ReactNode;
 }
 
-export function TicketTable({ tickets, workspaceId, isLoading, renderActions }: TicketTableProps) {
+export function TicketTable({ tickets, brandId, isLoading, renderActions }: TicketTableProps) {
   if (isLoading) {
     return (
       <div className="rounded-md border">
@@ -106,7 +106,7 @@ export function TicketTable({ tickets, workspaceId, isLoading, renderActions }: 
               <TableRow key={ticket.id} className="cursor-pointer hover:bg-muted/50">
                 <TableCell>
                   <Link
-                    href={`/brands/${workspaceId}/tickets/${ticket.id}`}
+                    href={`/brands/${brandId}/tickets/${ticket.id}`}
                     className="block font-medium hover:underline"
                   >
                     {ticket.title}
