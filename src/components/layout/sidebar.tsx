@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
 import { useProfile, useBrands, useDashboardStats } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
-import { Inbox, User, AlertCircle } from 'lucide-react';
+import { Inbox, User, AlertCircle, Key } from 'lucide-react';
 
 interface SidebarProps {
   workspaceId?: string;
@@ -274,6 +274,19 @@ export function Sidebar({ workspaceId }: SidebarProps) {
                 />
               </svg>
               Team
+            </Link>
+          </Button>
+          <Button
+            variant={pathname === '/api-keys' ? 'secondary' : 'ghost'}
+            className={cn(
+              'w-full justify-start gap-2',
+              pathname === '/api-keys' && 'bg-secondary'
+            )}
+            asChild
+          >
+            <Link href="/api-keys">
+              <Key className="h-4 w-4" />
+              API Keys
             </Link>
           </Button>
           {session?.orgRole === 'owner' && (

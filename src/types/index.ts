@@ -5,3 +5,4 @@ export * from './webhook';
 export * from './api';
 export * from './team';
 export * from './customer';
+export * from './api-key';
