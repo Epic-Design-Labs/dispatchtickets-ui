@@ -45,7 +45,7 @@ export const emailConnectionsApi = {
   authorizeGmail: async (brandId: string): Promise<InitiateOAuthResponse> => {
     const response = await apiClient.post<InitiateOAuthResponse>(
       `/brands/${brandId}/email-connection/authorize`,
-      { provider: 'gmail' }
+      { provider: 'GMAIL' }
     );
     return response.data;
   },
