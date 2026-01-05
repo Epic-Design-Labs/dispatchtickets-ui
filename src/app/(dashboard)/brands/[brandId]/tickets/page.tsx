@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useBrand, useTickets, useTicketNotifications } from '@/lib/hooks';
+import { useBrand, useTickets, useTicketNotifications, useEmailConnection, useSyncEmail } from '@/lib/hooks';
+import { toast } from 'sonner';
+import { RefreshCw } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { TicketFilters, TicketTable, CreateTicketDialog } from '@/components/tickets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +25,23 @@ export default function BrandDashboardPage() {
 
   // Enable real-time notifications for ticket updates
   useTicketNotifications(brandId);
+
+  // Email sync
+  const { data: emailConnection } = useEmailConnection(brandId);
+  const syncEmail = useSyncEmail();
+
+  const handleSync = async () => {
+    try {
+      const result = await syncEmail.mutateAsync({ brandId });
+      if (result.ticketsCreated > 0) {
+        toast.success(`Synced ${result.ticketsCreated} new ticket(s)`);
+      } else {
+        toast.success('No new emails');
+      }
+    } catch {
+      toast.error('Failed to sync emails');
+    }
+  };
 
   const isLoading = brandLoading || allTicketsLoading;
 
@@ -167,24 +186,37 @@ export default function BrandDashboardPage() {
               </span>
             )}
           </h3>
-          <CreateTicketDialog brandId={brandId}>
-            <Button size="sm">
-              <svg
-                className="mr-2 h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+          <div className="flex items-center gap-2">
+            {emailConnection?.status === 'ACTIVE' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSync}
+                disabled={syncEmail.isPending}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Create Ticket
-            </Button>
-          </CreateTicketDialog>
+                <RefreshCw className={`mr-2 h-4 w-4 ${syncEmail.isPending ? 'animate-spin' : ''}`} />
+                {syncEmail.isPending ? 'Syncing...' : 'Sync Email'}
+              </Button>
+            )}
+            <CreateTicketDialog brandId={brandId}>
+              <Button size="sm">
+                <svg
+                  className="mr-2 h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Create Ticket
+              </Button>
+            </CreateTicketDialog>
+          </div>
         </div>
 
         {/* Filters */}
