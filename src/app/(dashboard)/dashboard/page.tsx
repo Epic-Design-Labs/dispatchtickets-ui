@@ -202,12 +202,25 @@ export default function DashboardPage() {
                   }
                 >
                   <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="font-mono text-xs"
-                    >
-                      {ticket.brand.ticketPrefix}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {ticket.brand.iconUrl ? (
+                        <img
+                          src={ticket.brand.iconUrl}
+                          alt={ticket.brand.name}
+                          className="w-5 h-5 rounded"
+                        />
+                      ) : (
+                        <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground">
+                          {ticket.brand.ticketPrefix?.charAt(0) || 'B'}
+                        </div>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className="font-mono text-xs"
+                      >
+                        {ticket.brand.ticketPrefix}
+                      </Badge>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="font-medium truncate max-w-[400px]">
