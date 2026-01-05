@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
-import { Trash2, ShieldAlert, Building2, ChevronLeft, ChevronRight, User, UserX } from 'lucide-react';
+import { Trash2, ShieldAlert, Building2, User, UserX } from 'lucide-react';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -238,9 +238,10 @@ export default function TicketDetailPage() {
                     size="sm"
                     onClick={goToPrev}
                     disabled={!prevTicketId}
-                    title="Previous ticket (k)"
+                    title="Previous ticket (K)"
+                    className="w-8"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <kbd className="text-xs font-mono">K</kbd>
                   </Button>
                   <span className="text-sm text-muted-foreground min-w-[60px] text-center">
                     {currentIndex} / {totalCount}
@@ -250,9 +251,10 @@ export default function TicketDetailPage() {
                     size="sm"
                     onClick={goToNext}
                     disabled={!nextTicketId}
-                    title="Next ticket (j)"
+                    title="Next ticket (J)"
+                    className="w-8"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <kbd className="text-xs font-mono">J</kbd>
                   </Button>
                 </div>
               )}
