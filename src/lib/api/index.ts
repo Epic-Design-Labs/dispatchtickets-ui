@@ -11,5 +11,7 @@ export { companiesApi } from './companies';
 export { featureRequestsApi } from './feature-requests';
 export { dashboardApi } from './dashboard';
 export { apiKeysApi } from './api-keys';
+export { emailConnectionsApi } from './email-connections';
 export type { Profile, UpdateProfileInput, AvatarUploadInput } from './profile';
 export type { FeatureRequest, FeatureRequestsResponse, FeatureActivityResponse, CreateFeatureRequestInput } from './feature-requests';
+export type { EmailConnection, EmailConnectionProvider, EmailConnectionStatus } from './email-connections';

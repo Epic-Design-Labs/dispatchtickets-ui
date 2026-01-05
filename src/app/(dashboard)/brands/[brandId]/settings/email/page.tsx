@@ -35,10 +35,23 @@ import {
   useVerifyDomain,
   useUpdateDomain,
   useRemoveDomain,
+  useEmailConnection,
+  useConnectGmail,
+  useDisconnectEmail,
 } from '@/lib/hooks';
 import { WorkspaceDomain, DomainType } from '@/lib/api/domains';
 import { toast } from 'sonner';
-import { CheckCircle, XCircle, Clock, Copy, Trash2, Plus, Star } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Copy, Trash2, Plus, Star, Mail, AlertCircle, RefreshCw, Unplug } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface DomainCardProps {
   domain: WorkspaceDomain;
@@ -264,12 +277,17 @@ export default function EmailSettingsPage() {
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   const updateBrand = useUpdateBrand(brandId);
   const { data: domains, isLoading: domainsLoading } = useDomains(brandId);
+  const { data: emailConnection, isLoading: emailConnectionLoading } = useEmailConnection(brandId);
 
   // Domain mutations
   const addDomain = useAddDomain();
   const verifyDomain = useVerifyDomain();
   const updateDomain = useUpdateDomain();
   const removeDomain = useRemoveDomain();
+
+  // Email connection mutations
+  const connectGmail = useConnectGmail();
+  const disconnectEmail = useDisconnectEmail();
 
   // Autoresponse state
   const [autoresponseEnabled, setAutoresponseEnabled] = useState(false);
@@ -280,6 +298,9 @@ export default function EmailSettingsPage() {
   const [addDomainDialogOpen, setAddDomainDialogOpen] = useState(false);
   const [addDomainType, setAddDomainType] = useState<DomainType>('OUTBOUND');
   const [newDomainInput, setNewDomainInput] = useState('');
+
+  // Disconnect confirmation dialog
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 
   // Initialize form with brand data
   useEffect(() => {
@@ -381,11 +402,30 @@ export default function EmailSettingsPage() {
     }
   };
 
+  // Email connection handlers
+  const handleConnectGmail = async () => {
+    try {
+      await connectGmail.mutateAsync(brandId);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to initiate Gmail connection');
+    }
+  };
+
+  const handleDisconnectEmail = async () => {
+    try {
+      await disconnectEmail.mutateAsync(brandId);
+      toast.success('Email connection removed');
+      setShowDisconnectDialog(false);
+    } catch {
+      toast.error('Failed to disconnect email');
+    }
+  };
+
   // Filter domains by type
   const outboundDomains = domains?.filter((d) => d.type === 'OUTBOUND') || [];
   const inboundDomains = domains?.filter((d) => d.type === 'INBOUND') || [];
 
-  const isLoading = brandLoading || domainsLoading;
+  const isLoading = brandLoading || domainsLoading || emailConnectionLoading;
 
   if (isLoading) {
     return (
@@ -398,6 +438,117 @@ export default function EmailSettingsPage() {
 
   return (
     <div className="space-y-6">
+        {/* Email Connection (Gmail/OAuth) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Email Connection
+            </CardTitle>
+            <CardDescription>
+              Connect your Gmail or Google Workspace account to receive and send emails directly
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {emailConnection ? (
+              <div className="space-y-4">
+                {/* Connected state */}
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`rounded-full p-2 ${
+                      emailConnection.status === 'ACTIVE'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {emailConnection.status === 'ACTIVE' ? (
+                        <CheckCircle className="h-5 w-5" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium">{emailConnection.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {emailConnection.provider === 'GMAIL' ? 'Gmail / Google Workspace' : emailConnection.provider}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={emailConnection.status === 'ACTIVE' ? 'default' : 'destructive'}>
+                      {emailConnection.status === 'ACTIVE' ? 'Connected' : 'Error'}
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDisconnectDialog(true)}
+                    >
+                      <Unplug className="mr-1 h-4 w-4" />
+                      Disconnect
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Error message if any */}
+                {emailConnection.status === 'ERROR' && emailConnection.errorMessage && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                    <p className="text-sm text-red-700">
+                      <strong>Error:</strong> {emailConnection.errorMessage}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Try reconnecting your account to fix this issue.
+                    </p>
+                  </div>
+                )}
+
+                {/* Last sync info */}
+                {emailConnection.lastSyncAt && (
+                  <p className="text-sm text-muted-foreground">
+                    <RefreshCw className="inline h-3 w-3 mr-1" />
+                    Last synced: {new Date(emailConnection.lastSyncAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Not connected state */}
+                <div className="rounded-lg border border-dashed p-6 text-center">
+                  <Mail className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                  <p className="mt-2 text-sm font-medium">No email connected</p>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your Gmail account to automatically import emails as tickets and reply from this brand.
+                  </p>
+                  <Button
+                    className="mt-4"
+                    onClick={handleConnectGmail}
+                    disabled={connectGmail.isPending}
+                  >
+                    {connectGmail.isPending ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Connect Gmail
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p><strong>What happens when you connect:</strong></p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>Incoming emails are automatically converted to tickets</li>
+                    <li>Replies from agents are sent from your connected email</li>
+                    <li>Customer replies to tickets update the ticket thread</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Outbound Email Domains */}
         <Card>
           <CardHeader>
@@ -623,6 +774,27 @@ export default function EmailSettingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Disconnect Email Confirmation */}
+      <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect Email Account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will stop syncing emails from {emailConnection?.email}. Existing tickets will not be affected, but new emails will no longer create tickets automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisconnectEmail}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {disconnectEmail.isPending ? 'Disconnecting...' : 'Disconnect'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
