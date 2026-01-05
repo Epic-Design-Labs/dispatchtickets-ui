@@ -13,3 +13,4 @@ export * from './use-forms';
 export * from './use-dashboard';
 export * from './use-keyboard-shortcuts';
 export * from './use-email-connection';
+export * from './use-attachments';

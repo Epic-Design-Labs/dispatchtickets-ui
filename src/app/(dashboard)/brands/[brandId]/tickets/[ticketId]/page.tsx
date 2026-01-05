@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MarkdownContent } from '@/components/ui/markdown-content';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -238,10 +239,10 @@ export default function TicketDetailPage() {
                     size="sm"
                     onClick={goToPrev}
                     disabled={!prevTicketId}
-                    title="Previous ticket (K)"
-                    className="w-8"
+                    title="Previous ticket (⌘J)"
+                    className="px-2"
                   >
-                    <kbd className="text-xs font-mono">K</kbd>
+                    <kbd className="text-xs font-mono">⌘J</kbd>
                   </Button>
                   <span className="text-sm text-muted-foreground min-w-[60px] text-center">
                     {currentIndex} / {totalCount}
@@ -251,10 +252,10 @@ export default function TicketDetailPage() {
                     size="sm"
                     onClick={goToNext}
                     disabled={!nextTicketId}
-                    title="Next ticket (J)"
-                    className="w-8"
+                    title="Next ticket (⌘K)"
+                    className="px-2"
                   >
-                    <kbd className="text-xs font-mono">J</kbd>
+                    <kbd className="text-xs font-mono">⌘K</kbd>
                   </Button>
                 </div>
               )}
@@ -290,7 +291,7 @@ export default function TicketDetailPage() {
               </CardHeader>
               <CardContent>
                 {ticket.body ? (
-                  <p className="whitespace-pre-wrap">{ticket.body}</p>
+                  <MarkdownContent content={ticket.body} />
                 ) : (
                   <p className="text-muted-foreground">No description provided</p>
                 )}

@@ -3,6 +3,7 @@
 import { Comment } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MarkdownContent } from '@/components/ui/markdown-content';
 
 interface CommentThreadProps {
   comments: Comment[];
@@ -107,7 +108,7 @@ export function CommentThread({ comments, isLoading }: CommentThreadProps) {
                 {new Date(comment.createdAt).toLocaleString()}
               </span>
             </div>
-            <div className="mt-1 whitespace-pre-wrap text-sm">{comment.body}</div>
+            <MarkdownContent content={comment.body} className="mt-1 text-sm" />
           </div>
         </div>
       ))}

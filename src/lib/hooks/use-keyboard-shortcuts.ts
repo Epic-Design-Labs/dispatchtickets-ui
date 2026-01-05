@@ -84,8 +84,8 @@ export function useTicketNavigation(
   }, [nextTicketId, brandId, router]);
 
   useKeyboardShortcuts([
-    { key: 'j', description: 'Next ticket', action: goToNext },
-    { key: 'k', description: 'Previous ticket', action: goToPrev },
+    { key: 'j', description: 'Previous ticket', action: goToPrev, modifier: 'meta' },
+    { key: 'k', description: 'Next ticket', action: goToNext, modifier: 'meta' },
   ]);
 
   return { goToPrev, goToNext };
