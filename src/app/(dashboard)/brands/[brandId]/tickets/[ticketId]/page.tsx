@@ -70,10 +70,25 @@ export default function TicketDetailPage() {
   // Enable j/k keyboard navigation
   const { goToPrev, goToNext } = useTicketNavigation(prevTicketId, nextTicketId, brandId);
 
+  // Navigate to next ticket, or prev, or back to list
+  const navigateAfterAction = () => {
+    if (nextTicketId) {
+      router.push(`/brands/${brandId}/tickets/${nextTicketId}`);
+    } else if (prevTicketId) {
+      router.push(`/brands/${brandId}/tickets/${prevTicketId}`);
+    } else {
+      router.push(`/brands/${brandId}`);
+    }
+  };
+
   const handleStatusChange = async (status: string) => {
     try {
       await updateTicket.mutateAsync({ status: status as TicketStatus });
       toast.success('Status updated');
+      // Auto-advance to next ticket when resolved/closed
+      if (status === 'resolved' || status === 'closed') {
+        navigateAfterAction();
+      }
     } catch {
       toast.error('Failed to update status');
     }
@@ -113,8 +128,8 @@ export default function TicketDetailPage() {
   const handleMarkAsSpam = async () => {
     try {
       await markAsSpam.mutateAsync({ ticketId, isSpam: true });
-      toast.success('Ticket marked as spam. Future emails from this sender will be auto-spammed.');
-      router.push(`/brands/${brandId}`);
+      toast.success('Marked as spam. Future emails from this sender will be auto-spammed.');
+      navigateAfterAction();
     } catch {
       toast.error('Failed to mark as spam');
     }
@@ -124,7 +139,7 @@ export default function TicketDetailPage() {
     try {
       await deleteTicket.mutateAsync(ticketId);
       toast.success('Ticket deleted');
-      router.push(`/brands/${brandId}`);
+      navigateAfterAction();
     } catch {
       toast.error('Failed to delete ticket');
     }
