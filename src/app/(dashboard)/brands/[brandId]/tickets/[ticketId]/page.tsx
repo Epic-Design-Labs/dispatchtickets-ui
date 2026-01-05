@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
-import { Trash2, ShieldAlert, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, ShieldAlert, Building2, ChevronLeft, ChevronRight, User, UserX } from 'lucide-react';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -46,10 +46,14 @@ export default function TicketDetailPage() {
   const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId);
   const { data: comments, isLoading: commentsLoading } = useComments(brandId, ticketId, { polling: true });
   const { data: ticketsData } = useTickets(brandId, { status: 'open', limit: 100 });
+  const { data: teamData } = useTeamMembers();
   const updateTicket = useUpdateTicket(brandId, ticketId);
   const deleteTicket = useDeleteTicket(brandId);
   const markAsSpam = useMarkAsSpam(brandId);
   const updateCustomer = useUpdateCustomer(brandId, ticket?.customerId || '');
+
+  // Get active team members for assignment
+  const teamMembers = teamData?.members || [];
 
   // Find prev/next tickets for j/k navigation
   const { prevTicketId, nextTicketId, currentIndex, totalCount } = useMemo(() => {
@@ -82,6 +86,28 @@ export default function TicketDetailPage() {
     } catch {
       toast.error('Failed to update priority');
     }
+  };
+
+  const handleAssigneeChange = async (assigneeId: string) => {
+    try {
+      // Use empty string to unassign, null for API
+      await updateTicket.mutateAsync({
+        assigneeId: assigneeId === '' ? null : assigneeId
+      });
+      toast.success(assigneeId ? 'Ticket assigned' : 'Ticket unassigned');
+    } catch {
+      toast.error('Failed to update assignee');
+    }
+  };
+
+  // Get member display name
+  const getMemberName = (memberId: string) => {
+    const member = teamMembers.find(m => m.id === memberId);
+    if (!member) return memberId;
+    if (member.firstName || member.lastName) {
+      return [member.firstName, member.lastName].filter(Boolean).join(' ');
+    }
+    return member.email;
   };
 
   const handleMarkAsSpam = async () => {
@@ -402,14 +428,51 @@ export default function TicketDetailPage() {
                   </>
                 )}
 
-                {ticket.assigneeId && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Assignee
-                    </p>
-                    <p className="mt-1">{ticket.assigneeId}</p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Assignee</p>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="mt-1 h-auto p-0">
+                        {ticket.assigneeId ? (
+                          <span className="flex items-center gap-1.5 text-sm">
+                            <User className="h-3.5 w-3.5" />
+                            {getMemberName(ticket.assigneeId)}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <UserX className="h-3.5 w-3.5" />
+                            Unassigned
+                          </span>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuLabel>Assign to</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioGroup
+                        value={ticket.assigneeId || ''}
+                        onValueChange={handleAssigneeChange}
+                      >
+                        <DropdownMenuRadioItem value="">
+                          <span className="flex items-center gap-1.5">
+                            <UserX className="h-3.5 w-3.5" />
+                            Unassigned
+                          </span>
+                        </DropdownMenuRadioItem>
+                        {teamMembers.map((member) => (
+                          <DropdownMenuRadioItem key={member.id} value={member.id}>
+                            <span className="flex items-center gap-1.5">
+                              <User className="h-3.5 w-3.5" />
+                              {member.firstName || member.lastName
+                                ? [member.firstName, member.lastName].filter(Boolean).join(' ')
+                                : member.email}
+                            </span>
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
 
                 <Separator />
 

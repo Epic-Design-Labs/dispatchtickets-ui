@@ -45,7 +45,7 @@ export interface UpdateTicketInput {
   body?: string;
   status?: TicketStatus;
   priority?: TicketPriority;
-  assigneeId?: string;
+  assigneeId?: string | null;
   customFields?: Record<string, unknown>;
   isSpam?: boolean;
 }
