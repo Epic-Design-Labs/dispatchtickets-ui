@@ -26,10 +26,15 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[] = []) {
     function handleKeyDown(e: KeyboardEvent) {
       // Don't trigger if typing in an input, textarea, or contenteditable
       const target = e.target as HTMLElement;
+      const tagName = target.tagName?.toUpperCase();
+
       if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT' ||
+        target.isContentEditable ||
+        target.getAttribute('role') === 'textbox' ||
+        target.closest('[contenteditable="true"]')
       ) {
         return;
       }
