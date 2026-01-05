@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, Code } from 'lucide-react';
 
 interface MarkdownContentProps {
   content: string;
   className?: string;
+  showSourceToggle?: boolean;
 }
 
 /**
@@ -238,7 +240,15 @@ function processTextWithLinks(
  * - Email footer/signature detection and styling
  * - Line breaks
  */
-export function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
+export function MarkdownContent({ content, className = '', showSourceToggle = false }: MarkdownContentProps) {
+  const [showSource, setShowSource] = useState(false);
+
+  // Check if content was transformed (HTML or had headers stripped)
+  const wasTransformed = useMemo(() => {
+    if (!content) return false;
+    return isHtmlContent(content) || /^(From|Subject|To|Date|Sent|Cc|Reply-To):\s/im.test(content);
+  }, [content]);
+
   const rendered = useMemo(() => {
     if (!content) return null;
 
@@ -359,5 +369,33 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
     return elements;
   }, [content]);
 
-  return <div className={`whitespace-pre-wrap ${className}`}>{rendered}</div>;
+  return (
+    <div className={className}>
+      <div className="whitespace-pre-wrap">{rendered}</div>
+
+      {/* View source toggle - only show if content was transformed */}
+      {showSourceToggle && wasTransformed && (
+        <div className="mt-4 border-t pt-3">
+          <button
+            onClick={() => setShowSource(!showSource)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showSource ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+            <Code className="h-3 w-3" />
+            <span>View original</span>
+          </button>
+
+          {showSource && (
+            <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-x-auto max-h-96 overflow-y-auto">
+              <code>{content}</code>
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

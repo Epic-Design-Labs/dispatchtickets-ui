@@ -296,7 +296,7 @@ export default function TicketDetailPage() {
               </CardHeader>
               <CardContent>
                 {ticket.body ? (
-                  <MarkdownContent content={ticket.body} />
+                  <MarkdownContent content={ticket.body} showSourceToggle />
                 ) : (
                   <p className="text-muted-foreground">No description provided</p>
                 )}
