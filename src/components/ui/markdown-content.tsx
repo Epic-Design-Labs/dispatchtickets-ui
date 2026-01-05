@@ -8,10 +8,70 @@ interface MarkdownContentProps {
 }
 
 /**
- * Clean email body by removing redundant headers
+ * Check if content appears to be HTML
  */
-function cleanEmailHeaders(content: string): string {
+function isHtmlContent(content: string): boolean {
+  // Check for common HTML patterns
+  return /<(html|head|body|div|table|tr|td|p|span|a|img|br|hr)\b/i.test(content);
+}
+
+/**
+ * Convert HTML email to readable plain text
+ */
+function htmlToPlainText(html: string): string {
+  let text = html;
+
+  // Remove style and script tags with their content
+  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+
+  // Convert common block elements to newlines
+  text = text.replace(/<\/(p|div|tr|h[1-6]|li|br|hr)[^>]*>/gi, '\n');
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<hr\s*\/?>/gi, '\n---\n');
+
+  // Convert links to markdown format [text](url)
+  text = text.replace(/<a[^>]*href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi, '[$2]($1)');
+
+  // Convert images to markdown format
+  text = text.replace(/<img[^>]*src=["']([^"']+)["'][^>]*alt=["']([^"']*)["'][^>]*\/?>/gi, '![$2]($1)');
+  text = text.replace(/<img[^>]*alt=["']([^"']*)["'][^>]*src=["']([^"']+)["'][^>]*\/?>/gi, '![$1]($2)');
+  text = text.replace(/<img[^>]*src=["']([^"']+)["'][^>]*\/?>/gi, '![]($1)');
+
+  // Remove all remaining HTML tags
+  text = text.replace(/<[^>]+>/g, '');
+
+  // Decode common HTML entities
+  text = text.replace(/&nbsp;/gi, ' ');
+  text = text.replace(/&amp;/gi, '&');
+  text = text.replace(/&lt;/gi, '<');
+  text = text.replace(/&gt;/gi, '>');
+  text = text.replace(/&quot;/gi, '"');
+  text = text.replace(/&#39;/gi, "'");
+  text = text.replace(/&copy;/gi, '©');
+  text = text.replace(/&reg;/gi, '®');
+  text = text.replace(/&trade;/gi, '™');
+  text = text.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)));
+
+  // Clean up excessive whitespace
+  text = text.replace(/[ \t]+/g, ' '); // Multiple spaces/tabs to single space
+  text = text.replace(/\n[ \t]+/g, '\n'); // Remove leading whitespace on lines
+  text = text.replace(/[ \t]+\n/g, '\n'); // Remove trailing whitespace on lines
+  text = text.replace(/\n{3,}/g, '\n\n'); // Multiple newlines to double
+
+  return text.trim();
+}
+
+/**
+ * Clean email body by removing redundant headers and handling HTML
+ */
+function cleanEmailBody(content: string): string {
   let cleaned = content;
+
+  // Convert HTML to plain text if needed
+  if (isHtmlContent(cleaned)) {
+    cleaned = htmlToPlainText(cleaned);
+  }
 
   // Remove common email header lines that are redundant with our UI
   const headerPatterns = [
@@ -182,8 +242,8 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
   const rendered = useMemo(() => {
     if (!content) return null;
 
-    // Clean email headers first
-    const cleanedContent = cleanEmailHeaders(content);
+    // Clean email content (HTML to text, strip headers)
+    const cleanedContent = cleanEmailBody(content);
 
     // Split content by lines to process each line
     const lines = cleanedContent.split('\n');
