@@ -21,8 +21,17 @@ const shortcutGroups: ShortcutGroup[] = [
   {
     title: 'Ticket Navigation',
     shortcuts: [
-      { keys: ['⌘', 'J'], description: 'Next ticket' },
-      { keys: ['⌘', 'K'], description: 'Previous ticket' },
+      { keys: ['J'], description: 'Next ticket' },
+      { keys: ['K'], description: 'Previous ticket' },
+    ],
+  },
+  {
+    title: 'Ticket Actions',
+    shortcuts: [
+      { keys: ['R'], description: 'Resolve ticket' },
+      { keys: ['P'], description: 'Set to pending' },
+      { keys: ['S'], description: 'Mark as spam' },
+      { keys: ['D'], description: 'Delete ticket' },
     ],
   },
   {

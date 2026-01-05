@@ -63,11 +63,20 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[] = []) {
   }, [shortcuts]);
 }
 
-// Hook specifically for ticket navigation
+interface TicketActions {
+  onSpam?: () => void;
+  onDelete?: () => void;
+  onResolve?: () => void;
+  onPending?: () => void;
+  onSend?: () => void;
+}
+
+// Hook for ticket navigation and actions
 export function useTicketNavigation(
   prevTicketId: string | null,
   nextTicketId: string | null,
-  brandId: string
+  brandId: string,
+  actions?: TicketActions
 ) {
   const router = useRouter();
 
@@ -83,10 +92,30 @@ export function useTicketNavigation(
     }
   }, [nextTicketId, brandId, router]);
 
-  useKeyboardShortcuts([
-    { key: 'j', description: 'Next ticket', action: goToNext, modifier: 'meta' },
-    { key: 'k', description: 'Previous ticket', action: goToPrev, modifier: 'meta' },
-  ]);
+  const shortcuts: KeyboardShortcut[] = [
+    // Navigation - plain keys like Gmail
+    { key: 'j', description: 'Next ticket', action: goToNext },
+    { key: 'k', description: 'Previous ticket', action: goToPrev },
+  ];
+
+  // Add action shortcuts if provided
+  if (actions?.onSpam) {
+    shortcuts.push({ key: 's', description: 'Mark as spam', action: actions.onSpam });
+  }
+  if (actions?.onDelete) {
+    shortcuts.push({ key: 'd', description: 'Delete ticket', action: actions.onDelete });
+  }
+  if (actions?.onResolve) {
+    shortcuts.push({ key: 'r', description: 'Resolve ticket', action: actions.onResolve });
+  }
+  if (actions?.onPending) {
+    shortcuts.push({ key: 'p', description: 'Set to pending', action: actions.onPending });
+  }
+  if (actions?.onSend) {
+    shortcuts.push({ key: 'e', description: 'Send reply', action: actions.onSend });
+  }
+
+  useKeyboardShortcuts(shortcuts);
 
   return { goToPrev, goToNext };
 }

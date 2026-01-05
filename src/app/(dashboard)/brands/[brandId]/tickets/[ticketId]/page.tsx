@@ -68,9 +68,6 @@ export default function TicketDetailPage() {
     };
   }, [ticketsData, ticketId]);
 
-  // Enable j/k keyboard navigation
-  const { goToPrev, goToNext } = useTicketNavigation(prevTicketId, nextTicketId, brandId);
-
   // Navigate to next ticket, or prev, or back to list
   const navigateAfterAction = () => {
     if (nextTicketId) {
@@ -158,6 +155,14 @@ export default function TicketDetailPage() {
     }
   };
 
+  // Enable keyboard shortcuts for navigation and actions
+  const { goToPrev, goToNext } = useTicketNavigation(prevTicketId, nextTicketId, brandId, {
+    onSpam: handleMarkAsSpam,
+    onDelete: () => setShowDeleteDialog(true),
+    onResolve: () => handleStatusChange('resolved'),
+    onPending: () => handleStatusChange('pending'),
+  });
+
   if (ticketLoading) {
     return (
       <div className="flex flex-col">
@@ -239,10 +244,10 @@ export default function TicketDetailPage() {
                     size="sm"
                     onClick={goToPrev}
                     disabled={!prevTicketId}
-                    title="Previous ticket (⌘K)"
+                    title="Previous ticket (K)"
                     className="px-2"
                   >
-                    <kbd className="text-xs font-mono">⌘K</kbd>
+                    <kbd className="text-xs font-mono">K</kbd>
                   </Button>
                   <span className="text-sm text-muted-foreground min-w-[60px] text-center">
                     {currentIndex} / {totalCount}
@@ -252,10 +257,10 @@ export default function TicketDetailPage() {
                     size="sm"
                     onClick={goToNext}
                     disabled={!nextTicketId}
-                    title="Next ticket (⌘J)"
+                    title="Next ticket (J)"
                     className="px-2"
                   >
-                    <kbd className="text-xs font-mono">⌘J</kbd>
+                    <kbd className="text-xs font-mono">J</kbd>
                   </Button>
                 </div>
               )}
