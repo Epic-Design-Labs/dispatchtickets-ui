@@ -239,10 +239,10 @@ export default function TicketDetailPage() {
                     size="sm"
                     onClick={goToPrev}
                     disabled={!prevTicketId}
-                    title="Previous ticket (⌘J)"
+                    title="Previous ticket (⌘K)"
                     className="px-2"
                   >
-                    <kbd className="text-xs font-mono">⌘J</kbd>
+                    <kbd className="text-xs font-mono">⌘K</kbd>
                   </Button>
                   <span className="text-sm text-muted-foreground min-w-[60px] text-center">
                     {currentIndex} / {totalCount}
@@ -252,10 +252,10 @@ export default function TicketDetailPage() {
                     size="sm"
                     onClick={goToNext}
                     disabled={!nextTicketId}
-                    title="Next ticket (⌘K)"
+                    title="Next ticket (⌘J)"
                     className="px-2"
                   >
-                    <kbd className="text-xs font-mono">⌘K</kbd>
+                    <kbd className="text-xs font-mono">⌘J</kbd>
                   </Button>
                 </div>
               )}

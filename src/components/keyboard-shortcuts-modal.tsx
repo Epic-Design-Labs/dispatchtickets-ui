@@ -21,8 +21,8 @@ const shortcutGroups: ShortcutGroup[] = [
   {
     title: 'Ticket Navigation',
     shortcuts: [
-      { keys: ['⌘', 'J'], description: 'Previous ticket' },
-      { keys: ['⌘', 'K'], description: 'Next ticket' },
+      { keys: ['⌘', 'J'], description: 'Next ticket' },
+      { keys: ['⌘', 'K'], description: 'Previous ticket' },
     ],
   },
   {
