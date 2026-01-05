@@ -8,6 +8,34 @@ interface MarkdownContentProps {
 }
 
 /**
+ * Clean email body by removing redundant headers
+ */
+function cleanEmailHeaders(content: string): string {
+  let cleaned = content;
+
+  // Remove common email header lines that are redundant with our UI
+  const headerPatterns = [
+    /^From:\s*.+$/gim,
+    /^Subject:\s*.+$/gim,
+    /^To:\s*.+$/gim,
+    /^Date:\s*.+$/gim,
+    /^Sent:\s*.+$/gim,
+    /^Cc:\s*.+$/gim,
+    /^Reply-To:\s*.+$/gim,
+  ];
+
+  for (const pattern of headerPatterns) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+
+  // Remove multiple consecutive blank lines (more than 2)
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+
+  // Trim leading/trailing whitespace
+  return cleaned.trim();
+}
+
+/**
  * Truncate a URL for display, keeping the domain and start/end visible
  */
 function truncateUrl(url: string, maxLength: number = 50): string {
@@ -154,8 +182,11 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
   const rendered = useMemo(() => {
     if (!content) return null;
 
+    // Clean email headers first
+    const cleanedContent = cleanEmailHeaders(content);
+
     // Split content by lines to process each line
-    const lines = content.split('\n');
+    const lines = cleanedContent.split('\n');
     const elements: React.ReactNode[] = [];
     let inFooter = false;
     let footerStartIndex = -1;
