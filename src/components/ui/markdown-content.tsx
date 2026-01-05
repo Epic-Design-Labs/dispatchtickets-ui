@@ -59,7 +59,7 @@ function htmlToPlainText(html: string): string {
   text = text.replace(/[ \t]+/g, ' '); // Multiple spaces/tabs to single space
   text = text.replace(/\n[ \t]+/g, '\n'); // Remove leading whitespace on lines
   text = text.replace(/[ \t]+\n/g, '\n'); // Remove trailing whitespace on lines
-  text = text.replace(/\n{3,}/g, '\n\n'); // Multiple newlines to double
+  text = text.replace(/\n{2,}/g, '\n\n'); // Multiple newlines to max double (1 blank line)
 
   return text.trim();
 }
@@ -90,8 +90,8 @@ function cleanEmailBody(content: string): string {
     cleaned = cleaned.replace(pattern, '');
   }
 
-  // Remove multiple consecutive blank lines (more than 2)
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  // Collapse multiple blank lines to max 1 blank line
+  cleaned = cleaned.replace(/\n{2,}/g, '\n\n');
 
   // Trim leading/trailing whitespace
   return cleaned.trim();

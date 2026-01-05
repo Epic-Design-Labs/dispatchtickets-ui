@@ -295,6 +295,20 @@ export default function TicketDetailPage() {
                 <CardTitle>Description</CardTitle>
               </CardHeader>
               <CardContent>
+                {/* Show sender info for email tickets */}
+                {ticket.source === 'email' && ticket.customer && (
+                  <div className="mb-4 pb-3 border-b text-sm">
+                    <span className="text-muted-foreground">From: </span>
+                    <span className="font-medium">
+                      {ticket.customer.name || ticket.customer.email}
+                    </span>
+                    {ticket.customer.name && (
+                      <span className="text-muted-foreground ml-1">
+                        &lt;{ticket.customer.email}&gt;
+                      </span>
+                    )}
+                  </div>
+                )}
                 {ticket.body ? (
                   <MarkdownContent content={ticket.body} showSourceToggle />
                 ) : (
