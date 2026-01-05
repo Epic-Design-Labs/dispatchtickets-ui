@@ -53,8 +53,9 @@ export function useSyncEmail() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (brandId: string) => emailConnectionsApi.sync(brandId),
-    onSuccess: (_, brandId) => {
+    mutationFn: ({ brandId, full }: { brandId: string; full?: boolean }) =>
+      emailConnectionsApi.sync(brandId, full),
+    onSuccess: (_, { brandId }) => {
       queryClient.invalidateQueries({ queryKey: emailConnectionKeys.detail(brandId) });
     },
   });

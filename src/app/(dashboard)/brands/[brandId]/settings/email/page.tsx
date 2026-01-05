@@ -38,6 +38,7 @@ import {
   useEmailConnection,
   useConnectGmail,
   useDisconnectEmail,
+  useSyncEmail,
 } from '@/lib/hooks';
 import { WorkspaceDomain, DomainType } from '@/lib/api/domains';
 import { toast } from 'sonner';
@@ -288,6 +289,7 @@ export default function EmailSettingsPage() {
   // Email connection mutations
   const connectGmail = useConnectGmail();
   const disconnectEmail = useDisconnectEmail();
+  const syncEmail = useSyncEmail();
 
   // Autoresponse state
   const [autoresponseEnabled, setAutoresponseEnabled] = useState(false);
@@ -421,6 +423,19 @@ export default function EmailSettingsPage() {
     }
   };
 
+  const handleSyncEmail = async (full = false) => {
+    try {
+      const result = await syncEmail.mutateAsync({ brandId, full });
+      if (result.ticketsCreated > 0) {
+        toast.success(`Sync complete! ${result.ticketsCreated} new ticket(s) created.`);
+      } else {
+        toast.success('Sync complete. No new emails found.');
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to sync emails');
+    }
+  };
+
   // Filter domains by type
   const outboundDomains = domains?.filter((d) => d.type === 'OUTBOUND') || [];
   const inboundDomains = domains?.filter((d) => d.type === 'INBOUND') || [];
@@ -500,13 +515,41 @@ export default function EmailSettingsPage() {
                   </div>
                 )}
 
-                {/* Last sync info */}
-                {emailConnection.lastSyncAt && (
-                  <p className="text-sm text-muted-foreground">
-                    <RefreshCw className="inline h-3 w-3 mr-1" />
-                    Last synced: {new Date(emailConnection.lastSyncAt).toLocaleString()}
-                  </p>
-                )}
+                {/* Last sync info and sync buttons */}
+                <div className="flex items-center justify-between">
+                  {emailConnection.lastSyncAt ? (
+                    <p className="text-sm text-muted-foreground">
+                      <RefreshCw className="inline h-3 w-3 mr-1" />
+                      Last synced: {new Date(emailConnection.lastSyncAt).toLocaleString()}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Never synced</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSyncEmail(false)}
+                      disabled={syncEmail.isPending}
+                    >
+                      {syncEmail.isPending ? (
+                        <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-1 h-4 w-4" />
+                      )}
+                      Sync Now
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSyncEmail(true)}
+                      disabled={syncEmail.isPending}
+                      title="Re-import last 50 emails"
+                    >
+                      Full Sync
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

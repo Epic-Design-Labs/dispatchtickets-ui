@@ -60,9 +60,9 @@ export const emailConnectionsApi = {
   /**
    * Trigger manual sync
    */
-  sync: async (brandId: string): Promise<{ ticketsCreated: number }> => {
+  sync: async (brandId: string, full?: boolean): Promise<{ ticketsCreated: number }> => {
     const response = await apiClient.post<{ ticketsCreated: number }>(
-      `/brands/${brandId}/email-connection/sync`
+      `/brands/${brandId}/email-connection/sync${full ? '?full=true' : ''}`
     );
     return response.data;
   },
