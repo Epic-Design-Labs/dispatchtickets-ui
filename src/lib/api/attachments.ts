@@ -114,13 +114,17 @@ export const attachmentsApi = {
     );
 
     // 2. Upload directly to S3/R2
-    await fetch(uploadUrl, {
+    const uploadResponse = await fetch(uploadUrl, {
       method: 'PUT',
       body: file,
       headers: {
         'Content-Type': file.type,
       },
     });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+    }
 
     // 3. Confirm upload and get download URL
     await attachmentsApi.confirmUpload(brandId, ticketId, id);
