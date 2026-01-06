@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useCreateComment, useProfile, useUploadAttachment } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
-import { Send, Clock, CheckCircle, ImagePlus, Loader2, X } from 'lucide-react';
+import { Send, Clock, CheckCircle, ImagePlus, Paperclip, Loader2, X, FileText } from 'lucide-react';
 
 interface CommentEditorProps {
   brandId: string;
@@ -19,6 +19,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const [isInternal, setIsInternal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const createComment = useCreateComment(brandId, ticketId);
   const uploadAttachment = useUploadAttachment(brandId, ticketId);
@@ -108,49 +109,60 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleSubmit]);
 
-  // Handle image upload
-  const handleImageUpload = useCallback(async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
+  // Handle file upload (images or attachments)
+  const handleFileUpload = useCallback(async (file: File, forceAsAttachment = false) => {
+    const isImage = file.type.startsWith('image/') && !forceAsAttachment;
 
     setIsUploading(true);
     try {
       const attachment = await uploadAttachment.mutateAsync(file);
-      // Insert markdown image at cursor position
-      const imageMarkdown = `![${file.name}](${attachment.downloadUrl})`;
+      // Insert markdown: image syntax for images, link syntax for files
+      const markdown = isImage
+        ? `![${file.name}](${attachment.downloadUrl})`
+        : `[${file.name}](${attachment.downloadUrl})`;
       const textarea = textareaRef.current;
       if (textarea) {
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        const newBody = body.slice(0, start) + imageMarkdown + body.slice(end);
+        const newBody = body.slice(0, start) + markdown + body.slice(end);
         setBody(newBody);
-        // Move cursor after the inserted image
+        // Move cursor after the inserted content
         setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = start + imageMarkdown.length;
+          textarea.selectionStart = textarea.selectionEnd = start + markdown.length;
           textarea.focus();
         }, 0);
       } else {
-        setBody((prev) => prev + (prev ? '\n' : '') + imageMarkdown);
+        setBody((prev) => prev + (prev ? '\n' : '') + markdown);
       }
-      toast.success('Image uploaded');
+      toast.success(isImage ? 'Image uploaded' : 'File attached');
     } catch {
-      toast.error('Failed to upload image');
+      toast.error(isImage ? 'Failed to upload image' : 'Failed to attach file');
     } finally {
       setIsUploading(false);
     }
   }, [body, uploadAttachment]);
 
-  // Handle file input change
+  // Handle image input change
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      handleFileUpload(file);
+    }
+    e.target.value = '';
+  }, [handleFileUpload]);
+
+  // Handle file input change (any file type)
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      handleImageUpload(file);
+      handleFileUpload(file, true);
     }
-    // Reset input so same file can be selected again
     e.target.value = '';
-  }, [handleImageUpload]);
+  }, [handleFileUpload]);
 
   // Handle paste for images
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
@@ -162,12 +174,12 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
         e.preventDefault();
         const file = item.getAsFile();
         if (file) {
-          handleImageUpload(file);
+          handleFileUpload(file);
         }
         return;
       }
     }
-  }, [handleImageUpload]);
+  }, [handleFileUpload]);
 
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const modKey = isMac ? '⌘' : 'Ctrl';
@@ -187,10 +199,29 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
     return matches;
   }, [body]);
 
-  // Remove an image from the body
-  const removeImage = useCallback((fullMatch: string) => {
+  // Extract file attachments (non-image links) from markdown body for preview
+  const attachments = useMemo(() => {
+    // Match [text](url) but NOT ![text](url)
+    const linkRegex = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
+    const matches: { name: string; url: string; fullMatch: string }[] = [];
+    let match;
+    while ((match = linkRegex.exec(body)) !== null) {
+      // Only include if it looks like a storage URL (R2/S3)
+      if (match[2].includes('r2.cloudflarestorage.com') || match[2].includes('X-Amz-')) {
+        matches.push({
+          name: match[1],
+          url: match[2],
+          fullMatch: match[0],
+        });
+      }
+    }
+    return matches;
+  }, [body]);
+
+  // Remove an attachment from the body
+  const removeAttachment = useCallback((fullMatch: string) => {
     setBody((prev) => {
-      // Remove the image markdown and any trailing newline
+      // Remove the markdown and any trailing newline
       return prev.replace(fullMatch + '\n', '').replace(fullMatch, '').trim();
     });
   }, []);
@@ -210,15 +241,15 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
         {isUploading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">Uploading image...</span>
+            <span className="ml-2 text-sm text-muted-foreground">Uploading...</span>
           </div>
         )}
       </div>
-      {/* Image previews */}
-      {images.length > 0 && (
+      {/* Image and attachment previews */}
+      {(images.length > 0 || attachments.length > 0) && (
         <div className="flex flex-wrap gap-2">
           {images.map((img, index) => (
-            <div key={index} className="relative group">
+            <div key={`img-${index}`} className="relative group">
               <img
                 src={img.url}
                 alt={img.alt || 'Uploaded image'}
@@ -226,9 +257,23 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
               />
               <button
                 type="button"
-                onClick={() => removeImage(img.fullMatch)}
+                onClick={() => removeAttachment(img.fullMatch)}
                 className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                 title="Remove image"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+          {attachments.map((file, index) => (
+            <div key={`file-${index}`} className="relative group flex items-center gap-2 px-3 py-2 bg-muted rounded-md border">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm truncate max-w-[150px]">{file.name}</span>
+              <button
+                type="button"
+                onClick={() => removeAttachment(file.fullMatch)}
+                className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                title="Remove file"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -237,9 +282,15 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
         </div>
       )}
       <input
-        ref={fileInputRef}
+        ref={imageInputRef}
         type="file"
         accept="image/*"
+        onChange={handleImageSelect}
+        className="hidden"
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
         onChange={handleFileSelect}
         className="hidden"
       />
@@ -258,11 +309,21 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => imageInputRef.current?.click()}
             disabled={isUploading}
             title="Add image"
           >
             <ImagePlus className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            title="Attach file"
+          >
+            <Paperclip className="h-4 w-4" />
           </Button>
         </div>
 
