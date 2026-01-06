@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { useBrand, useTickets, useTicketNotifications, useEmailConnection, useSyncEmail } from '@/lib/hooks';
+import { useBrand, useTickets, useTicketNotifications, useEmailConnection, useSyncEmail, useBulkAction } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
 import { Header } from '@/components/layout';
@@ -31,6 +31,9 @@ export default function BrandDashboardPage() {
   const { data: emailConnection } = useEmailConnection(brandId);
   const syncEmail = useSyncEmail();
 
+  // Bulk actions
+  const bulkAction = useBulkAction(brandId);
+
   const handleSync = async () => {
     try {
       const result = await syncEmail.mutateAsync({ brandId });
@@ -41,6 +44,29 @@ export default function BrandDashboardPage() {
       }
     } catch {
       toast.error('Failed to sync emails');
+    }
+  };
+
+  const handleBulkAction = async (
+    action: 'spam' | 'resolve' | 'close' | 'delete',
+    ticketIds: string[]
+  ) => {
+    try {
+      const result = await bulkAction.mutateAsync({ action, ticketIds });
+      const actionLabels = {
+        spam: 'marked as spam',
+        resolve: 'resolved',
+        close: 'closed',
+        delete: 'deleted',
+      };
+      if (result.success > 0) {
+        toast.success(`${result.success} ticket(s) ${actionLabels[action]}`);
+      }
+      if (result.failed > 0) {
+        toast.error(`${result.failed} ticket(s) failed`);
+      }
+    } catch {
+      toast.error('Bulk action failed');
     }
   };
 
@@ -260,6 +286,7 @@ export default function BrandDashboardPage() {
           tickets={tickets}
           brandId={brandId}
           isLoading={ticketsLoading}
+          onBulkAction={handleBulkAction}
         />
 
         {/* Load More */}

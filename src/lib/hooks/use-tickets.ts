@@ -124,3 +124,23 @@ export function useMergeTickets(brandId: string) {
     },
   });
 }
+
+export function useBulkAction(brandId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      action,
+      ticketIds,
+    }: {
+      action: 'spam' | 'resolve' | 'close' | 'delete';
+      ticketIds: string[];
+    }) => ticketsApi.bulkAction(brandId, action, ticketIds),
+    onSuccess: () => {
+      // Invalidate all ticket queries since multiple tickets are affected
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
+      queryClient.invalidateQueries({ queryKey: ['customer-tickets', brandId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-tickets'] });
+    },
+  });
+}

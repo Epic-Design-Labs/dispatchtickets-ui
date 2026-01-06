@@ -84,4 +84,16 @@ export const ticketsApi = {
     );
     return response.data;
   },
+
+  bulkAction: async (
+    brandId: string,
+    action: 'spam' | 'resolve' | 'close' | 'delete',
+    ticketIds: string[]
+  ): Promise<{ success: number; failed: number }> => {
+    const response = await apiClient.post<{ success: number; failed: number }>(
+      `/brands/${brandId}/tickets/bulk`,
+      { action, ticketIds }
+    );
+    return response.data;
+  },
 };
