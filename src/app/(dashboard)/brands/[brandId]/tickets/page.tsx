@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useBrand, useTickets, useTicketNotifications, useEmailConnection, useSyncEmail } from '@/lib/hooks';
 import { toast } from 'sonner';
@@ -15,7 +15,8 @@ import { TicketFilters as TicketFiltersType } from '@/types';
 export default function BrandDashboardPage() {
   const params = useParams();
   const brandId = params.brandId as string;
-  const [filters, setFilters] = useState<TicketFiltersType>({});
+  // Default to 'active' status (shows open + pending)
+  const [filters, setFilters] = useState<TicketFiltersType>({ status: 'active' });
 
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   // Fetch all tickets for stats (without filters)
@@ -49,13 +50,28 @@ export default function BrandDashboardPage() {
   const allTickets = allTicketsData?.data || [];
   const stats = {
     total: allTickets.length,
+    active: allTickets.filter((t) => t.status === 'open' || t.status === 'pending').length,
     open: allTickets.filter((t) => t.status === 'open').length,
     pending: allTickets.filter((t) => t.status === 'pending').length,
     resolved: allTickets.filter((t) => t.status === 'resolved').length,
     closed: allTickets.filter((t) => t.status === 'closed').length,
   };
 
-  const tickets = ticketsData?.data || [];
+  // Sort tickets: open first (by newest), then pending (by newest) when showing active
+  const tickets = useMemo(() => {
+    const rawTickets = ticketsData?.data || [];
+    // Only apply grouping when showing "active"
+    if (filters.status === 'active') {
+      const openTickets = rawTickets
+        .filter(t => t.status === 'open')
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const pendingTickets = rawTickets
+        .filter(t => t.status === 'pending')
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return [...openTickets, ...pendingTickets];
+    }
+    return rawTickets;
+  }, [ticketsData?.data, filters.status]);
 
   // Handle clicking on a stat card to filter
   const handleStatClick = (status: string | undefined) => {
@@ -73,8 +89,8 @@ export default function BrandDashboardPage() {
       <div className="flex-1 p-6">
         {/* Stats Cards */}
         {isLoading ? (
-          <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {[1, 2, 3, 4, 5].map((i) => (
+          <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
               <Card key={i}>
                 <CardHeader className="pb-2">
                   <Skeleton className="h-4 w-20" />
@@ -86,7 +102,7 @@ export default function BrandDashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
             <Card
               className={`cursor-pointer transition-colors hover:bg-accent ${
                 !filters.status ? 'ring-2 ring-primary' : ''
@@ -94,7 +110,7 @@ export default function BrandDashboardPage() {
               onClick={() => handleStatClick(undefined)}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total</CardTitle>
+                <CardTitle className="text-sm font-medium">All</CardTitle>
                 <svg
                   className="h-4 w-4 text-muted-foreground"
                   fill="none"
@@ -111,6 +127,21 @@ export default function BrandDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.total}</div>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={`cursor-pointer transition-colors hover:bg-accent ${
+                filters.status === 'active' ? 'ring-2 ring-purple-500' : ''
+              }`}
+              onClick={() => handleStatClick('active')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active</CardTitle>
+                <div className="h-2 w-2 rounded-full bg-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.active}</div>
               </CardContent>
             </Card>
 

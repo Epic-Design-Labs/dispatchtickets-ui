@@ -136,9 +136,9 @@ export function Sidebar({ brandId }: SidebarProps) {
               )}
             >
               <Inbox className="h-4 w-4" />
-              All Open
+              All Active
               {isDashboard && stats && (
-                <span className="ml-auto text-xs opacity-70">{stats.open}</span>
+                <span className="ml-auto text-xs opacity-70">{(stats.open || 0) + (stats.pending || 0)}</span>
               )}
             </Link>
             <Link

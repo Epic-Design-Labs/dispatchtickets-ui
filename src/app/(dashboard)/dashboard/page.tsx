@@ -153,14 +153,14 @@ export default function DashboardPage() {
         return {
           ...baseFilters,
           assigneeId: 'null', // Special value to filter for null assignee
-          status: status || 'open',
+          status: status || 'active', // Default to active (open+pending)
         };
       case 'all':
       default:
-        // Show all open tickets (unless status filter is set)
+        // Show all active tickets (open + pending) unless status filter is set
         return {
           ...baseFilters,
-          status: status || 'open',
+          status: status || 'active',
         };
     }
   }, [status, priority, search, selectedBrands, view, session?.customerId]);
@@ -168,7 +168,21 @@ export default function DashboardPage() {
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
   const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBrands);
 
-  const tickets = ticketsData?.data || [];
+  // Sort tickets: open first (by newest), then pending (by newest)
+  const tickets = useMemo(() => {
+    const rawTickets = ticketsData?.data || [];
+    // Only apply grouping when showing "active" (default view with no specific status filter)
+    if (!status) {
+      const openTickets = rawTickets
+        .filter(t => t.status === 'open')
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const pendingTickets = rawTickets
+        .filter(t => t.status === 'pending')
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return [...openTickets, ...pendingTickets];
+    }
+    return rawTickets;
+  }, [ticketsData?.data, status]);
 
   return (
     <div className="h-full overflow-auto p-6">
