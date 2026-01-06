@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useDashboardTickets, useDashboardStats } from '@/lib/hooks';
+import { useDashboardTickets, useDashboardStats, useBrands } from '@/lib/hooks';
 import { useAuth } from '@/providers';
-import { DashboardTicketFilters } from '@/types';
+import { DashboardTicketFilters, TicketFilters as TicketFiltersType } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { TicketFilters } from '@/components/tickets/ticket-filters';
 import {
   Ticket,
   Clock,
@@ -72,18 +73,71 @@ export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session } = useAuth();
+  const { data: brands } = useBrands();
 
   // Parse URL params
   const view = (searchParams.get('view') || 'all') as ViewType;
   const status = searchParams.get('status') || undefined;
+  const priority = searchParams.get('priority') || undefined;
+  const search = searchParams.get('search') || undefined;
   const brandsParam = searchParams.get('brands');
   const selectedBrands = brandsParam ? brandsParam.split(',').filter(Boolean) : [];
 
+  // Update URL params helper
+  const updateUrlParams = useCallback(
+    (updates: Record<string, string | undefined>) => {
+      const current = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value) {
+          current.set(key, value);
+        } else {
+          current.delete(key);
+        }
+      });
+      router.push(`/dashboard?${current.toString()}`);
+    },
+    [searchParams, router]
+  );
+
+  // Handle filter changes from TicketFilters component
+  const handleFiltersChange = useCallback(
+    (newFilters: TicketFiltersType) => {
+      updateUrlParams({
+        status: newFilters.status,
+        priority: newFilters.priority,
+        search: newFilters.search,
+      });
+    },
+    [updateUrlParams]
+  );
+
+  // Handle brand filter changes
+  const handleBrandFilterChange = useCallback(
+    (brandIds: string[]) => {
+      updateUrlParams({
+        brands: brandIds.length > 0 ? brandIds.join(',') : undefined,
+      });
+    },
+    [updateUrlParams]
+  );
+
+  // Current filters for TicketFilters component
+  const currentFilters: TicketFiltersType = useMemo(
+    () => ({
+      status,
+      priority,
+      search,
+    }),
+    [status, priority, search]
+  );
+
   // Build filters based on view
-  const filters: DashboardTicketFilters = useMemo(() => {
+  const apiFilters: DashboardTicketFilters = useMemo(() => {
     const baseFilters: DashboardTicketFilters = {
       brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
       limit: 50,
+      priority,
+      search,
     };
 
     switch (view) {
@@ -103,21 +157,33 @@ export default function DashboardPage() {
         };
       case 'all':
       default:
-        // Show all open tickets
+        // Show all open tickets (unless status filter is set)
         return {
           ...baseFilters,
           status: status || 'open',
         };
     }
-  }, [status, selectedBrands, view, session?.customerId]);
+  }, [status, priority, search, selectedBrands, view, session?.customerId]);
 
-  const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(filters);
+  const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
   const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBrands);
 
   const tickets = ticketsData?.data || [];
 
   return (
     <div className="h-full overflow-auto p-6">
+      {/* Filters */}
+      <div className="mb-6">
+        <TicketFilters
+          filters={currentFilters}
+          onFiltersChange={handleFiltersChange}
+          brands={brands}
+          selectedBrandIds={selectedBrands}
+          onBrandFilterChange={handleBrandFilterChange}
+          showBrandFilter
+        />
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <Card>

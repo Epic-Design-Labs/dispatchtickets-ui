@@ -1,4 +1,4 @@
-export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed' | null;
+export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed' | 'spam' | null;
 export type TicketPriority = 'low' | 'normal' | 'medium' | 'high' | 'urgent' | null;
 export type TicketSource = 'api' | 'email' | 'slack' | 'sms' | 'web' | 'other';
 

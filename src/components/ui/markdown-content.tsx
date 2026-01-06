@@ -130,15 +130,36 @@ function truncateUrl(url: string, maxLength: number = 50): string {
 /**
  * Check if a line is likely part of an email footer/signature
  */
-function isFooterLine(line: string, lineIndex: number, totalLines: number): boolean {
+function isSignatureLine(line: string): boolean {
   const trimmed = line.trim();
+  if (!trimmed) return false;
 
   // Common signature delimiters
   if (trimmed === '--' || trimmed === '---' || trimmed === '----------') {
     return true;
   }
 
-  // Common footer patterns (case insensitive)
+  // Phone number patterns (various formats)
+  if (/^[\d\s\-.()+]{10,}$/.test(trimmed) || /^\d{3}[-.\s]?\d{3}[-.\s]?\d{4}$/.test(trimmed)) {
+    return true;
+  }
+
+  // Standalone website/domain (not a full URL, just domain.com)
+  if (/^[a-z0-9][-a-z0-9]*\.(com|org|net|io|co|ai|dev|app|us|uk|ca)$/i.test(trimmed)) {
+    return true;
+  }
+
+  // Social media links or icons (LinkedIn, YouTube, Twitter, Facebook, Instagram, Threads)
+  if (/linkedin|youtube|twitter|facebook|instagram|threads|x\.com/i.test(trimmed)) {
+    return true;
+  }
+
+  // Line is just an image (markdown image syntax alone on line)
+  if (/^!\[[^\]]*\]\([^)]+\)$/.test(trimmed)) {
+    return true;
+  }
+
+  // Common footer text patterns (case insensitive)
   const footerPatterns = [
     /^sent from my/i,
     /^get outlook for/i,
@@ -150,6 +171,22 @@ function isFooterLine(line: string, lineIndex: number, totalLines: number): bool
     /^add partners who should receive/i,
     /^message type:/i,
     /^\d{1,5}\s+\w+\s+(street|st|avenue|ave|road|rd|boulevard|blvd|drive|dr|way|lane|ln)/i, // Address
+    /^(mobile|cell|phone|fax|tel|office):/i, // Phone labels
+    /^(email|e-mail|website|web|www):/i, // Contact labels
+    // App download / marketing footer patterns
+    /for (ios|android|iphone|ipad)/i,
+    /download (on|from|the|for)/i,
+    /app store|google play|play store/i,
+    /turn off .*(notifications|emails)/i,
+    /manage .*(preferences|notifications|settings)/i,
+    /^view in \w+$/i, // "View in Figma", "View in Slack", etc.
+    /^open in \w+$/i,
+    /^\w+ (is a|helps|enables|lets you)/i, // Marketing copy like "Figma is a design platform..."
+    /^try the .* app/i,
+    /^get the .* app/i,
+    /©\s*\d{4}/i, // Copyright notice
+    /all rights reserved/i,
+    /privacy policy|terms of service|terms of use/i,
   ];
 
   for (const pattern of footerPatterns) {
@@ -159,6 +196,85 @@ function isFooterLine(line: string, lineIndex: number, totalLines: number): bool
   }
 
   return false;
+}
+
+/**
+ * Check if a line looks like a marketing email CTA or footer start
+ */
+function isMarketingFooterStart(line: string): boolean {
+  const trimmed = line.trim().toLowerCase();
+  return /^view in \w+$/i.test(trimmed) ||
+    /^open in \w+$/i.test(trimmed) ||
+    /for (ios|android)/i.test(trimmed) ||
+    /app store|google play/i.test(trimmed) ||
+    /turn off .*(notifications|emails)/i.test(trimmed);
+}
+
+/**
+ * Detect where an email signature block starts
+ * Returns the line index where signature begins, or -1 if not found
+ */
+function findSignatureStart(lines: string[]): number {
+  // Look for signature indicators from bottom up
+  // When we find one, check if preceding lines look like name/company
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    if (isSignatureLine(line)) {
+      // Found a signature line - now look backward to find where signature starts
+      let signatureStart = i;
+
+      // For marketing footers, look back more aggressively (up to 20 lines)
+      const isMarketingFooter = isMarketingFooterStart(line);
+      const lookbackLimit = isMarketingFooter ? 20 : 5;
+
+      // Look back for the start of signature/footer block
+      for (let j = i - 1; j >= Math.max(0, i - lookbackLimit); j--) {
+        const prevLine = lines[j].trim();
+        if (!prevLine) continue;
+
+        // If previous line is also a signature element, include it
+        if (isSignatureLine(prevLine)) {
+          signatureStart = j;
+          continue;
+        }
+
+        // For marketing emails, also include images and short lines (branding)
+        if (isMarketingFooter) {
+          // Include standalone images (logos, icons)
+          if (/^!\[[^\]]*\]\([^)]+\)/.test(prevLine)) {
+            signatureStart = j;
+            continue;
+          }
+          // Include short lines that might be branding/company names
+          if (prevLine.length < 30 && !/[.!?]$/.test(prevLine)) {
+            signatureStart = j;
+            continue;
+          }
+        }
+
+        // Check if this looks like a name or company (short line, 1-4 words)
+        const words = prevLine.split(/\s+/);
+        const looksLikeName = words.length <= 4 &&
+          words.length >= 1 &&
+          prevLine.length < 40 &&
+          !/[.!?;:]$/.test(prevLine) && // Doesn't end with sentence punctuation
+          !/^(hi|hello|hey|dear|thanks|thank you|regards|best|sincerely)/i.test(prevLine);
+
+        if (looksLikeName) {
+          signatureStart = j;
+        } else {
+          // Hit content that doesn't look like signature - stop
+          break;
+        }
+      }
+
+      return signatureStart;
+    }
+  }
+
+  return -1;
 }
 
 /**
@@ -259,20 +375,9 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
     const lines = cleanedContent.split('\n');
     const elements: React.ReactNode[] = [];
     let inFooter = false;
-    let footerStartIndex = -1;
 
-    // First pass: detect where footer starts
-    for (let i = 0; i < lines.length; i++) {
-      if (isFooterLine(lines[i], i, lines.length)) {
-        // Check if this looks like the start of a footer section
-        // (signature delimiter or footer-like content in bottom half of email)
-        const trimmed = lines[i].trim();
-        if (trimmed === '--' || trimmed === '---' || trimmed === '----------' || i > lines.length * 0.5) {
-          footerStartIndex = i;
-          break;
-        }
-      }
-    }
+    // Detect where signature/footer starts
+    const footerStartIndex = findSignatureStart(lines);
 
     lines.forEach((line, lineIndex) => {
       const keyIndex = { current: 0 };

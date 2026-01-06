@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-type NonNullStatus = 'open' | 'pending' | 'resolved' | 'closed';
+type NonNullStatus = 'open' | 'pending' | 'resolved' | 'closed' | 'spam';
 
 const statusConfig: Record<NonNullStatus, { label: string; className: string }> = {
   open: {
@@ -19,6 +19,10 @@ const statusConfig: Record<NonNullStatus, { label: string; className: string }> 
   closed: {
     label: 'Closed',
     className: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
+  },
+  spam: {
+    label: 'Spam',
+    className: 'bg-red-100 text-red-800 hover:bg-red-100',
   },
 };
 

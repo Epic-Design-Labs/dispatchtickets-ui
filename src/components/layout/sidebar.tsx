@@ -1,11 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +26,6 @@ interface SidebarProps {
 export function Sidebar({ brandId }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { session, logout } = useAuth();
   const { data: profile } = useProfile();
   const { data: brands } = useBrands();
@@ -36,28 +34,9 @@ export function Sidebar({ brandId }: SidebarProps) {
   // Dashboard state from URL
   const isDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard');
   const view = searchParams.get('view') || 'all';
-  const brandsParam = searchParams.get('brands');
-  const selectedBrands = brandsParam ? brandsParam.split(',').filter(Boolean) : [];
 
-  // Only fetch stats when on dashboard
-  const { data: stats } = useDashboardStats(isDashboard ? selectedBrands : undefined);
-
-  // Brand filter toggle
-  const toggleBrand = (brandId: string) => {
-    const current = new URLSearchParams(searchParams.toString());
-    let newBrands: string[];
-    if (selectedBrands.includes(brandId)) {
-      newBrands = selectedBrands.filter((id) => id !== brandId);
-    } else {
-      newBrands = [...selectedBrands, brandId];
-    }
-    if (newBrands.length > 0) {
-      current.set('brands', newBrands.join(','));
-    } else {
-      current.delete('brands');
-    }
-    router.push(`/dashboard?${current.toString()}`);
-  };
+  // Only fetch stats when on dashboard (for queue counts)
+  const { data: stats } = useDashboardStats(isDashboard ? [] : undefined);
 
   // Get display name: profile > email-derived > email
   const displayName = profile?.displayName || (email ? email.split('@')[0].split(/[._-]/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User');
@@ -188,34 +167,6 @@ export function Sidebar({ brandId }: SidebarProps) {
             </Link>
           </nav>
         </div>
-
-        {/* Brand Filters (only on dashboard) */}
-        {isDashboard && brands && brands.length > 0 && (
-          <div className="px-3 mb-4">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-2">
-              Filter by Brand
-            </h3>
-            <div className="space-y-1">
-              {brands.map((brand) => (
-                <label
-                  key={brand.id}
-                  className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-muted rounded-md"
-                >
-                  <Checkbox
-                    checked={selectedBrands.includes(brand.id)}
-                    onCheckedChange={() => toggleBrand(brand.id)}
-                  />
-                  <span className="truncate">{brand.name}</span>
-                  {stats?.byBrand[brand.id] && (
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {stats.byBrand[brand.id].open}
-                    </span>
-                  )}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
 
         <Separator className="mb-4" />
 
