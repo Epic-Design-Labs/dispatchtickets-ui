@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCreateComment, useProfile, useUploadAttachment } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
-import { Send, Clock, CheckCircle, ImagePlus, Loader2 } from 'lucide-react';
+import { Send, Clock, CheckCircle, ImagePlus, Loader2, X } from 'lucide-react';
 
 interface CommentEditorProps {
   brandId: string;
@@ -172,6 +172,29 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const modKey = isMac ? '⌘' : 'Ctrl';
 
+  // Extract images from markdown body for preview
+  const images = useMemo(() => {
+    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    const matches: { alt: string; url: string; fullMatch: string }[] = [];
+    let match;
+    while ((match = imageRegex.exec(body)) !== null) {
+      matches.push({
+        alt: match[1],
+        url: match[2],
+        fullMatch: match[0],
+      });
+    }
+    return matches;
+  }, [body]);
+
+  // Remove an image from the body
+  const removeImage = useCallback((fullMatch: string) => {
+    setBody((prev) => {
+      // Remove the image markdown and any trailing newline
+      return prev.replace(fullMatch + '\n', '').replace(fullMatch, '').trim();
+    });
+  }, []);
+
   return (
     <div className="space-y-3">
       <div className="relative">
@@ -191,6 +214,28 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
           </div>
         )}
       </div>
+      {/* Image previews */}
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {images.map((img, index) => (
+            <div key={index} className="relative group">
+              <img
+                src={img.url}
+                alt={img.alt || 'Uploaded image'}
+                className="h-20 w-20 object-cover rounded-md border"
+              />
+              <button
+                type="button"
+                onClick={() => removeImage(img.fullMatch)}
+                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove image"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <input
         ref={fileInputRef}
         type="file"
