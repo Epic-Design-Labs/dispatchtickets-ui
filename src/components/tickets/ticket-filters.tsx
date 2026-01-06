@@ -34,8 +34,8 @@ interface TicketFiltersProps {
 }
 
 const statusOptions = [
-  { value: '', label: 'All' },
   { value: 'active', label: 'Active' },
+  { value: '', label: 'All' },
   { value: 'open', label: 'Open' },
   { value: 'pending', label: 'Pending' },
   { value: 'resolved', label: 'Resolved' },

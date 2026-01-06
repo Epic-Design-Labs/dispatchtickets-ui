@@ -105,6 +105,21 @@ export default function BrandDashboardPage() {
           <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
             <Card
               className={`cursor-pointer transition-colors hover:bg-accent ${
+                filters.status === 'active' ? 'ring-2 ring-purple-500' : ''
+              }`}
+              onClick={() => handleStatClick('active')}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active</CardTitle>
+                <div className="h-2 w-2 rounded-full bg-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.active}</div>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={`cursor-pointer transition-colors hover:bg-accent ${
                 !filters.status ? 'ring-2 ring-primary' : ''
               }`}
               onClick={() => handleStatClick(undefined)}
@@ -127,21 +142,6 @@ export default function BrandDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.total}</div>
-              </CardContent>
-            </Card>
-
-            <Card
-              className={`cursor-pointer transition-colors hover:bg-accent ${
-                filters.status === 'active' ? 'ring-2 ring-purple-500' : ''
-              }`}
-              onClick={() => handleStatClick('active')}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-purple-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.active}</div>
               </CardContent>
             </Card>
 
