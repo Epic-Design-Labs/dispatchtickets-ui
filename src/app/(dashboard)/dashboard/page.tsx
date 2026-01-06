@@ -172,18 +172,6 @@ export default function DashboardPage() {
 
   return (
     <div className="h-full overflow-auto p-6">
-      {/* Filters */}
-      <div className="mb-6">
-        <TicketFilters
-          filters={currentFilters}
-          onFiltersChange={handleFiltersChange}
-          brands={brands}
-          selectedBrandIds={selectedBrands}
-          onBrandFilterChange={handleBrandFilterChange}
-          showBrandFilter
-        />
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <Card>
@@ -230,6 +218,30 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Tickets Section Header */}
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg font-semibold">
+          Tickets
+          {status && (
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              (filtered by {status})
+            </span>
+          )}
+        </h3>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-4">
+        <TicketFilters
+          filters={currentFilters}
+          onFiltersChange={handleFiltersChange}
+          brands={brands}
+          selectedBrandIds={selectedBrands}
+          onBrandFilterChange={handleBrandFilterChange}
+          showBrandFilter
+        />
       </div>
 
       {/* Tickets Table */}
