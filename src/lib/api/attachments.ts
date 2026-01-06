@@ -16,9 +16,11 @@ export interface AttachmentWithUrl extends Attachment {
 }
 
 export interface InitiateUploadResponse {
-  id: string;
+  id?: string;
+  attachment?: Attachment;
   uploadUrl: string;
-  filename: string;
+  filename?: string;
+  expiresAt?: string;
 }
 
 export interface CreateAttachmentDto {
@@ -103,7 +105,7 @@ export const attachmentsApi = {
     file: File
   ): Promise<AttachmentWithUrl> => {
     // 1. Initiate upload to get presigned URL
-    const { id, uploadUrl } = await attachmentsApi.initiateUpload(
+    const response = await attachmentsApi.initiateUpload(
       brandId,
       ticketId,
       {
@@ -112,6 +114,13 @@ export const attachmentsApi = {
         size: file.size,
       }
     );
+    // API returns { attachment: { id, ... }, uploadUrl } or { id, uploadUrl }
+    const id = (response as { attachment?: { id: string }; id?: string }).attachment?.id || response.id;
+    const uploadUrl = response.uploadUrl;
+
+    if (!id || !uploadUrl) {
+      throw new Error('Invalid response from upload initiation');
+    }
 
     // 2. Upload directly to S3/R2
     const uploadResponse = await fetch(uploadUrl, {
