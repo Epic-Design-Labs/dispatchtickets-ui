@@ -54,6 +54,7 @@ export interface TicketFilters {
   status?: string;
   priority?: string;
   assigneeId?: string;
+  customerId?: string;
   source?: TicketSource;
   search?: string;
   cursor?: string;

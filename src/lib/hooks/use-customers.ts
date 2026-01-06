@@ -64,6 +64,9 @@ export function useUpdateCustomer(brandId: string, customerId: string) {
       queryClient.invalidateQueries({
         queryKey: customerKeys.detail(brandId, customerId),
       });
+      // Also invalidate ticket queries since customer data is embedded in tickets
+      queryClient.invalidateQueries({ queryKey: ['tickets', brandId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-tickets'] });
     },
   });
 }

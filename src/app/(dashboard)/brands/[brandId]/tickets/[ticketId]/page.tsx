@@ -3,13 +3,14 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MarkdownContent } from '@/components/ui/markdown-content';
@@ -34,7 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
-import { Trash2, ShieldAlert, Building2, User, UserX } from 'lucide-react';
+import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge } from 'lucide-react';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -43,6 +44,8 @@ export default function TicketDetailPage() {
   const ticketId = params.ticketId as string;
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
 
   const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId);
   const { data: comments, isLoading: commentsLoading } = useComments(brandId, ticketId, { polling: true });
@@ -52,6 +55,13 @@ export default function TicketDetailPage() {
   const deleteTicket = useDeleteTicket(brandId);
   const markAsSpam = useMarkAsSpam(brandId);
   const updateCustomer = useUpdateCustomer(brandId, ticket?.customerId || '');
+  const mergeTickets = useMergeTickets(brandId);
+  const { data: customerTicketsData, isLoading: customerTicketsLoading } = useCustomerTickets(
+    brandId,
+    ticket?.customerId,
+    ticketId
+  );
+  const otherTickets = customerTicketsData?.data || [];
 
   // Get active team members for assignment
   const teamMembers = teamData?.members || [];
@@ -152,6 +162,29 @@ export default function TicketDetailPage() {
       toast.success('Customer company updated');
     } catch {
       toast.error('Failed to update company');
+    }
+  };
+
+  const toggleMergeSelection = (ticketId: string) => {
+    setSelectedForMerge((prev) =>
+      prev.includes(ticketId)
+        ? prev.filter((id) => id !== ticketId)
+        : [...prev, ticketId]
+    );
+  };
+
+  const handleMerge = async () => {
+    if (selectedForMerge.length === 0) return;
+    try {
+      const result = await mergeTickets.mutateAsync({
+        targetTicketId: ticketId,
+        sourceTicketIds: selectedForMerge,
+      });
+      toast.success(`Merged ${result.mergedCount} ticket(s) into this ticket`);
+      setSelectedForMerge([]);
+      setShowMergeDialog(false);
+    } catch {
+      toast.error('Failed to merge tickets');
     }
   };
 
@@ -528,6 +561,78 @@ export default function TicketDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Other tickets from this customer */}
+            {ticket.customer && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Ticket className="h-4 w-4" />
+                      Other Tickets from {ticket.customer.name || 'Customer'}
+                    </CardTitle>
+                    {selectedForMerge.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowMergeDialog(true)}
+                        className="h-7 text-xs"
+                      >
+                        <Merge className="h-3 w-3 mr-1" />
+                        Merge ({selectedForMerge.length})
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {customerTicketsLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  ) : otherTickets.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No other tickets</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {otherTickets.map((t) => (
+                        <div
+                          key={t.id}
+                          className="flex items-start gap-2 p-2 -mx-2 rounded hover:bg-muted transition-colors"
+                        >
+                          <Checkbox
+                            checked={selectedForMerge.includes(t.id)}
+                            onCheckedChange={() => toggleMergeSelection(t.id)}
+                            className="mt-1"
+                          />
+                          <Link
+                            href={`/brands/${brandId}/tickets/${t.id}`}
+                            className="flex-1 min-w-0"
+                          >
+                            <div className="flex items-start gap-2">
+                              <StatusBadge status={t.status || 'open'} className="mt-0.5 shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{t.title}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(t.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                          </Link>
+                        </div>
+                      ))}
+                      {customerTicketsData?.pagination?.hasMore && (
+                        <Link
+                          href={`/brands/${brandId}/customers/${ticket.customer.id}`}
+                          className="block text-xs text-primary hover:underline pt-1"
+                        >
+                          View all tickets →
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
@@ -547,6 +652,33 @@ export default function TicketDetailPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Merge Tickets</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to merge {selectedForMerge.length} ticket(s) into this ticket?
+              <br /><br />
+              This will:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Move all comments and attachments to this ticket</li>
+                <li>Close the merged tickets with a reference note</li>
+                <li>Add merge history to this ticket</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMerge}
+              disabled={mergeTickets.isPending}
+            >
+              {mergeTickets.isPending ? 'Merging...' : 'Merge Tickets'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

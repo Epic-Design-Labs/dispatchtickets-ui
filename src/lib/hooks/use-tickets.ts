@@ -81,3 +81,46 @@ export function useMarkAsSpam(brandId: string) {
     },
   });
 }
+
+export function useCustomerTickets(
+  brandId: string,
+  customerId: string | undefined,
+  excludeTicketId?: string
+) {
+  return useQuery({
+    queryKey: ['customer-tickets', brandId, customerId, excludeTicketId],
+    queryFn: async () => {
+      if (!customerId) return { data: [], pagination: { hasMore: false } };
+      const result = await ticketsApi.list(brandId, {
+        customerId,
+        limit: 10,
+      });
+      // Filter out the current ticket if excludeTicketId is provided
+      if (excludeTicketId) {
+        result.data = result.data.filter((t) => t.id !== excludeTicketId);
+      }
+      return result;
+    },
+    enabled: !!brandId && !!customerId,
+  });
+}
+
+export function useMergeTickets(brandId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      targetTicketId,
+      sourceTicketIds,
+    }: {
+      targetTicketId: string;
+      sourceTicketIds: string[];
+    }) => ticketsApi.merge(brandId, targetTicketId, sourceTicketIds),
+    onSuccess: () => {
+      // Invalidate all ticket queries since multiple tickets are affected
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
+      queryClient.invalidateQueries({ queryKey: ['customer-tickets', brandId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-tickets'] });
+    },
+  });
+}

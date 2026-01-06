@@ -72,4 +72,16 @@ export const ticketsApi = {
     );
     return response.data;
   },
+
+  merge: async (
+    brandId: string,
+    targetTicketId: string,
+    sourceTicketIds: string[]
+  ): Promise<{ targetTicketId: string; mergedTicketIds: string[]; mergedCount: number }> => {
+    const response = await apiClient.post(
+      `/brands/${brandId}/tickets/${targetTicketId}/merge`,
+      { sourceTicketIds }
+    );
+    return response.data;
+  },
 };
