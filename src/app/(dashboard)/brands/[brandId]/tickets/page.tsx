@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { useBrand, useTickets, useTicketNotifications, useEmailConnection, useSyncEmail, useBulkAction } from '@/lib/hooks';
+import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useCategories, useTags } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
 import { Header } from '@/components/layout';
@@ -28,8 +28,13 @@ export default function BrandDashboardPage() {
   useTicketNotifications(brandId);
 
   // Email sync
-  const { data: emailConnection } = useEmailConnection(brandId);
+  const { data: emailConnections } = useEmailConnections(brandId);
   const syncEmail = useSyncEmail();
+  const hasActiveEmailConnection = emailConnections?.some(c => c.status === 'ACTIVE');
+
+  // Categories and tags for filtering
+  const { data: categories } = useCategories(brandId);
+  const { data: tags } = useTags(brandId);
 
   // Bulk actions
   const bulkAction = useBulkAction(brandId);
@@ -244,7 +249,7 @@ export default function BrandDashboardPage() {
             )}
           </h3>
           <div className="flex items-center gap-2">
-            {emailConnection?.status === 'ACTIVE' && (
+            {hasActiveEmailConnection && (
               <Button
                 variant="outline"
                 size="sm"
@@ -278,7 +283,12 @@ export default function BrandDashboardPage() {
 
         {/* Filters */}
         <div className="mb-4">
-          <TicketFilters filters={filters} onFiltersChange={setFilters} />
+          <TicketFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            categories={categories}
+            tags={tags}
+          />
         </div>
 
         {/* Ticket Table */}

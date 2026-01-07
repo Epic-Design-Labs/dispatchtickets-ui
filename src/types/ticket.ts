@@ -3,6 +3,8 @@ export type TicketPriority = 'low' | 'normal' | 'medium' | 'high' | 'urgent' | n
 export type TicketSource = 'api' | 'email' | 'slack' | 'sms' | 'web' | 'other';
 
 import { Customer } from './customer';
+import { Category } from './category';
+import { Tag } from './tag';
 
 export interface Ticket {
   id: string;
@@ -18,6 +20,9 @@ export interface Ticket {
   assigneeId?: string;
   customerId?: string;
   customer?: Customer;
+  categoryId?: string | null;
+  category?: Category | null;
+  tags?: Tag[];
   links?: string[];
   customFields?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
@@ -46,6 +51,8 @@ export interface UpdateTicketInput {
   status?: TicketStatus;
   priority?: TicketPriority;
   assigneeId?: string | null;
+  categoryId?: string | null;
+  tags?: string[];
   customFields?: Record<string, unknown>;
   isSpam?: boolean;
 }
@@ -55,6 +62,8 @@ export interface TicketFilters {
   priority?: string;
   assigneeId?: string;
   customerId?: string;
+  categoryId?: string;
+  tagIds?: string[];
   source?: TicketSource;
   search?: string;
   cursor?: string;

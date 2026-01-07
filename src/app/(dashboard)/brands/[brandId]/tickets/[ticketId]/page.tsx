@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
-import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge } from 'lucide-react';
+import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus } from 'lucide-react';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -62,6 +62,10 @@ export default function TicketDetailPage() {
     ticketId
   );
   const otherTickets = customerTicketsData?.data || [];
+
+  // Categories and tags
+  const { data: categories } = useCategories(brandId);
+  const { data: tags } = useTags(brandId);
 
   // Get active team members for assignment
   const teamMembers = teamData?.members || [];
@@ -108,6 +112,44 @@ export default function TicketDetailPage() {
       toast.success('Priority updated');
     } catch {
       toast.error('Failed to update priority');
+    }
+  };
+
+  const handleCategoryChange = async (categoryId: string) => {
+    try {
+      await updateTicket.mutateAsync({
+        categoryId: categoryId === '' ? null : categoryId
+      });
+      toast.success(categoryId ? 'Category updated' : 'Category removed');
+    } catch {
+      toast.error('Failed to update category');
+    }
+  };
+
+  const handleAddTag = async (tagName: string) => {
+    if (!ticket) return;
+    const currentTags = ticket.tags?.map(t => t.name) || [];
+    if (currentTags.includes(tagName)) return;
+    try {
+      await updateTicket.mutateAsync({
+        tags: [...currentTags, tagName]
+      });
+      toast.success('Tag added');
+    } catch {
+      toast.error('Failed to add tag');
+    }
+  };
+
+  const handleRemoveTag = async (tagName: string) => {
+    if (!ticket) return;
+    const currentTags = ticket.tags?.map(t => t.name) || [];
+    try {
+      await updateTicket.mutateAsync({
+        tags: currentTags.filter(t => t !== tagName)
+      });
+      toast.success('Tag removed');
+    } catch {
+      toast.error('Failed to remove tag');
     }
   };
 
@@ -435,6 +477,126 @@ export default function TicketDetailPage() {
                     <p className="mt-1 text-muted-foreground">Not set</p>
                   )}
                 </div>
+
+                {/* Category */}
+                {categories && categories.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                      <FolderOpen className="h-3 w-3" />
+                      Category
+                    </p>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="mt-1 h-auto p-0">
+                          {ticket.category ? (
+                            <span className="flex items-center gap-1.5 text-sm">
+                              <span
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: ticket.category.color || '#6366f1' }}
+                              />
+                              {ticket.category.name}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">No category</span>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuLabel>Set category</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup
+                          value={ticket.categoryId || ''}
+                          onValueChange={handleCategoryChange}
+                        >
+                          <DropdownMenuRadioItem value="">
+                            <span className="text-muted-foreground">No category</span>
+                          </DropdownMenuRadioItem>
+                          {categories.map((cat) => (
+                            <DropdownMenuRadioItem key={cat.id} value={cat.id}>
+                              <span className="flex items-center gap-1.5">
+                                <span
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: cat.color || '#6366f1' }}
+                                />
+                                {cat.name}
+                              </span>
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+
+                {/* Tags */}
+                {tags && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      Tags
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {ticket.tags && ticket.tags.length > 0 ? (
+                        ticket.tags.map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                            style={{
+                              backgroundColor: tag.color ? `${tag.color}20` : '#6366f120',
+                              color: tag.color || '#6366f1',
+                            }}
+                          >
+                            {tag.name}
+                            <button
+                              onClick={() => handleRemoveTag(tag.name)}
+                              className="hover:opacity-70 ml-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No tags</span>
+                      )}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="mt-1.5 h-7 px-2 text-xs">
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add tag
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuLabel>Add tag</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {tags.filter(t => !ticket.tags?.some(tt => tt.id === t.id)).length === 0 ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            All tags applied
+                          </div>
+                        ) : (
+                          tags
+                            .filter(t => !ticket.tags?.some(tt => tt.id === t.id))
+                            .map((tag) => (
+                              <Button
+                                key={tag.id}
+                                variant="ghost"
+                                className="w-full justify-start h-8 px-2"
+                                onClick={() => handleAddTag(tag.name)}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <span
+                                    className="h-2.5 w-2.5 rounded-full"
+                                    style={{ backgroundColor: tag.color || '#6366f1' }}
+                                  />
+                                  {tag.name}
+                                </span>
+                              </Button>
+                            ))
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
 
                 <Separator />
 

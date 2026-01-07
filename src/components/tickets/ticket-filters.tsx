@@ -13,9 +13,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
-import { TicketFilters as TicketFiltersType } from '@/types';
+import { TicketFilters as TicketFiltersType, Category, Tag } from '@/types';
 import { cn } from '@/lib/utils';
-import { X, ChevronDown } from 'lucide-react';
+import { X, ChevronDown, FolderOpen, Tag as TagIcon } from 'lucide-react';
 
 interface Brand {
   id: string;
@@ -31,6 +31,8 @@ interface TicketFiltersProps {
   selectedBrandIds?: string[];
   onBrandFilterChange?: (brandIds: string[]) => void;
   showBrandFilter?: boolean;
+  categories?: Category[];
+  tags?: Tag[];
 }
 
 const statusOptions = [
@@ -49,6 +51,8 @@ export function TicketFilters({
   selectedBrandIds = [],
   onBrandFilterChange,
   showBrandFilter = false,
+  categories,
+  tags,
 }: TicketFiltersProps) {
   const updateFilter = <K extends keyof TicketFiltersType>(
     key: K,
@@ -66,8 +70,22 @@ export function TicketFilters({
 
   const hasFilters =
     Object.entries(filters).some(
-      ([key, v]) => key !== 'limit' && v !== undefined && v !== ''
+      ([key, v]) => key !== 'limit' && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)
     ) || selectedBrandIds.length > 0;
+
+  const toggleTag = (tagId: string) => {
+    const currentTagIds = filters.tagIds || [];
+    if (currentTagIds.includes(tagId)) {
+      updateFilter('tagIds', currentTagIds.filter((id) => id !== tagId));
+    } else {
+      updateFilter('tagIds', [...currentTagIds, tagId]);
+    }
+  };
+
+  const removeTag = (tagId: string) => {
+    const currentTagIds = filters.tagIds || [];
+    updateFilter('tagIds', currentTagIds.filter((id) => id !== tagId));
+  };
 
   const toggleBrand = (brandId: string) => {
     if (!onBrandFilterChange) return;
@@ -140,6 +158,113 @@ export function TicketFilters({
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Category Filter */}
+      {categories && categories.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <FolderOpen className="mr-1 h-3.5 w-3.5" />
+              Category
+              {filters.categoryId && (
+                <span className="ml-1 rounded bg-primary/10 px-1.5 text-xs">
+                  {categories.find(c => c.id === filters.categoryId)?.name || '1'}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Filter by category</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup
+              value={filters.categoryId || ''}
+              onValueChange={(value) =>
+                updateFilter('categoryId', value || undefined)
+              }
+            >
+              <DropdownMenuRadioItem value="">All</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="null">Uncategorized</DropdownMenuRadioItem>
+              {categories.map((cat) => (
+                <DropdownMenuRadioItem key={cat.id} value={cat.id}>
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: cat.color || '#6366f1' }}
+                    />
+                    {cat.name}
+                  </span>
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {/* Tags Filter */}
+      {tags && tags.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <TagIcon className="mr-1 h-3.5 w-3.5" />
+              Tags
+              {filters.tagIds && filters.tagIds.length > 0 && (
+                <span className="ml-1 rounded bg-primary/10 px-1.5 text-xs">
+                  {filters.tagIds.length}
+                </span>
+              )}
+              <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Filter by tags</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {tags.map((tag) => (
+              <DropdownMenuCheckboxItem
+                key={tag.id}
+                checked={filters.tagIds?.includes(tag.id) || false}
+                onCheckedChange={() => toggleTag(tag.id)}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: tag.color || '#6366f1' }}
+                  />
+                  {tag.name}
+                </span>
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {/* Selected Tag Chips */}
+      {filters.tagIds && filters.tagIds.length > 0 && tags && (
+        <div className="flex items-center gap-1">
+          {filters.tagIds.map((tagId) => {
+            const tag = tags.find((t) => t.id === tagId);
+            if (!tag) return null;
+            return (
+              <Badge
+                key={tagId}
+                variant="secondary"
+                className="gap-1 pl-1.5 pr-1"
+                style={{
+                  backgroundColor: tag.color ? `${tag.color}20` : undefined,
+                  color: tag.color || undefined,
+                }}
+              >
+                <span className="text-xs">{tag.name}</span>
+                <button
+                  onClick={() => removeTag(tagId)}
+                  className="ml-0.5 hover:opacity-70 rounded"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            );
+          })}
+        </div>
+      )}
 
       {/* Brand Filter (optional) */}
       {showBrandFilter && brands && brands.length > 0 && (

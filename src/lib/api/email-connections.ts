@@ -6,14 +6,14 @@ export type EmailConnectionStatus = 'ACTIVE' | 'ERROR' | 'DISCONNECTED';
 export interface EmailConnection {
   id: string;
   brandId: string;
+  name: string;
+  isPrimary: boolean;
   provider: EmailConnectionProvider;
   email: string;
   status: EmailConnectionStatus;
-  lastSyncAt: string | null;
-  errorMessage: string | null;
-  errorCount: number;
+  lastSyncAt?: string;
+  errorMessage?: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface InitiateOAuthResponse {
@@ -22,16 +22,25 @@ export interface InitiateOAuthResponse {
 
 export const emailConnectionsApi = {
   /**
-   * Get the email connection for a brand (if any)
+   * Get all email connections for a brand
    */
-  get: async (brandId: string): Promise<EmailConnection | null> => {
+  list: async (brandId: string): Promise<EmailConnection[]> => {
+    const response = await apiClient.get<EmailConnection[]>(
+      `/brands/${brandId}/email-connections`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get a specific email connection
+   */
+  get: async (brandId: string, connectionId: string): Promise<EmailConnection | null> => {
     try {
       const response = await apiClient.get<EmailConnection>(
-        `/brands/${brandId}/email-connection`
+        `/brands/${brandId}/email-connections/${connectionId}`
       );
       return response.data;
     } catch (error: any) {
-      // 404 means no connection exists
       if (error?.response?.status === 404) {
         return null;
       }
@@ -40,29 +49,68 @@ export const emailConnectionsApi = {
   },
 
   /**
-   * Initiate Gmail OAuth flow
+   * Initiate Gmail OAuth flow to add a new connection
    */
-  authorizeGmail: async (brandId: string): Promise<InitiateOAuthResponse> => {
+  authorizeGmail: async (
+    brandId: string,
+    connectionName?: string
+  ): Promise<InitiateOAuthResponse> => {
     const response = await apiClient.post<InitiateOAuthResponse>(
-      `/brands/${brandId}/email-connection/authorize`,
-      { provider: 'GMAIL' }
+      `/brands/${brandId}/email-connections/authorize`,
+      { provider: 'GMAIL', connectionName }
     );
     return response.data;
   },
 
   /**
-   * Disconnect email connection
+   * Update connection settings (name)
    */
-  disconnect: async (brandId: string): Promise<void> => {
-    await apiClient.delete(`/brands/${brandId}/email-connection`);
+  update: async (
+    brandId: string,
+    connectionId: string,
+    data: { name?: string }
+  ): Promise<EmailConnection> => {
+    const response = await apiClient.patch<EmailConnection>(
+      `/brands/${brandId}/email-connections/${connectionId}`,
+      data
+    );
+    return response.data;
   },
 
   /**
-   * Trigger manual sync
+   * Set connection as primary
    */
-  sync: async (brandId: string, full?: boolean): Promise<{ ticketsCreated: number }> => {
+  setPrimary: async (brandId: string, connectionId: string): Promise<void> => {
+    await apiClient.post(`/brands/${brandId}/email-connections/${connectionId}/primary`);
+  },
+
+  /**
+   * Disconnect and remove an email connection
+   */
+  disconnect: async (brandId: string, connectionId: string): Promise<void> => {
+    await apiClient.delete(`/brands/${brandId}/email-connections/${connectionId}`);
+  },
+
+  /**
+   * Trigger manual sync for all connections
+   */
+  syncAll: async (brandId: string, full?: boolean): Promise<{ ticketsCreated: number }> => {
     const response = await apiClient.post<{ ticketsCreated: number }>(
-      `/brands/${brandId}/email-connection/sync${full ? '?full=true' : ''}`
+      `/brands/${brandId}/email-connections/sync${full ? '?full=true' : ''}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Trigger manual sync for a specific connection
+   */
+  sync: async (
+    brandId: string,
+    connectionId: string,
+    full?: boolean
+  ): Promise<{ ticketsCreated: number }> => {
+    const response = await apiClient.post<{ ticketsCreated: number }>(
+      `/brands/${brandId}/email-connections/${connectionId}/sync${full ? '?full=true' : ''}`
     );
     return response.data;
   },

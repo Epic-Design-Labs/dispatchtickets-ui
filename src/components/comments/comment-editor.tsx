@@ -2,10 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useCreateComment, useProfile, useUploadAttachment } from '@/lib/hooks';
+import { useCreateComment, useProfile, useUploadAttachment, useEmailConnections } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
-import { Send, Clock, CheckCircle, ImagePlus, Paperclip, Loader2, X, FileText } from 'lucide-react';
+import { Send, Clock, CheckCircle, ImagePlus, Paperclip, Loader2, X, FileText, Mail, Plus, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 interface CommentEditorProps {
   brandId: string;
@@ -18,6 +25,10 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const [body, setBody] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const [ccRecipients, setCcRecipients] = useState<string[]>([]);
+  const [ccInput, setCcInput] = useState('');
+  const [showCcInput, setShowCcInput] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -25,6 +36,21 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const uploadAttachment = useUploadAttachment(brandId, ticketId);
   const { session } = useAuth();
   const { data: profile } = useProfile();
+  const { data: emailConnections } = useEmailConnections(brandId);
+
+  // Filter active connections
+  const activeConnections = useMemo(
+    () => emailConnections?.filter((c) => c.status === 'ACTIVE') || [],
+    [emailConnections]
+  );
+
+  // Get selected connection (or primary/first active)
+  const selectedConnection = useMemo(() => {
+    if (selectedConnectionId) {
+      return activeConnections.find((c) => c.id === selectedConnectionId);
+    }
+    return activeConnections.find((c) => c.isPrimary) || activeConnections[0];
+  }, [activeConnections, selectedConnectionId]);
 
   // Get author name: profile > email-derived
   const getAuthorName = () => {
@@ -58,9 +84,14 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
           ...(authorName && { authorName }),
         },
         ...(action !== 'comment' && { setStatus: action }),
+        ...(selectedConnection && !isInternal && { connectionId: selectedConnection.id }),
+        ...(ccRecipients.length > 0 && !isInternal && { cc: ccRecipients }),
       });
       setBody('');
       setIsInternal(false);
+      setCcRecipients([]);
+      setShowCcInput(false);
+      setCcInput('');
 
       const messages: Record<SubmitAction, string> = {
         comment: 'Comment added',
@@ -71,7 +102,21 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
     } catch {
       toast.error('Failed to add comment');
     }
-  }, [body, isInternal, createComment, profile?.displayName, session?.email]);
+  }, [body, isInternal, createComment, profile?.displayName, session?.email, selectedConnection, ccRecipients]);
+
+  // Handle adding a CC recipient
+  const handleAddCc = useCallback(() => {
+    const email = ccInput.trim().toLowerCase();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !ccRecipients.includes(email)) {
+      setCcRecipients((prev) => [...prev, email]);
+      setCcInput('');
+    }
+  }, [ccInput, ccRecipients]);
+
+  // Handle removing a CC recipient
+  const handleRemoveCc = useCallback((email: string) => {
+    setCcRecipients((prev) => prev.filter((e) => e !== email));
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -294,6 +339,91 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
         onChange={handleFileSelect}
         className="hidden"
       />
+      {/* Email selection and CC row - only show for external comments with active email connections */}
+      {!isInternal && activeConnections.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {/* Email selector */}
+          <div className="flex items-center gap-1.5">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">From:</span>
+            {activeConnections.length === 1 ? (
+              <span className="text-foreground">{selectedConnection?.email}</span>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 font-normal">
+                    {selectedConnection?.email || 'Select email'}
+                    <ChevronDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {activeConnections.map((conn) => (
+                    <DropdownMenuItem
+                      key={conn.id}
+                      onClick={() => setSelectedConnectionId(conn.id)}
+                      className="flex items-center gap-2"
+                    >
+                      <span>{conn.email}</span>
+                      {conn.isPrimary && (
+                        <Badge variant="secondary" className="text-xs">Primary</Badge>
+                      )}
+                      {conn.name !== 'Default' && (
+                        <span className="text-muted-foreground">({conn.name})</span>
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+          {/* CC toggle and input */}
+          <div className="flex items-center gap-1.5">
+            {!showCcInput && ccRecipients.length === 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-muted-foreground"
+                onClick={() => setShowCcInput(true)}
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                CC
+              </Button>
+            )}
+            {(showCcInput || ccRecipients.length > 0) && (
+              <>
+                <span className="text-muted-foreground">CC:</span>
+                {ccRecipients.map((email) => (
+                  <Badge key={email} variant="secondary" className="gap-1">
+                    {email}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCc(email)}
+                      className="hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <input
+                  type="email"
+                  value={ccInput}
+                  onChange={(e) => setCcInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault();
+                      handleAddCc();
+                    }
+                  }}
+                  onBlur={handleAddCc}
+                  placeholder="Add email..."
+                  className="h-6 w-32 px-1.5 text-sm border rounded bg-background"
+                />
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 text-sm">

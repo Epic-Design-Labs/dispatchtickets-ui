@@ -6,3 +6,6 @@ export * from './api';
 export * from './team';
 export * from './customer';
 export * from './api-key';
+export * from './email-connection';
+export * from './category';
+export * from './tag';

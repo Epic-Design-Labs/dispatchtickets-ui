@@ -16,6 +16,8 @@ export interface CreateCommentInput {
   authorType?: 'CUSTOMER' | 'AGENT' | 'SYSTEM';
   metadata?: Record<string, unknown>;
   setStatus?: 'open' | 'pending' | 'resolved';
+  connectionId?: string;
+  cc?: string[];
 }
 
 export interface UpdateCommentInput {
