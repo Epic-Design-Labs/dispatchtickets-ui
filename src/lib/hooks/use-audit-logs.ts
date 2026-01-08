@@ -26,6 +26,8 @@ export function useAuditLogs(
     getNextPageParam: (lastPage) =>
       lastPage.pagination.hasMore ? lastPage.pagination.nextCursor : undefined,
     enabled: !!brandId,
+    staleTime: 0, // Always consider data stale so it refetches on mount
+    refetchOnMount: 'always', // Always refetch when component mounts
   });
 }
 

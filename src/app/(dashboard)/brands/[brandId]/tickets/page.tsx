@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useCategories, useTags } from '@/lib/hooks';
+import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
 import { Header } from '@/components/layout';
@@ -38,6 +38,7 @@ export default function BrandDashboardPage() {
 
   // Bulk actions
   const bulkAction = useBulkAction(brandId);
+  const mergeTickets = useMergeTickets(brandId);
 
   const handleSync = async () => {
     try {
@@ -72,6 +73,15 @@ export default function BrandDashboardPage() {
       }
     } catch {
       toast.error('Bulk action failed');
+    }
+  };
+
+  const handleMerge = async (targetTicketId: string, sourceTicketIds: string[]) => {
+    try {
+      const result = await mergeTickets.mutateAsync({ targetTicketId, sourceTicketIds });
+      toast.success(`${result.mergedCount} ticket(s) merged successfully`);
+    } catch {
+      toast.error('Failed to merge tickets');
     }
   };
 
@@ -297,6 +307,7 @@ export default function BrandDashboardPage() {
           brandId={brandId}
           isLoading={ticketsLoading}
           onBulkAction={handleBulkAction}
+          onMerge={handleMerge}
         />
 
         {/* Load More */}

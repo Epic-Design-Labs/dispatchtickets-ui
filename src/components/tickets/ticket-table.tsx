@@ -10,13 +10,28 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from './status-badge';
 import { PriorityBadge } from './priority-badge';
 import { Ticket } from '@/types';
-import { Ban, CheckCircle, Clock, Trash2, X } from 'lucide-react';
+import { Ban, CheckCircle, Clock, Trash2, X, Merge } from 'lucide-react';
 
 interface TicketTableProps {
   tickets: Ticket[];
@@ -24,11 +39,14 @@ interface TicketTableProps {
   isLoading?: boolean;
   renderActions?: (ticket: Ticket) => React.ReactNode;
   onBulkAction?: (action: 'spam' | 'resolve' | 'close' | 'delete', ticketIds: string[]) => Promise<void>;
+  onMerge?: (targetTicketId: string, sourceTicketIds: string[]) => Promise<void>;
 }
 
-export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulkAction }: TicketTableProps) {
+export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulkAction, onMerge }: TicketTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [mergeTargetId, setMergeTargetId] = useState<string>('');
 
   const allSelected = tickets.length > 0 && selectedIds.size === tickets.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < tickets.length;
@@ -67,6 +85,30 @@ export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulk
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
   }, []);
+
+  const handleMerge = useCallback(async () => {
+    if (!onMerge || !mergeTargetId || selectedIds.size < 2) return;
+    setIsProcessing(true);
+    try {
+      const sourceIds = Array.from(selectedIds).filter(id => id !== mergeTargetId);
+      await onMerge(mergeTargetId, sourceIds);
+      setSelectedIds(new Set());
+      setShowMergeDialog(false);
+      setMergeTargetId('');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [onMerge, mergeTargetId, selectedIds]);
+
+  const openMergeDialog = useCallback(() => {
+    // Default to first selected ticket as target
+    const firstSelected = Array.from(selectedIds)[0];
+    setMergeTargetId(firstSelected || '');
+    setShowMergeDialog(true);
+  }, [selectedIds]);
+
+  // Get selected tickets for merge dialog
+  const selectedTickets = tickets.filter(t => selectedIds.has(t.id));
 
   if (isLoading) {
     return (
@@ -162,6 +204,18 @@ export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulk
             <Clock className="mr-1 h-4 w-4" />
             Close
           </Button>
+          {onMerge && selectedIds.size >= 2 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openMergeDialog}
+              disabled={isProcessing}
+              className="text-purple-600 hover:text-purple-700"
+            >
+              <Merge className="mr-1 h-4 w-4" />
+              Merge
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -265,6 +319,49 @@ export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulk
           </TableBody>
         </Table>
       </div>
+
+      {/* Merge Dialog */}
+      <Dialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Merge Tickets</DialogTitle>
+            <DialogDescription>
+              Select which ticket to keep. The other {selectedIds.size - 1} ticket(s) will be merged into it.
+              Their messages and attachments will be moved to the target ticket.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="text-sm font-medium mb-2 block">
+              Keep this ticket (merge others into it):
+            </label>
+            <Select value={mergeTargetId} onValueChange={setMergeTargetId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select target ticket" />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedTickets.map((ticket) => (
+                  <SelectItem key={ticket.id} value={ticket.id}>
+                    #{ticket.ticketNumber} - {ticket.title.slice(0, 40)}{ticket.title.length > 40 ? '...' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {mergeTargetId && (
+              <p className="text-sm text-muted-foreground mt-3">
+                {selectedIds.size - 1} ticket(s) will be merged into #{selectedTickets.find(t => t.id === mergeTargetId)?.ticketNumber}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMergeDialog(false)} disabled={isProcessing}>
+              Cancel
+            </Button>
+            <Button onClick={handleMerge} disabled={!mergeTargetId || isProcessing}>
+              {isProcessing ? 'Merging...' : 'Merge Tickets'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
