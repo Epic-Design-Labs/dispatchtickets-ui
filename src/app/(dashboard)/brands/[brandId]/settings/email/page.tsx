@@ -619,30 +619,20 @@ export default function EmailSettingsPage() {
                       ) : (
                         <p className="text-sm text-muted-foreground">Never synced</p>
                       )}
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSyncEmail(connection.id, false)}
-                          disabled={syncEmail.isPending}
-                        >
-                          {syncEmail.isPending ? (
-                            <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
-                          ) : (
-                            <RefreshCw className="mr-1 h-4 w-4" />
-                          )}
-                          Sync
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSyncEmail(connection.id, true)}
-                          disabled={syncEmail.isPending}
-                          title="Re-import last 50 emails"
-                        >
-                          Full
-                        </Button>
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSyncEmail(connection.id, true)}
+                        disabled={syncEmail.isPending}
+                        title="Re-import last 50 emails (use this to recover missed emails)"
+                      >
+                        {syncEmail.isPending ? (
+                          <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="mr-1 h-4 w-4" />
+                        )}
+                        Full Sync
+                      </Button>
                     </div>
                   </div>
                 ))}
