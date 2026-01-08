@@ -28,10 +28,11 @@ const shortcutGroups: ShortcutGroup[] = [
   {
     title: 'Ticket Actions',
     shortcuts: [
-      { keys: ['R'], description: 'Resolve ticket' },
-      { keys: ['P'], description: 'Set to pending' },
-      { keys: ['S'], description: 'Mark as spam' },
-      { keys: ['D'], description: 'Delete ticket' },
+      { keys: ['Alt', 'R'], description: 'Resolve ticket' },
+      { keys: ['Alt', 'P'], description: 'Set to pending' },
+      { keys: ['Alt', 'S'], description: 'Mark as spam' },
+      { keys: ['Alt', 'D'], description: 'Delete ticket' },
+      { keys: ['Alt', 'E'], description: 'Send reply' },
     ],
   },
   {

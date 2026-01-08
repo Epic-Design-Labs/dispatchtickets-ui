@@ -103,21 +103,21 @@ export function useTicketNavigation(
     { key: 'k', description: 'Previous ticket', action: goToPrev },
   ];
 
-  // Add action shortcuts if provided
+  // Add action shortcuts if provided (require Alt modifier for destructive actions)
   if (actions?.onSpam) {
-    shortcuts.push({ key: 's', description: 'Mark as spam', action: actions.onSpam });
+    shortcuts.push({ key: 's', modifier: 'alt', description: 'Mark as spam (Alt+S)', action: actions.onSpam });
   }
   if (actions?.onDelete) {
-    shortcuts.push({ key: 'd', description: 'Delete ticket', action: actions.onDelete });
+    shortcuts.push({ key: 'd', modifier: 'alt', description: 'Delete ticket (Alt+D)', action: actions.onDelete });
   }
   if (actions?.onResolve) {
-    shortcuts.push({ key: 'r', description: 'Resolve ticket', action: actions.onResolve });
+    shortcuts.push({ key: 'r', modifier: 'alt', description: 'Resolve ticket (Alt+R)', action: actions.onResolve });
   }
   if (actions?.onPending) {
-    shortcuts.push({ key: 'p', description: 'Set to pending', action: actions.onPending });
+    shortcuts.push({ key: 'p', modifier: 'alt', description: 'Set to pending (Alt+P)', action: actions.onPending });
   }
   if (actions?.onSend) {
-    shortcuts.push({ key: 'e', description: 'Send reply', action: actions.onSend });
+    shortcuts.push({ key: 'e', modifier: 'alt', description: 'Send reply (Alt+E)', action: actions.onSend });
   }
 
   useKeyboardShortcuts(shortcuts);
