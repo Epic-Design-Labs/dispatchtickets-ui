@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/providers';
 import { Sidebar } from '@/components/layout';
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
+import { ConnectionWarningBanner } from '@/components/connection-warning-banner';
 import { useKeyboardShortcuts } from '@/lib/hooks';
 
 export default function DashboardLayout({
@@ -57,7 +58,10 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen">
       <Sidebar brandId={brandId} />
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <ConnectionWarningBanner />
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
       <KeyboardShortcutsModal />
     </div>
   );
