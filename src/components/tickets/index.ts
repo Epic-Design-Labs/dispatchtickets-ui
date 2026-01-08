@@ -3,3 +3,4 @@ export { PriorityBadge } from './priority-badge';
 export { TicketFilters } from './ticket-filters';
 export { TicketTable } from './ticket-table';
 export { CreateTicketDialog } from './create-ticket-dialog';
+export { TicketHistory } from './ticket-history';

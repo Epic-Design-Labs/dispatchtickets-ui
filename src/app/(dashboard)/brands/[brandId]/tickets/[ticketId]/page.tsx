@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags } from '@/lib/hooks';
 import { Header } from '@/components/layout';
-import { StatusBadge, PriorityBadge } from '@/components/tickets';
+import { StatusBadge, PriorityBadge, TicketHistory } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
-import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus } from 'lucide-react';
+import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History } from 'lucide-react';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -795,6 +795,19 @@ export default function TicketDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Ticket History */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TicketHistory brandId={brandId} ticketId={ticketId} />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
