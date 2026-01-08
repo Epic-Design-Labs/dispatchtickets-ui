@@ -114,4 +114,17 @@ export const emailConnectionsApi = {
     );
     return response.data;
   },
+
+  /**
+   * Retry a failed connection - resets error status and syncs
+   */
+  retry: async (
+    brandId: string,
+    connectionId: string
+  ): Promise<{ success: boolean; ticketsCreated: number; error?: string }> => {
+    const response = await apiClient.post<{ success: boolean; ticketsCreated: number; error?: string }>(
+      `/brands/${brandId}/email-connections/${connectionId}/retry`
+    );
+    return response.data;
+  },
 };

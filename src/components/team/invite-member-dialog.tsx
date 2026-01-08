@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useInviteMember } from '@/lib/hooks';
+import { useInviteMember, useBrands } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -31,6 +31,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { OrgRole } from '@/types';
 
@@ -47,7 +50,10 @@ interface InviteMemberDialogProps {
 
 export function InviteMemberDialog({ children }: InviteMemberDialogProps) {
   const [open, setOpen] = useState(false);
+  const [allBrands, setAllBrands] = useState(true);
+  const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
   const inviteMember = useInviteMember();
+  const { data: brands } = useBrands();
 
   const form = useForm<InviteMemberForm>({
     resolver: zodResolver(inviteMemberSchema),
@@ -57,15 +63,39 @@ export function InviteMemberDialog({ children }: InviteMemberDialogProps) {
     },
   });
 
+  const handleAllBrandsChange = (checked: boolean) => {
+    setAllBrands(checked);
+    if (checked) {
+      setSelectedBrandIds([]);
+    }
+  };
+
+  const handleBrandToggle = (brandId: string) => {
+    if (allBrands) {
+      setAllBrands(false);
+    }
+    setSelectedBrandIds((prev) =>
+      prev.includes(brandId) ? prev.filter((id) => id !== brandId) : [...prev, brandId]
+    );
+  };
+
+  const resetForm = () => {
+    form.reset();
+    setAllBrands(true);
+    setSelectedBrandIds([]);
+  };
+
   const onSubmit = async (data: InviteMemberForm) => {
     try {
       await inviteMember.mutateAsync({
         email: data.email,
         role: data.role as OrgRole,
+        allBrands,
+        brandIds: allBrands ? [] : selectedBrandIds,
       });
       toast.success(`Invitation sent to ${data.email}`);
       setOpen(false);
-      form.reset();
+      resetForm();
     } catch {
       toast.error('Failed to send invitation');
     }
@@ -77,7 +107,13 @@ export function InviteMemberDialog({ children }: InviteMemberDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) resetForm();
+      }}
+    >
       <DialogTrigger asChild>
         {children || (
           <Button>
@@ -98,7 +134,7 @@ export function InviteMemberDialog({ children }: InviteMemberDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Invite Team Member</DialogTitle>
           <DialogDescription>
@@ -172,6 +208,68 @@ export function InviteMemberDialog({ children }: InviteMemberDialogProps) {
                 </FormItem>
               )}
             />
+
+            {/* Brand Access Section */}
+            <div className="space-y-3 pt-2">
+              <FormLabel>Brand Access</FormLabel>
+
+              {/* All brands toggle */}
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">All current and future brands</p>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically includes any new brands created
+                  </p>
+                </div>
+                <Switch checked={allBrands} onCheckedChange={handleAllBrandsChange} />
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or select specific brands
+                  </span>
+                </div>
+              </div>
+
+              {/* Individual brand toggles */}
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {brands?.map((brand) => {
+                  const isSelected = allBrands || selectedBrandIds.includes(brand.id);
+                  return (
+                    <div
+                      key={brand.id}
+                      className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
+                        allBrands ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{brand.name}</span>
+                        {isSelected && !allBrands && (
+                          <Badge variant="secondary" className="text-xs">
+                            Selected
+                          </Badge>
+                        )}
+                      </div>
+                      <Switch
+                        checked={isSelected}
+                        onCheckedChange={() => handleBrandToggle(brand.id)}
+                        disabled={allBrands}
+                      />
+                    </div>
+                  );
+                })}
+
+                {(!brands || brands.length === 0) && (
+                  <p className="text-center text-sm text-muted-foreground py-4">
+                    No brands available. Create a workspace first.
+                  </p>
+                )}
+              </div>
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>

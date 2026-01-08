@@ -140,17 +140,13 @@ export function TeamMemberTable({
                   <RoleBadge role={member.role} />
                 </TableCell>
                 <TableCell>
-                  {isPending ? (
-                    <span className="text-sm text-muted-foreground">—</span>
-                  ) : (
-                    <Badge variant="secondary">
-                      {member.brandAssignment?.allBrands
-                        ? 'All brands'
-                        : member.brandAssignment?.brandIds?.length
-                          ? `${member.brandAssignment.brandIds.length} brand${member.brandAssignment.brandIds.length === 1 ? '' : 's'}`
-                          : 'All brands'}
-                    </Badge>
-                  )}
+                  <Badge variant="secondary">
+                    {member.brandAssignment?.allBrands
+                      ? 'All brands'
+                      : member.brandAssignment?.brandIds?.length
+                        ? `${member.brandAssignment.brandIds.length} brand${member.brandAssignment.brandIds.length === 1 ? '' : 's'}`
+                        : 'All brands'}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   {isPending ? (

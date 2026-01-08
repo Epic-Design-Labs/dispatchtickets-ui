@@ -43,6 +43,8 @@ export interface TeamMembersResponse {
 export interface InviteMemberInput {
   email: string;
   role: OrgRole;
+  allBrands?: boolean;
+  brandIds?: string[];
 }
 
 export interface UpdateMemberInput {

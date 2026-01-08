@@ -41,6 +41,7 @@ import {
   useSetPrimaryConnection,
   useUpdateEmailConnection,
   useSyncEmail,
+  useRetryConnection,
 } from '@/lib/hooks';
 import { WorkspaceDomain, DomainType } from '@/lib/api/domains';
 import { toast } from 'sonner';
@@ -294,6 +295,7 @@ export default function EmailSettingsPage() {
   const setPrimaryConnection = useSetPrimaryConnection();
   const updateEmailConnection = useUpdateEmailConnection();
   const syncEmail = useSyncEmail();
+  const retryConnection = useRetryConnection();
 
   // Autoresponse state
   const [autoresponseEnabled, setAutoresponseEnabled] = useState(false);
@@ -464,6 +466,23 @@ export default function EmailSettingsPage() {
     }
   };
 
+  const handleRetryConnection = async (connectionId: string) => {
+    try {
+      const result = await retryConnection.mutateAsync({ brandId, connectionId });
+      if (result.success) {
+        if (result.ticketsCreated > 0) {
+          toast.success(`Connection restored! ${result.ticketsCreated} new ticket(s) created.`);
+        } else {
+          toast.success('Connection restored successfully.');
+        }
+      } else {
+        toast.error(result.error || 'Failed to restore connection');
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to retry connection');
+    }
+  };
+
   // Filter domains by type
   const outboundDomains = domains?.filter((d) => d.type === 'OUTBOUND') || [];
   const inboundDomains = domains?.filter((d) => d.type === 'INBOUND') || [];
@@ -561,14 +580,32 @@ export default function EmailSettingsPage() {
                     </div>
 
                     {/* Error message if any */}
-                    {connection.status === 'ERROR' && connection.errorMessage && (
+                    {connection.status === 'ERROR' && (
                       <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                        <p className="text-sm text-red-700">
-                          <strong>Error:</strong> {connection.errorMessage}
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Try reconnecting your account to fix this issue.
-                        </p>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-sm text-red-700">
+                              <strong>Error:</strong> {connection.errorMessage || 'Connection failed'}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Click Retry to attempt reconnection, or reconnect your account if the issue persists.
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRetryConnection(connection.id)}
+                            disabled={retryConnection.isPending}
+                            className="ml-4 shrink-0"
+                          >
+                            {retryConnection.isPending ? (
+                              <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="mr-1 h-4 w-4" />
+                            )}
+                            Retry
+                          </Button>
+                        </div>
                       </div>
                     )}
 

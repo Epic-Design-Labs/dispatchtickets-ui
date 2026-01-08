@@ -278,8 +278,7 @@ export default function MemberDetailPage() {
         )}
 
         {/* Brand Access Section */}
-        {!isPending && (
-          <Card>
+        <Card>
             <CardHeader>
               <CardTitle>Brand Access</CardTitle>
               <CardDescription>
@@ -343,7 +342,7 @@ export default function MemberDetailPage() {
                           <Switch
                             checked={isSelected}
                             onCheckedChange={() => handleBrandToggle(brand.id)}
-                            disabled={!canManageMembers || allBrands}
+                            disabled={!canManageMembers}
                           />
                         </div>
                       );
@@ -370,7 +369,6 @@ export default function MemberDetailPage() {
               )}
             </CardContent>
           </Card>
-        )}
 
         {/* Danger Zone */}
         {canManageMembers && !isMemberOwner && (

@@ -139,3 +139,18 @@ export function useSyncEmail() {
     },
   });
 }
+
+/**
+ * Hook to retry a failed connection - resets error status and syncs
+ */
+export function useRetryConnection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ brandId, connectionId }: { brandId: string; connectionId: string }) =>
+      emailConnectionsApi.retry(brandId, connectionId),
+    onSuccess: (_, { brandId }) => {
+      queryClient.invalidateQueries({ queryKey: emailConnectionKeys.list(brandId) });
+    },
+  });
+}
