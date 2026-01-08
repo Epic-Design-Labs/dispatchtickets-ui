@@ -9,7 +9,7 @@ import {
   EntityTypeLabels,
   SourceLabels,
 } from '@/types';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow, format, subDays, startOfDay, endOfDay } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -31,6 +31,9 @@ import {
   RefreshCw,
   ChevronDown,
   ExternalLink,
+  Calendar,
+  Users,
+  Download,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -185,6 +188,80 @@ function AuditLogItem({ log, brandId }: { log: AuditLog; brandId: string }) {
   );
 }
 
+// CSV export helper
+function exportLogsToCSV(logs: AuditLog[], brandName?: string) {
+  const headers = ['Date', 'Event', 'Entity Type', 'Entity ID', 'Performer', 'Source', 'Changes'];
+
+  const rows = logs.map((log) => {
+    const performer = formatPerformedBy(log.performedBy);
+    const date = format(new Date(log.createdAt), 'yyyy-MM-dd HH:mm:ss');
+    const eventLabel = AuditEventLabels[log.event] || log.event;
+    const entityType = EntityTypeLabels[log.entityType] || log.entityType;
+    const source = SourceLabels[log.source] || log.source;
+
+    // Format changes as JSON string for CSV
+    const changes = log.changes ? JSON.stringify(log.changes) : '';
+
+    return [date, eventLabel, entityType, log.entityId, performer, source, changes];
+  });
+
+  // Escape CSV values
+  const escapeCSV = (value: string) => {
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
+  const csv = [
+    headers.join(','),
+    ...rows.map((row) => row.map((cell) => escapeCSV(String(cell))).join(',')),
+  ].join('\n');
+
+  // Download
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const timestamp = format(new Date(), 'yyyy-MM-dd');
+  link.href = url;
+  link.download = `activity-log${brandName ? `-${brandName}` : ''}-${timestamp}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// Date range options
+type DateRangeOption = 'all' | 'today' | '7days' | '30days' | '90days';
+
+function getDateRange(option: DateRangeOption): { startDate?: string; endDate?: string } {
+  const now = new Date();
+  switch (option) {
+    case 'today':
+      return {
+        startDate: startOfDay(now).toISOString(),
+        endDate: endOfDay(now).toISOString(),
+      };
+    case '7days':
+      return {
+        startDate: startOfDay(subDays(now, 7)).toISOString(),
+        endDate: endOfDay(now).toISOString(),
+      };
+    case '30days':
+      return {
+        startDate: startOfDay(subDays(now, 30)).toISOString(),
+        endDate: endOfDay(now).toISOString(),
+      };
+    case '90days':
+      return {
+        startDate: startOfDay(subDays(now, 90)).toISOString(),
+        endDate: endOfDay(now).toISOString(),
+      };
+    default:
+      return {};
+  }
+}
+
 export default function ActivityLogPage() {
   const params = useParams();
   const brandId = params.brandId as string;
@@ -192,11 +269,17 @@ export default function ActivityLogPage() {
   // Filters
   const [entityType, setEntityType] = useState<string>('all');
   const [event, setEvent] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<DateRangeOption>('all');
+  const [performerType, setPerformerType] = useState<string>('all');
 
   // Build query params
+  const dateParams = getDateRange(dateRange);
   const queryParams = {
     entityType: entityType !== 'all' ? entityType : undefined,
     event: event !== 'all' ? event : undefined,
+    startDate: dateParams.startDate,
+    endDate: dateParams.endDate,
+    performerType: performerType !== 'all' ? performerType : undefined,
     limit: 50,
   };
 
@@ -283,8 +366,45 @@ export default function ActivityLogPage() {
           </SelectContent>
         </Select>
 
+        <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeOption)}>
+          <SelectTrigger className="w-[180px]">
+            <Calendar className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="All time" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All time</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="7days">Last 7 days</SelectItem>
+            <SelectItem value="30days">Last 30 days</SelectItem>
+            <SelectItem value="90days">Last 90 days</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={performerType} onValueChange={setPerformerType}>
+          <SelectTrigger className="w-[180px]">
+            <Users className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="All performers" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All performers</SelectItem>
+            <SelectItem value="user">Users</SelectItem>
+            <SelectItem value="api">API</SelectItem>
+            <SelectItem value="system">System</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Button variant="outline" size="icon" onClick={() => refetch()}>
           <RefreshCw className="w-4 h-4" />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => exportLogsToCSV(logs)}
+          disabled={logs.length === 0}
+          title="Export to CSV"
+        >
+          <Download className="w-4 h-4" />
         </Button>
       </div>
 

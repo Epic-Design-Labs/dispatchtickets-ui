@@ -5,6 +5,9 @@ export interface AuditLogQueryParams {
   entityType?: string;
   entityId?: string;
   event?: string;
+  startDate?: string; // ISO date string
+  endDate?: string; // ISO date string
+  performerType?: string; // user, api, system
   cursor?: string;
   limit?: number;
 }
@@ -21,6 +24,9 @@ export const auditLogsApi = {
     if (params?.entityType) searchParams.set('entityType', params.entityType);
     if (params?.entityId) searchParams.set('entityId', params.entityId);
     if (params?.event) searchParams.set('event', params.event);
+    if (params?.startDate) searchParams.set('startDate', params.startDate);
+    if (params?.endDate) searchParams.set('endDate', params.endDate);
+    if (params?.performerType) searchParams.set('performerType', params.performerType);
     if (params?.cursor) searchParams.set('cursor', params.cursor);
     if (params?.limit) searchParams.set('limit', params.limit.toString());
 
