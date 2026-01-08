@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -277,7 +278,22 @@ function DomainCard({
 
 export default function EmailSettingsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const brandId = params.brandId as string;
+
+  // Invalidate broken-connections cache when returning from successful OAuth
+  useEffect(() => {
+    if (searchParams.get('connected') === 'gmail') {
+      // Clear the warning banner cache immediately
+      queryClient.invalidateQueries({ queryKey: ['broken-connections'] });
+      // Show success toast
+      const email = searchParams.get('email');
+      if (email) {
+        toast.success(`Connected ${email} successfully!`);
+      }
+    }
+  }, [searchParams, queryClient]);
 
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   const updateBrand = useUpdateBrand(brandId);
