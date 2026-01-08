@@ -9,3 +9,4 @@ export * from './api-key';
 export * from './email-connection';
 export * from './category';
 export * from './tag';
+export * from './audit-log';

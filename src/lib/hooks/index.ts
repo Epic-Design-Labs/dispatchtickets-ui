@@ -16,3 +16,4 @@ export * from './use-email-connection';
 export * from './use-attachments';
 export * from './use-categories';
 export * from './use-tags';
+export * from './use-audit-logs';
