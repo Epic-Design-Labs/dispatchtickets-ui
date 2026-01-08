@@ -127,4 +127,18 @@ export const emailConnectionsApi = {
     );
     return response.data;
   },
+
+  /**
+   * Initiate OAuth reconnection for a disconnected connection
+   * Returns OAuth URL to redirect user to Google
+   */
+  reconnect: async (
+    brandId: string,
+    connectionId: string
+  ): Promise<InitiateOAuthResponse> => {
+    const response = await apiClient.post<InitiateOAuthResponse>(
+      `/brands/${brandId}/email-connections/${connectionId}/reconnect`
+    );
+    return response.data;
+  },
 };

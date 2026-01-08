@@ -42,10 +42,11 @@ import {
   useUpdateEmailConnection,
   useSyncEmail,
   useRetryConnection,
+  useReconnectEmail,
 } from '@/lib/hooks';
 import { WorkspaceDomain, DomainType } from '@/lib/api/domains';
 import { toast } from 'sonner';
-import { CheckCircle, XCircle, Clock, Copy, Trash2, Plus, Star, Mail, AlertCircle, RefreshCw, Unplug } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Copy, Trash2, Plus, Star, Mail, AlertCircle, RefreshCw, Unplug, Link2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -296,6 +297,7 @@ export default function EmailSettingsPage() {
   const updateEmailConnection = useUpdateEmailConnection();
   const syncEmail = useSyncEmail();
   const retryConnection = useRetryConnection();
+  const reconnectEmail = useReconnectEmail();
 
   // Autoresponse state
   const [autoresponseEnabled, setAutoresponseEnabled] = useState(false);
@@ -483,6 +485,15 @@ export default function EmailSettingsPage() {
     }
   };
 
+  const handleReconnectEmail = async (connectionId: string) => {
+    try {
+      await reconnectEmail.mutateAsync({ brandId, connectionId });
+      // Will redirect to Google OAuth
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to initiate reconnection');
+    }
+  };
+
   // Filter domains by type
   const outboundDomains = domains?.filter((d) => d.type === 'OUTBOUND') || [];
   const inboundDomains = domains?.filter((d) => d.type === 'INBOUND') || [];
@@ -580,31 +591,45 @@ export default function EmailSettingsPage() {
                     </div>
 
                     {/* Error message if any */}
-                    {connection.status === 'ERROR' && (
+                    {(connection.status === 'ERROR' || connection.status === 'DISCONNECTED') && (
                       <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                        <div className="flex items-start justify-between">
+                        <div className="flex items-start justify-between gap-4">
                           <div>
                             <p className="text-sm text-red-700">
                               <strong>Error:</strong> {connection.errorMessage || 'Connection failed'}
                             </p>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Click Retry to attempt reconnection, or reconnect your account if the issue persists.
+                              Try Retry first, or click Reconnect to re-authenticate with Google.
                             </p>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRetryConnection(connection.id)}
-                            disabled={retryConnection.isPending}
-                            className="ml-4 shrink-0"
-                          >
-                            {retryConnection.isPending ? (
-                              <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
-                            ) : (
-                              <RefreshCw className="mr-1 h-4 w-4" />
-                            )}
-                            Retry
-                          </Button>
+                          <div className="flex gap-2 shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRetryConnection(connection.id)}
+                              disabled={retryConnection.isPending || reconnectEmail.isPending}
+                            >
+                              {retryConnection.isPending ? (
+                                <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="mr-1 h-4 w-4" />
+                              )}
+                              Retry
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleReconnectEmail(connection.id)}
+                              disabled={retryConnection.isPending || reconnectEmail.isPending}
+                            >
+                              {reconnectEmail.isPending ? (
+                                <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Link2 className="mr-1 h-4 w-4" />
+                              )}
+                              Reconnect
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     )}

@@ -154,3 +154,17 @@ export function useRetryConnection() {
     },
   });
 }
+
+/**
+ * Hook to initiate OAuth reconnection for a disconnected connection
+ */
+export function useReconnectEmail() {
+  return useMutation({
+    mutationFn: ({ brandId, connectionId }: { brandId: string; connectionId: string }) =>
+      emailConnectionsApi.reconnect(brandId, connectionId),
+    onSuccess: (data) => {
+      // Redirect to Google OAuth
+      window.location.href = data.authUrl;
+    },
+  });
+}
