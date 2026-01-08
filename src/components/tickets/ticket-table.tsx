@@ -25,28 +25,66 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from './status-badge';
 import { PriorityBadge } from './priority-badge';
-import { Ticket } from '@/types';
-import { Ban, CheckCircle, Clock, Trash2, X, Merge } from 'lucide-react';
+import { Ticket, TeamMember } from '@/types';
+import { Category } from '@/lib/api/categories';
+import { Tag } from '@/lib/api/tags';
+import { BulkActionType } from '@/lib/hooks/use-tickets';
+import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus } from 'lucide-react';
+
+interface BulkActionOptions {
+  assigneeId?: string | null;
+  categoryId?: string | null;
+  tags?: string[];
+}
 
 interface TicketTableProps {
   tickets: Ticket[];
   brandId: string;
   isLoading?: boolean;
   renderActions?: (ticket: Ticket) => React.ReactNode;
-  onBulkAction?: (action: 'spam' | 'resolve' | 'close' | 'delete', ticketIds: string[]) => Promise<void>;
+  onBulkAction?: (action: BulkActionType, ticketIds: string[], options?: BulkActionOptions) => Promise<void>;
   onMerge?: (targetTicketId: string, sourceTicketIds: string[]) => Promise<void>;
+  teamMembers?: TeamMember[];
+  categories?: Category[];
+  tags?: Tag[];
 }
 
-export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulkAction, onMerge }: TicketTableProps) {
+export function TicketTable({
+  tickets,
+  brandId,
+  isLoading,
+  renderActions,
+  onBulkAction,
+  onMerge,
+  teamMembers = [],
+  categories = [],
+  tags: availableTags = [],
+}: TicketTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [mergeTargetId, setMergeTargetId] = useState<string>('');
+
+  // New bulk action dialogs state
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [showTagsDialog, setShowTagsDialog] = useState(false);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
 
   const allSelected = tickets.length > 0 && selectedIds.size === tickets.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < tickets.length;
@@ -71,16 +109,46 @@ export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulk
     });
   }, []);
 
-  const handleBulkAction = useCallback(async (action: 'spam' | 'resolve' | 'close' | 'delete') => {
+  const handleBulkAction = useCallback(async (action: BulkActionType, options?: BulkActionOptions) => {
     if (!onBulkAction || selectedIds.size === 0) return;
     setIsProcessing(true);
     try {
-      await onBulkAction(action, Array.from(selectedIds));
+      await onBulkAction(action, Array.from(selectedIds), options);
       setSelectedIds(new Set());
     } finally {
       setIsProcessing(false);
     }
   }, [onBulkAction, selectedIds]);
+
+  const handleAssign = useCallback(async () => {
+    // selectedAssigneeId can be '' (unassign), or a valid member ID
+    const assigneeId = selectedAssigneeId === '' ? null : selectedAssigneeId;
+    await handleBulkAction('assign', { assigneeId });
+    setShowAssignDialog(false);
+    setSelectedAssigneeId('');
+  }, [handleBulkAction, selectedAssigneeId]);
+
+  const handleSetCategory = useCallback(async () => {
+    // selectedCategoryId can be '' (remove category), or a valid category ID
+    const categoryId = selectedCategoryId === '' ? null : selectedCategoryId;
+    await handleBulkAction('setCategory', { categoryId });
+    setShowCategoryDialog(false);
+    setSelectedCategoryId('');
+  }, [handleBulkAction, selectedCategoryId]);
+
+  const handleSetTags = useCallback(async () => {
+    await handleBulkAction('setTags', { tags: selectedTagNames });
+    setShowTagsDialog(false);
+    setSelectedTagNames([]);
+  }, [handleBulkAction, selectedTagNames]);
+
+  const toggleTagSelection = useCallback((tagName: string) => {
+    setSelectedTagNames(prev =>
+      prev.includes(tagName)
+        ? prev.filter(t => t !== tagName)
+        : [...prev, tagName]
+    );
+  }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
@@ -186,6 +254,8 @@ export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulk
             {selectedIds.size} selected
           </span>
           <div className="flex-1" />
+
+          {/* Status Actions */}
           <Button
             variant="outline"
             size="sm"
@@ -204,6 +274,90 @@ export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulk
             <Clock className="mr-1 h-4 w-4" />
             Close
           </Button>
+
+          {/* Assign Dropdown */}
+          {teamMembers.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isProcessing}>
+                  <UserPlus className="mr-1 h-4 w-4" />
+                  Assign
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  setSelectedAssigneeId('');
+                  setShowAssignDialog(true);
+                }}>
+                  <UserMinus className="mr-2 h-4 w-4" />
+                  Unassign
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {teamMembers.map((member) => {
+                  const displayName = [member.firstName, member.lastName].filter(Boolean).join(' ');
+                  return (
+                    <DropdownMenuItem
+                      key={member.id}
+                      onClick={() => handleBulkAction('assign', { assigneeId: member.id })}
+                    >
+                      {displayName || member.email}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Category Dropdown */}
+          {categories.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isProcessing}>
+                  <FolderOpen className="mr-1 h-4 w-4" />
+                  Category
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleBulkAction('setCategory', { categoryId: null })}>
+                  <X className="mr-2 h-4 w-4" />
+                  Remove Category
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {categories.map((category) => (
+                  <DropdownMenuItem
+                    key={category.id}
+                    onClick={() => handleBulkAction('setCategory', { categoryId: category.id })}
+                  >
+                    <span
+                      className="mr-2 h-3 w-3 rounded-full"
+                      style={{ backgroundColor: category.color || '#666' }}
+                    />
+                    {category.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Tags Button */}
+          {availableTags.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedTagNames([]);
+                setShowTagsDialog(true);
+              }}
+              disabled={isProcessing}
+            >
+              <Tags className="mr-1 h-4 w-4" />
+              Tags
+            </Button>
+          )}
+
+          {/* Merge */}
           {onMerge && selectedIds.size >= 2 && (
             <Button
               variant="outline"
@@ -216,6 +370,8 @@ export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulk
               Merge
             </Button>
           )}
+
+          {/* Destructive Actions */}
           <Button
             variant="outline"
             size="sm"
@@ -358,6 +514,54 @@ export function TicketTable({ tickets, brandId, isLoading, renderActions, onBulk
             </Button>
             <Button onClick={handleMerge} disabled={!mergeTargetId || isProcessing}>
               {isProcessing ? 'Merging...' : 'Merge Tickets'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tags Dialog */}
+      <Dialog open={showTagsDialog} onOpenChange={setShowTagsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Tags</DialogTitle>
+            <DialogDescription>
+              Select tags to apply to {selectedIds.size} ticket(s). This will replace all existing tags on the selected tickets.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex flex-wrap gap-2">
+              {availableTags.map((tag) => (
+                <Badge
+                  key={tag.id}
+                  variant={selectedTagNames.includes(tag.name) ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  style={{
+                    backgroundColor: selectedTagNames.includes(tag.name) ? (tag.color ?? undefined) : undefined,
+                    borderColor: tag.color ?? undefined,
+                  }}
+                  onClick={() => toggleTagSelection(tag.name)}
+                >
+                  {tag.name}
+                </Badge>
+              ))}
+            </div>
+            {selectedTagNames.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-3">
+                {selectedTagNames.length} tag(s) selected
+              </p>
+            )}
+            {selectedTagNames.length === 0 && (
+              <p className="text-sm text-muted-foreground mt-3">
+                No tags selected - this will remove all tags from selected tickets
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTagsDialog(false)} disabled={isProcessing}>
+              Cancel
+            </Button>
+            <Button onClick={handleSetTags} disabled={isProcessing}>
+              {isProcessing ? 'Applying...' : 'Apply Tags'}
             </Button>
           </DialogFooter>
         </DialogContent>

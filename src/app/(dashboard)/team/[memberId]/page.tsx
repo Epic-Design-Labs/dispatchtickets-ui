@@ -26,8 +26,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Crown, Trash2 } from 'lucide-react';
-import { useTeamMembers, useBrandAssignments, useUpdateMember, useUpdateBrandAssignments, useRemoveMember, useTransferOwnership } from '@/lib/hooks';
+import { ArrowLeft, Crown, Trash2, Send } from 'lucide-react';
+import { useTeamMembers, useBrandAssignments, useUpdateMember, useUpdateBrandAssignments, useRemoveMember, useTransferOwnership, useResendInvite } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { OrgRole, TeamMember } from '@/types';
 import { toast } from 'sonner';
@@ -44,6 +44,7 @@ export default function MemberDetailPage() {
   const updateBrandAssignments = useUpdateBrandAssignments();
   const removeMember = useRemoveMember();
   const transferOwnership = useTransferOwnership();
+  const resendInvite = useResendInvite();
 
   const [selectedRole, setSelectedRole] = useState<OrgRole>('member');
   const [allBrands, setAllBrands] = useState(true);
@@ -51,9 +52,12 @@ export default function MemberDetailPage() {
   const [hasRoleChanges, setHasRoleChanges] = useState(false);
   const [hasBrandChanges, setHasBrandChanges] = useState(false);
 
-  // Find the member from team data
+  // Find the member from team data (explicitly set status for invites)
   const member = teamData
-    ? [...teamData.members, ...teamData.invites].find((m) => m.id === memberId)
+    ? [
+        ...teamData.members.map((m) => ({ ...m, status: 'active' as const })),
+        ...teamData.invites.map((i) => ({ ...i, status: 'pending' as const })),
+      ].find((m) => m.id === memberId)
     : null;
 
   const currentUserRole = (session?.orgRole as OrgRole) || 'member';
@@ -160,6 +164,16 @@ export default function MemberDetailPage() {
     }
   };
 
+  const handleResendInvite = async () => {
+    if (!member) return;
+    try {
+      await resendInvite.mutateAsync(memberId);
+      toast.success(`Invite resent to ${member.email}`);
+    } catch (error) {
+      toast.error('Failed to resend invite');
+    }
+  };
+
   if (teamLoading) {
     return (
       <div className="p-6">
@@ -215,6 +229,18 @@ export default function MemberDetailPage() {
           )}
         </div>
         <p className="text-muted-foreground">{member.email}</p>
+        {isPending && canManageMembers && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={handleResendInvite}
+            disabled={resendInvite.isPending}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {resendInvite.isPending ? 'Sending...' : 'Resend Invite'}
+          </Button>
+        )}
       </div>
 
       <div className="space-y-6">

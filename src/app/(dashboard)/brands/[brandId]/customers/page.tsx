@@ -5,11 +5,18 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCustomers } from '@/lib/hooks';
 import { Header } from '@/components/layout';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Search, Users } from 'lucide-react';
 
 export default function CustomersPage() {
@@ -38,20 +45,35 @@ export default function CustomersPage() {
         </div>
 
         {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead className="text-center">Tickets</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="space-y-1">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-40" />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ) : customers.length === 0 ? (
           <Card>
@@ -64,52 +86,59 @@ export default function CustomersPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {customers.map((customer) => (
-              <Card key={customer.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarImage src={customer.avatarUrl || undefined} />
-                        <AvatarFallback>
-                          {customer.name?.slice(0, 2).toUpperCase() ||
-                            customer.email.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">
-                          {customer.name || customer.email}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {customer.email}
-                        </p>
-                        {customer.company && (
-                          <p className="text-xs text-muted-foreground">
-                            {customer.company.name}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead className="text-center">Tickets</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customers.map((customer) => (
+                  <TableRow
+                    key={customer.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                  >
+                    <TableCell>
+                      <Link
+                        href={`/brands/${brandId}/customers/${customer.id}`}
+                        className="flex items-center gap-3"
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={customer.avatarUrl || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {customer.name?.slice(0, 2).toUpperCase() ||
+                              customer.email.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-sm">
+                            {customer.name || customer.email}
                           </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          {customer._count?.tickets || 0} tickets
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(customer.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/brands/${brandId}/customers/${customer.id}`}>
-                          View
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                          {customer.name && (
+                            <p className="text-xs text-muted-foreground">
+                              {customer.email}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {customer.company?.name || '-'}
+                    </TableCell>
+                    <TableCell className="text-center text-sm">
+                      {customer._count?.tickets || 0}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {new Date(customer.createdAt).toLocaleDateString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>

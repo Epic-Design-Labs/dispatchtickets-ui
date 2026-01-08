@@ -125,17 +125,22 @@ export function useMergeTickets(brandId: string) {
   });
 }
 
+export type BulkActionType = 'spam' | 'resolve' | 'close' | 'delete' | 'assign' | 'setCategory' | 'setTags';
+
+export interface BulkActionParams {
+  action: BulkActionType;
+  ticketIds: string[];
+  assigneeId?: string | null;
+  categoryId?: string | null;
+  tags?: string[];
+}
+
 export function useBulkAction(brandId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      action,
-      ticketIds,
-    }: {
-      action: 'spam' | 'resolve' | 'close' | 'delete';
-      ticketIds: string[];
-    }) => ticketsApi.bulkAction(brandId, action, ticketIds),
+    mutationFn: ({ action, ticketIds, assigneeId, categoryId, tags }: BulkActionParams) =>
+      ticketsApi.bulkAction(brandId, action, ticketIds, { assigneeId, categoryId, tags }),
     onSuccess: () => {
       // Invalidate all ticket queries since multiple tickets are affected
       queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags } from '@/lib/hooks';
+import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, BulkActionType } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
 import { Header } from '@/components/layout';
@@ -36,6 +36,10 @@ export default function BrandDashboardPage() {
   const { data: categories } = useCategories(brandId);
   const { data: tags } = useTags(brandId);
 
+  // Team members for assignee selection (only active members, not pending invites)
+  const { data: teamMembersData } = useTeamMembers();
+  const teamMembers = teamMembersData?.members;
+
   // Bulk actions
   const bulkAction = useBulkAction(brandId);
   const mergeTickets = useMergeTickets(brandId);
@@ -54,16 +58,20 @@ export default function BrandDashboardPage() {
   };
 
   const handleBulkAction = async (
-    action: 'spam' | 'resolve' | 'close' | 'delete',
-    ticketIds: string[]
+    action: BulkActionType,
+    ticketIds: string[],
+    options?: { assigneeId?: string | null; categoryId?: string | null; tags?: string[] }
   ) => {
     try {
-      const result = await bulkAction.mutateAsync({ action, ticketIds });
-      const actionLabels = {
+      const result = await bulkAction.mutateAsync({ action, ticketIds, ...options });
+      const actionLabels: Record<BulkActionType, string> = {
         spam: 'marked as spam',
         resolve: 'resolved',
         close: 'closed',
         delete: 'deleted',
+        assign: options?.assigneeId ? 'assigned' : 'unassigned',
+        setCategory: options?.categoryId ? 'categorized' : 'uncategorized',
+        setTags: 'tagged',
       };
       if (result.success > 0) {
         toast.success(`${result.success} ticket(s) ${actionLabels[action]}`);
@@ -308,6 +316,9 @@ export default function BrandDashboardPage() {
           isLoading={ticketsLoading}
           onBulkAction={handleBulkAction}
           onMerge={handleMerge}
+          teamMembers={teamMembers}
+          categories={categories}
+          tags={tags}
         />
 
         {/* Load More */}

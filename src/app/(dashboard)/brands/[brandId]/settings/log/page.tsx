@@ -316,8 +316,29 @@ export default function ActivityLogPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        {/* Skeleton for filters */}
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-[180px] bg-muted animate-pulse rounded-md" />
+          <div className="h-10 w-[180px] bg-muted animate-pulse rounded-md" />
+          <div className="h-10 w-[180px] bg-muted animate-pulse rounded-md" />
+          <div className="h-10 w-[180px] bg-muted animate-pulse rounded-md" />
+        </div>
+        {/* Skeleton for timeline entries */}
+        <Card className="p-4">
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex gap-3">
+                <div className="h-8 w-8 bg-muted animate-pulse rounded-full flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     );
   }
