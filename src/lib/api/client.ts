@@ -4,6 +4,9 @@ import { ApiError } from '@/types';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
 const SESSION_TOKEN_KEY = 'dispatch_session_token';
 
+// Flag to prevent multiple simultaneous redirects on 401
+let isRedirecting = false;
+
 function getSessionToken(): string | null {
   if (typeof window !== 'undefined') {
     return localStorage.getItem(SESSION_TOKEN_KEY);
@@ -38,8 +41,9 @@ function createApiClient(): AxiosInstance {
     (response) => response,
     (error: AxiosError<ApiError>) => {
       if (error.response?.status === 401) {
-        // Clear stored token and redirect to login
-        if (typeof window !== 'undefined') {
+        // Clear stored token and redirect to login (only once)
+        if (typeof window !== 'undefined' && !isRedirecting) {
+          isRedirecting = true;
           localStorage.removeItem(SESSION_TOKEN_KEY);
           window.location.href = '/login';
         }
