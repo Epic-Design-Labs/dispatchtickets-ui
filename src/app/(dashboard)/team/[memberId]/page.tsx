@@ -66,12 +66,14 @@ export default function MemberDetailPage() {
   const isMemberOwner = member?.role === 'owner';
   const isPending = member?.status === 'pending';
 
-  // Sync role state when member data loads
+  // Sync role state when member data loads (only on initial load)
+  const [roleInitialized, setRoleInitialized] = useState(false);
   useEffect(() => {
-    if (member) {
+    if (member && !roleInitialized) {
       setSelectedRole(member.role as OrgRole);
+      setRoleInitialized(true);
     }
-  }, [member]);
+  }, [member, roleInitialized]);
 
   // Sync brand state when brand data loads
   useEffect(() => {
