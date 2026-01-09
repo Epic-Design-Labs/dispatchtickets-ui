@@ -24,7 +24,6 @@ interface Session {
 
 interface CheckEmailResult {
   exists: boolean;
-  hasOrganization: boolean;
 }
 
 interface SendMagicLinkResult {
@@ -205,12 +204,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        return { exists: false, hasOrganization: false };
+        return { exists: false };
       }
 
       return await response.json();
     } catch {
-      return { exists: false, hasOrganization: false };
+      return { exists: false };
     }
   };
 

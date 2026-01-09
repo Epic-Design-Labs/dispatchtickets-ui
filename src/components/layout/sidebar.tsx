@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
 import { useProfile, useBrands, useDashboardStats } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
-import { Inbox, User, AlertCircle, Key } from 'lucide-react';
+import { Inbox, User, AlertCircle, Key, Rocket } from 'lucide-react';
 
 interface SidebarProps {
   brandId?: string;
@@ -100,6 +100,11 @@ export function Sidebar({ brandId }: SidebarProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           ),
+        },
+        {
+          name: 'Getting Started',
+          href: `/brands/${brandId}/getting-started`,
+          icon: <Rocket className="h-4 w-4" />,
         },
       ]
     : [];
@@ -267,6 +272,19 @@ export function Sidebar({ brandId }: SidebarProps) {
       {/* Support section */}
       <div className="border-t p-3">
         <nav className="space-y-1">
+          <Button
+            variant={pathname === '/getting-started' ? 'secondary' : 'ghost'}
+            className={cn(
+              'w-full justify-start gap-2',
+              pathname === '/getting-started' && 'bg-secondary'
+            )}
+            asChild
+          >
+            <Link href="/getting-started">
+              <Rocket className="h-4 w-4" />
+              Getting Started
+            </Link>
+          </Button>
           <Button
             variant={pathname === '/support' ? 'secondary' : 'ghost'}
             className={cn(
