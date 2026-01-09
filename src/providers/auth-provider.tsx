@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
@@ -79,7 +80,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // Refs to prevent race conditions
+  const refreshPromiseRef = useRef<Promise<Session | null> | null>(null);
+  const isLoggedOutRef = useRef(false);
+
   const refreshSession = useCallback(async (): Promise<Session | null> => {
+    // If already refreshing, return the existing promise (deduplication)
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current;
+    }
+
+    // If logged out, don't refresh
+    if (isLoggedOutRef.current) {
+      return null;
+    }
+
     const token = getSessionToken();
     if (!token) {
       setSession(null);
@@ -87,70 +102,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/auth/session`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+    // Create and store the refresh promise
+    const refreshPromise = (async (): Promise<Session | null> => {
+      try {
+        const response = await fetch(`${API_URL}/auth/session`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
 
-      const data = await response.json();
-
-      // Handle "user doesn't belong to org" - they're authenticated but need to connect
-      if (response.status === 401 && data.message?.includes('does not belong to an organization')) {
-        // Parse email from the JWT token (it's in the payload)
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          const newSession: Session = {
-            customerId: payload.sub || '',
-            email: payload.email || '',
-            organizationId: '',
-            connected: false,
-          };
-          setSession(newSession);
-          return newSession;
-        } catch {
-          // If JWT parsing fails, still keep them "authenticated" for the connect flow
-          const newSession: Session = {
-            customerId: '',
-            email: '',
-            organizationId: '',
-            connected: false,
-          };
-          setSession(newSession);
-          return newSession;
+        // Check if logged out during fetch
+        if (isLoggedOutRef.current) {
+          return null;
         }
-      }
 
-      if (!response.ok) {
-        clearSessionToken();
-        setSession(null);
-        return null;
-      }
+        const data = await response.json();
 
-      if (data.valid) {
-        const newSession: Session = {
-          customerId: data.customerId,
-          email: data.email,
-          organizationId: data.organizationId,
-          orgRole: data.orgRole,
-          connected: data.connected,
-          expiresAt: data.expiresAt,
-        };
-        setSession(newSession);
-        return newSession;
-      } else {
+        // Handle "user doesn't belong to org" - they're authenticated but need to connect
+        if (response.status === 401 && data.message?.includes('does not belong to an organization')) {
+          // Parse email from the JWT token (it's in the payload)
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const newSession: Session = {
+              customerId: payload.sub || '',
+              email: payload.email || '',
+              organizationId: '',
+              connected: false,
+            };
+            if (!isLoggedOutRef.current) {
+              setSession(newSession);
+            }
+            return newSession;
+          } catch {
+            // If JWT parsing fails, still keep them "authenticated" for the connect flow
+            const newSession: Session = {
+              customerId: '',
+              email: '',
+              organizationId: '',
+              connected: false,
+            };
+            if (!isLoggedOutRef.current) {
+              setSession(newSession);
+            }
+            return newSession;
+          }
+        }
+
+        if (!response.ok) {
+          clearSessionToken();
+          if (!isLoggedOutRef.current) {
+            setSession(null);
+          }
+          return null;
+        }
+
+        if (data.valid) {
+          const newSession: Session = {
+            customerId: data.customerId,
+            email: data.email,
+            organizationId: data.organizationId,
+            orgRole: data.orgRole,
+            connected: data.connected,
+            expiresAt: data.expiresAt,
+          };
+          if (!isLoggedOutRef.current) {
+            setSession(newSession);
+          }
+          return newSession;
+        } else {
+          clearSessionToken();
+          if (!isLoggedOutRef.current) {
+            setSession(null);
+          }
+          return null;
+        }
+      } catch {
         clearSessionToken();
-        setSession(null);
+        if (!isLoggedOutRef.current) {
+          setSession(null);
+        }
         return null;
+      } finally {
+        setIsLoading(false);
+        refreshPromiseRef.current = null;
       }
-    } catch {
-      clearSessionToken();
-      setSession(null);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
+    })();
+
+    refreshPromiseRef.current = refreshPromise;
+    return refreshPromise;
   }, []);
 
   useEffect(() => {
@@ -213,6 +252,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
       if (data.success && data.sessionToken) {
+        // Reset logged out flag on successful login
+        isLoggedOutRef.current = false;
         setSessionToken(data.sessionToken);
         const newSession: Session = {
           customerId: data.customerId,
@@ -297,6 +338,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Set flag to prevent stale refresh results from updating state
+    isLoggedOutRef.current = true;
     clearSessionToken();
     setSession(null);
     router.push('/login');
