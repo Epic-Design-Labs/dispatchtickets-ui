@@ -97,6 +97,13 @@ export interface BrandStats {
   pending: number;
 }
 
+export interface ResponseMetrics {
+  avgFirstResponseMinutes: number | null;
+  avgResolutionMinutes: number | null;
+  ticketsWithResponse: number;
+  ticketsResolved: number;
+}
+
 export interface DashboardStats {
   total: number;
   open: number;
@@ -104,4 +111,5 @@ export interface DashboardStats {
   resolved: number;
   closed: number;
   byBrand: Record<string, BrandStats>;
+  responseMetrics?: ResponseMetrics;
 }

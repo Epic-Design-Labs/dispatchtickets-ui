@@ -23,6 +23,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  MessageSquare,
+  Timer,
 } from 'lucide-react';
 
 type ViewType = 'all' | 'mine' | 'unassigned';
@@ -37,6 +39,13 @@ function formatTimeAgo(date: string) {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
   return then.toLocaleDateString();
+}
+
+function formatDuration(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined) return '-';
+  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
+  return `${Math.round(minutes / 1440)}d`;
 }
 
 function getStatusColor(status: string | null) {
@@ -187,7 +196,7 @@ export default function DashboardPage() {
   return (
     <div className="h-full overflow-auto p-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-6 gap-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Open</CardTitle>
@@ -230,6 +239,34 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">
               {statsLoading ? '...' : stats?.closed || 0}
             </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Response</CardTitle>
+            <MessageSquare className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgFirstResponseMinutes)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.responseMetrics?.ticketsWithResponse || 0} tickets
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Resolution</CardTitle>
+            <Timer className="h-4 w-4 text-indigo-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgResolutionMinutes)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.responseMetrics?.ticketsResolved || 0} resolved
+            </p>
           </CardContent>
         </Card>
       </div>
