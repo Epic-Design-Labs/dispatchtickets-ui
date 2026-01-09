@@ -18,9 +18,11 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TicketFilters } from '@/components/tickets/ticket-filters';
+import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog';
 import {
   Ticket,
   Clock,
+  Plus,
   CheckCircle,
   XCircle,
   MessageSquare,
@@ -403,6 +405,12 @@ export default function DashboardPage() {
             </span>
           )}
         </h3>
+        <CreateTicketDialog>
+          <Button size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Ticket
+          </Button>
+        </CreateTicketDialog>
       </div>
 
       {/* Filters */}

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateTicket } from '@/lib/hooks';
+import { useCreateTicket, useCreateTicketDynamic, useBrands } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,12 +18,14 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,50 +33,88 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 
 const createTicketSchema = z.object({
+  brandId: z.string().min(1, 'Brand is required'),
   title: z.string().min(1, 'Title is required'),
   body: z.string().optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']),
   requesterEmail: z.string().email().optional().or(z.literal('')),
   requesterName: z.string().optional(),
+  notifyCustomer: z.boolean(),
 });
 
 type CreateTicketForm = z.infer<typeof createTicketSchema>;
 
 interface CreateTicketDialogProps {
-  brandId: string;
+  brandId?: string;  // Optional - if not provided, show brand selector
   children?: React.ReactNode;
 }
 
-export function CreateTicketDialog({ brandId, children }: CreateTicketDialogProps) {
+export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTicketDialogProps) {
   const [open, setOpen] = useState(false);
-  const createTicket = useCreateTicket(brandId);
+  const { data: brands } = useBrands();
+
+  // Use fixed brand mutation if brandId is provided, otherwise use dynamic
+  const createTicketFixed = useCreateTicket(fixedBrandId || '');
+  const createTicketDynamic = useCreateTicketDynamic();
+
+  const showBrandSelector = !fixedBrandId;
 
   const form = useForm<CreateTicketForm>({
     resolver: zodResolver(createTicketSchema),
     defaultValues: {
+      brandId: fixedBrandId || '',
       title: '',
       body: '',
       priority: 'normal',
       requesterEmail: '',
       requesterName: '',
+      notifyCustomer: false,
     },
   });
 
+  // Update brandId when fixedBrandId changes
+  useEffect(() => {
+    if (fixedBrandId) {
+      form.setValue('brandId', fixedBrandId);
+    }
+  }, [fixedBrandId, form]);
+
+  // Watch requesterEmail to show/hide notify option
+  const requesterEmail = form.watch('requesterEmail');
+  const hasRequesterEmail = requesterEmail && requesterEmail.length > 0;
+
   const onSubmit = async (data: CreateTicketForm) => {
     try {
-      await createTicket.mutateAsync({
+      const ticketData = {
         title: data.title,
         body: data.body,
         priority: data.priority,
-        source: 'web',
+        source: 'web' as const,
         customFields: {
           ...(data.requesterName && { requesterName: data.requesterName }),
           ...(data.requesterEmail && { requesterEmail: data.requesterEmail }),
         },
-      });
+        notifyCustomer: data.notifyCustomer,
+      };
+
+      if (fixedBrandId) {
+        await createTicketFixed.mutateAsync(ticketData);
+      } else {
+        await createTicketDynamic.mutateAsync({
+          brandId: data.brandId,
+          data: ticketData,
+        });
+      }
       toast.success('Ticket created successfully');
       setOpen(false);
       form.reset();
@@ -82,6 +122,8 @@ export function CreateTicketDialog({ brandId, children }: CreateTicketDialogProp
       toast.error('Failed to create ticket');
     }
   };
+
+  const isPending = fixedBrandId ? createTicketFixed.isPending : createTicketDynamic.isPending;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -92,11 +134,38 @@ export function CreateTicketDialog({ brandId, children }: CreateTicketDialogProp
         <DialogHeader>
           <DialogTitle>Create Ticket</DialogTitle>
           <DialogDescription>
-            Create a new support ticket in this workspace.
+            Create a new support ticket{showBrandSelector ? '' : ' in this workspace'}.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {showBrandSelector && (
+              <FormField
+                control={form.control}
+                name="brandId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Brand</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a brand" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {brands?.map((brand) => (
+                          <SelectItem key={brand.id} value={brand.id}>
+                            {brand.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               control={form.control}
               name="title"
@@ -201,6 +270,29 @@ export function CreateTicketDialog({ brandId, children }: CreateTicketDialogProp
               />
             </div>
 
+            {hasRequesterEmail && (
+              <FormField
+                control={form.control}
+                name="notifyCustomer"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Notify customer</FormLabel>
+                      <FormDescription>
+                        Send a confirmation email to the customer about this ticket
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
@@ -209,8 +301,8 @@ export function CreateTicketDialog({ brandId, children }: CreateTicketDialogProp
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createTicket.isPending}>
-                {createTicket.isPending ? 'Creating...' : 'Create Ticket'}
+              <Button type="submit" disabled={isPending}>
+                {isPending ? 'Creating...' : 'Create Ticket'}
               </Button>
             </DialogFooter>
           </form>

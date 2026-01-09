@@ -43,6 +43,7 @@ export interface CreateTicketInput {
   assigneeId?: string;
   customFields?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
+  notifyCustomer?: boolean;
 }
 
 export interface UpdateTicketInput {

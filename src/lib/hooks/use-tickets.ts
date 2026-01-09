@@ -40,6 +40,20 @@ export function useCreateTicket(brandId: string) {
   });
 }
 
+// Dynamic version that accepts brandId in the mutation call
+export function useCreateTicketDynamic() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ brandId, data }: { brandId: string; data: CreateTicketInput }) =>
+      ticketsApi.create(brandId, data),
+    onSuccess: (_, { brandId }) => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-tickets'] });
+    },
+  });
+}
+
 export function useUpdateTicket(brandId: string, ticketId: string) {
   const queryClient = useQueryClient();
 
