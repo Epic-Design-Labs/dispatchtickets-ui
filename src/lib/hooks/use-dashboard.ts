@@ -10,6 +10,8 @@ export const dashboardKeys = {
     ['dashboard', 'tickets', filters] as const,
   stats: (brandIds?: string[]) =>
     ['dashboard', 'stats', brandIds] as const,
+  trends: (options?: { brandIds?: string[]; days?: number }) =>
+    ['dashboard', 'trends', options] as const,
 };
 
 export function useDashboardTickets(filters?: DashboardTicketFilters) {
@@ -25,5 +27,13 @@ export function useDashboardStats(brandIds?: string[]) {
     queryKey: dashboardKeys.stats(brandIds),
     queryFn: () => dashboardApi.getStats(brandIds),
     staleTime: 60000, // Consider stats fresh for 1 minute
+  });
+}
+
+export function useDashboardTrends(options?: { brandIds?: string[]; days?: number }) {
+  return useQuery({
+    queryKey: dashboardKeys.trends(options),
+    queryFn: () => dashboardApi.getTrends(options),
+    staleTime: 300000, // Consider trends fresh for 5 minutes
   });
 }

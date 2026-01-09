@@ -113,3 +113,17 @@ export interface DashboardStats {
   byBrand: Record<string, BrandStats>;
   responseMetrics?: ResponseMetrics;
 }
+
+export interface TrendDataPoint {
+  date: string;
+  created: number;
+  resolved: number;
+}
+
+export interface TicketTrends {
+  data: TrendDataPoint[];
+  period: {
+    start: string;
+    end: string;
+  };
+}

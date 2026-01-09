@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useDashboardTickets, useDashboardStats, useBrands } from '@/lib/hooks';
+import { useDashboardTickets, useDashboardStats, useDashboardTrends, useBrands } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { DashboardTicketFilters, TicketFilters as TicketFiltersType } from '@/types';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,17 @@ import {
   XCircle,
   MessageSquare,
   Timer,
+  TrendingUp,
 } from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 type ViewType = 'all' | 'mine' | 'unassigned';
 
@@ -46,6 +56,11 @@ function formatDuration(minutes: number | null | undefined): string {
   if (minutes < 60) return `${minutes}m`;
   if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
   return `${Math.round(minutes / 1440)}d`;
+}
+
+function formatChartDate(date: string): string {
+  const d = new Date(date);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function getStatusColor(status: string | null) {
@@ -176,6 +191,10 @@ export default function DashboardPage() {
 
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
   const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBrands);
+  const { data: trends, isLoading: trendsLoading } = useDashboardTrends({
+    brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
+    days: 30,
+  });
 
   // Sort tickets: open first (by newest), then pending (by newest)
   const tickets = useMemo(() => {
@@ -270,6 +289,109 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Trends Chart */}
+      <Card className="mb-6">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Ticket Volume (30 days)</CardTitle>
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {trendsLoading ? (
+            <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+              Loading trends...
+            </div>
+          ) : trends?.data && trends.data.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart
+                data={trends.data}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="colorCreated" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorResolved" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatChartDate}
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                />
+                <YAxis
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length && label) {
+                      return (
+                        <div className="rounded-lg border bg-background p-2 shadow-sm">
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {formatChartDate(String(label))}
+                          </div>
+                          <div className="grid gap-1">
+                            <div className="flex items-center gap-2 text-sm">
+                              <div className="h-2 w-2 rounded-full bg-blue-500" />
+                              <span>Created: {payload[0]?.value}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <div className="h-2 w-2 rounded-full bg-green-500" />
+                              <span>Resolved: {payload[1]?.value}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="created"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorCreated)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="resolved"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorResolved)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+              No trend data available
+            </div>
+          )}
+          <div className="flex items-center justify-center gap-6 mt-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-blue-500" />
+              <span>Created</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-green-500" />
+              <span>Resolved</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Tickets Section Header */}
       <div className="mb-4 flex items-center justify-between">

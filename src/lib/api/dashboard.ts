@@ -3,6 +3,7 @@ import {
   DashboardTicket,
   DashboardTicketFilters,
   DashboardStats,
+  TicketTrends,
   PaginatedResponse,
 } from '@/types';
 
@@ -42,6 +43,23 @@ export const dashboardApi = {
       params.append('brandIds', brandIds.join(','));
     }
     const response = await apiClient.get<DashboardStats>('/tickets/stats', {
+      params,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get ticket volume trends over time
+   */
+  getTrends: async (options?: { brandIds?: string[]; days?: number }): Promise<TicketTrends> => {
+    const params = new URLSearchParams();
+    if (options?.brandIds?.length) {
+      params.append('brandIds', options.brandIds.join(','));
+    }
+    if (options?.days) {
+      params.append('days', String(options.days));
+    }
+    const response = await apiClient.get<TicketTrends>('/tickets/trends', {
       params,
     });
     return response.data;
