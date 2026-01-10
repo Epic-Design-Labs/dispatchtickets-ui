@@ -719,7 +719,7 @@ We'll reach back out soon!
                               Match the address the email was sent to
                             </Label>
                             <p className="text-sm text-muted-foreground">
-                              Replies to hr@{outboundDomain.domain} come from hr@{outboundDomain.domain}, etc.
+                              Replies to sales@{outboundDomain.domain} come from sales@, support@ from support@, etc.
                             </p>
                           </div>
                         </div>
