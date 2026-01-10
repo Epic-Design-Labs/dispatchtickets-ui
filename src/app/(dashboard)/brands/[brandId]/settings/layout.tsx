@@ -8,6 +8,7 @@ const settingsNav = [
   { title: 'General', href: '' },
   { title: 'Categories', href: '/categories' },
   { title: 'Email', href: '/email' },
+  { title: 'Channels', href: '/channels' },
   { title: 'Integrations', href: '/integrations' },
   { title: 'Webhooks', href: '/webhooks' },
   { title: 'Activity Log', href: '/log' },

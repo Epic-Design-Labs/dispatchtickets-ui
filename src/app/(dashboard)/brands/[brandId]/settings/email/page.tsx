@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Table,
   TableBody,
@@ -40,14 +41,28 @@ import {
   useConnectGmail,
   useDisconnectEmail,
   useSetPrimaryConnection,
-  useUpdateEmailConnection,
   useSyncEmail,
   useRetryConnection,
   useReconnectEmail,
 } from '@/lib/hooks';
-import { WorkspaceDomain } from '@/lib/api/domains';
+import { OutboundReplyMode } from '@/lib/api/domains';
 import { toast } from 'sonner';
-import { CheckCircle, XCircle, Clock, Copy, Trash2, Plus, Star, Mail, AlertCircle, RefreshCw, Unplug, Link2 } from 'lucide-react';
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  Copy,
+  Trash2,
+  Plus,
+  Star,
+  Mail,
+  AlertCircle,
+  RefreshCw,
+  Unplug,
+  Link2,
+  Send,
+  Inbox,
+} from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,223 +74,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-interface DomainCardProps {
-  domain: WorkspaceDomain;
-  brandId: string;
-  onVerify: () => void;
-  onSetPrimary: () => void;
-  onUpdateSender: (fromName?: string, fromEmail?: string) => void;
-  onRemove: () => void;
-  isVerifying: boolean;
-  isUpdating: boolean;
-  isRemoving: boolean;
-}
-
-function DomainCard({
-  domain,
-  brandId,
-  onVerify,
-  onSetPrimary,
-  onUpdateSender,
-  onRemove,
-  isVerifying,
-  isUpdating,
-  isRemoving,
-}: DomainCardProps) {
-  const [fromName, setFromName] = useState(domain.fromName || '');
-  const [fromEmail, setFromEmail] = useState(domain.fromEmail || '');
-  const [showSenderForm, setShowSenderForm] = useState(false);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
-  };
-
-  return (
-    <div className="rounded-lg border p-4 space-y-4">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <p className="font-medium">{domain.domain}</p>
-          {domain.isPrimary && (
-            <Badge variant="outline" className="text-xs">
-              <Star className="mr-1 h-3 w-3 fill-current" /> Primary
-            </Badge>
-          )}
-          {domain.verified ? (
-            <Badge variant="default" className="bg-green-600">
-              <CheckCircle className="mr-1 h-3 w-3" /> Verified
-            </Badge>
-          ) : (
-            <Badge variant="secondary">
-              <Clock className="mr-1 h-3 w-3" /> Pending
-            </Badge>
-          )}
-        </div>
-        <div className="flex gap-2">
-          {!domain.verified && (
-            <Button variant="outline" size="sm" onClick={onVerify} disabled={isVerifying}>
-              {isVerifying ? 'Verifying...' : 'Verify'}
-            </Button>
-          )}
-          {domain.verified && !domain.isPrimary && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSetPrimary}
-              disabled={isUpdating}
-            >
-              Set Primary
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onRemove}
-            disabled={isRemoving}
-            className="h-8 w-8"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {domain.verifiedAt && (
-        <p className="text-sm text-muted-foreground">
-          Verified on {new Date(domain.verifiedAt).toLocaleDateString()}
-        </p>
-      )}
-
-      {/* DNS Records for pending domains */}
-      {!domain.verified && domain.records.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">DNS Records</p>
-          <p className="text-sm text-muted-foreground">
-            Add these records to your DNS provider, then click Verify
-          </p>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-14">Type</TableHead>
-                  <TableHead className="w-32">Name</TableHead>
-                  <TableHead>Value</TableHead>
-                  {domain.type === 'INBOUND' && <TableHead className="w-20">Priority</TableHead>}
-                  <TableHead className="w-14">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {domain.records.map((record, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="font-mono text-xs">{record.type}</TableCell>
-                    <TableCell className="max-w-32">
-                      <div className="flex items-center gap-1">
-                        <code className="text-xs truncate" title={record.name}>{record.name}</code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 shrink-0"
-                          onClick={() => copyToClipboard(record.name)}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="flex items-center gap-1">
-                        <code className="text-xs truncate" title={record.value}>{record.value}</code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 shrink-0"
-                          onClick={() => copyToClipboard(record.value)}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    {domain.type === 'INBOUND' && (
-                      <TableCell className="font-mono text-xs">{record.priority}</TableCell>
-                    )}
-                    <TableCell>
-                      {record.status === 'verified' ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : record.status === 'failed' ? (
-                        <XCircle className="h-4 w-4 text-red-600" />
-                      ) : (
-                        <Clock className="h-4 w-4 text-yellow-600" />
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      )}
-
-      {/* Sender Settings for verified outbound domains */}
-      {domain.type === 'OUTBOUND' && domain.verified && (
-        <div className="space-y-4 pt-2 border-t">
-          {!showSenderForm ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Sender:</p>
-                <p className="text-sm">
-                  {domain.fromName || 'Not set'} &lt;{domain.fromEmail || `support@${domain.domain}`}&gt;
-                </p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => setShowSenderForm(true)}>
-                Edit Sender
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor={`fromName-${domain.id}`}>Sender Name</Label>
-                <Input
-                  id={`fromName-${domain.id}`}
-                  placeholder="e.g., Acme Support"
-                  value={fromName}
-                  onChange={(e) => setFromName(e.target.value)}
-                  maxLength={100}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor={`fromEmail-${domain.id}`}>Sender Email</Label>
-                <Input
-                  id={`fromEmail-${domain.id}`}
-                  type="email"
-                  placeholder={`support@${domain.domain}`}
-                  value={fromEmail}
-                  onChange={(e) => setFromEmail(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Must be an address on {domain.domain}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    onUpdateSender(fromName || undefined, fromEmail || undefined);
-                    setShowSenderForm(false);
-                  }}
-                  disabled={isUpdating}
-                >
-                  {isUpdating ? 'Saving...' : 'Save'}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowSenderForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function EmailSettingsPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -285,9 +83,7 @@ export default function EmailSettingsPage() {
   // Invalidate broken-connections cache when returning from successful OAuth
   useEffect(() => {
     if (searchParams.get('connected') === 'gmail') {
-      // Clear the warning banner cache immediately
       queryClient.invalidateQueries({ queryKey: ['broken-connections'] });
-      // Show success toast
       const email = searchParams.get('email');
       if (email) {
         toast.success(`Connected ${email} successfully!`);
@@ -310,7 +106,6 @@ export default function EmailSettingsPage() {
   const connectGmail = useConnectGmail();
   const disconnectEmail = useDisconnectEmail();
   const setPrimaryConnection = useSetPrimaryConnection();
-  const updateEmailConnection = useUpdateEmailConnection();
   const syncEmail = useSyncEmail();
   const retryConnection = useRetryConnection();
   const reconnectEmail = useReconnectEmail();
@@ -332,7 +127,15 @@ export default function EmailSettingsPage() {
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
   const [disconnectingConnection, setDisconnectingConnection] = useState<{id: string, email: string} | null>(null);
 
-  // Initialize form with brand data
+  // Outbound domain settings state
+  const [fromName, setFromName] = useState('');
+  const [fromEmail, setFromEmail] = useState('');
+  const [replyMode, setReplyMode] = useState<OutboundReplyMode>('SINGLE');
+
+  // Get outbound domain
+  const outboundDomain = domains?.find((d) => d.type === 'OUTBOUND' && d.isPrimary);
+
+  // Initialize form with brand/domain data
   useEffect(() => {
     if (brand) {
       setAutoresponseEnabled(brand.autoresponseEnabled || false);
@@ -340,6 +143,14 @@ export default function EmailSettingsPage() {
       setAutoresponseBody(brand.autoresponseBody || '');
     }
   }, [brand]);
+
+  useEffect(() => {
+    if (outboundDomain) {
+      setFromName(outboundDomain.fromName || '');
+      setFromEmail(outboundDomain.fromEmail || '');
+      setReplyMode(outboundDomain.replyMode || 'SINGLE');
+    }
+  }, [outboundDomain]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -356,7 +167,7 @@ export default function EmailSettingsPage() {
         brandId,
         data: { domain: newDomainInput.trim(), type: 'OUTBOUND' },
       });
-      toast.success('Outbound domain added');
+      toast.success('Domain added - configure DNS records to verify');
       setNewDomainInput('');
       setAddDomainDialogOpen(false);
     } catch (error: any) {
@@ -370,32 +181,35 @@ export default function EmailSettingsPage() {
       if (result.verified) {
         toast.success('Domain verified!');
       } else {
-        toast.error(result.error || 'Verification failed');
+        toast.error(result.error || 'Verification failed - check DNS records');
       }
     } catch {
       toast.error('Failed to verify domain');
     }
   };
 
-  const handleSetPrimary = async (domainId: string) => {
-    try {
-      await updateDomain.mutateAsync({ brandId, domainId, data: { isPrimary: true } });
-      toast.success('Domain set as primary');
-    } catch {
-      toast.error('Failed to set primary domain');
-    }
-  };
+  const handleSaveOutboundSettings = async () => {
+    if (!outboundDomain) return;
 
-  const handleUpdateSender = async (domainId: string, fromName?: string, fromEmail?: string) => {
+    // Validate fromEmail is on the domain
+    if (fromEmail && !fromEmail.endsWith(`@${outboundDomain.domain}`)) {
+      toast.error(`Email must be on ${outboundDomain.domain}`);
+      return;
+    }
+
     try {
       await updateDomain.mutateAsync({
         brandId,
-        domainId,
-        data: { fromName, fromEmail },
+        domainId: outboundDomain.id,
+        data: {
+          fromName: fromName || undefined,
+          fromEmail: fromEmail || undefined,
+          replyMode,
+        },
       });
-      toast.success('Sender settings updated');
+      toast.success('Sending settings saved');
     } catch {
-      toast.error('Failed to update sender settings');
+      toast.error('Failed to save settings');
     }
   };
 
@@ -503,14 +317,10 @@ export default function EmailSettingsPage() {
   const handleReconnectEmail = async (connectionId: string) => {
     try {
       await reconnectEmail.mutateAsync({ brandId, connectionId });
-      // Will redirect to Google OAuth
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to initiate reconnection');
     }
   };
-
-  // Filter domains by type (only outbound supported now)
-  const outboundDomains = domains?.filter((d) => d.type === 'OUTBOUND') || [];
 
   const isLoading = brandLoading || domainsLoading || emailConnectionsLoading;
 
@@ -525,64 +335,71 @@ export default function EmailSettingsPage() {
 
   return (
     <div className="space-y-6">
-        {/* Email Connections (Gmail/OAuth) */}
-        <Card>
-          <CardHeader>
+      {/* ================================================================== */}
+      {/* RECEIVING EMAIL */}
+      {/* ================================================================== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Inbox className="h-5 w-5" />
+            Receiving Email
+          </CardTitle>
+          <CardDescription>
+            Choose how emails become tickets. You can use multiple methods.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Gmail / Google Workspace */}
+          <div className="rounded-lg border p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  Email Connections
-                </CardTitle>
-                <CardDescription>
-                  Connect Gmail or Google Workspace accounts to receive and send emails
-                </CardDescription>
+                <h3 className="font-medium flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Gmail / Google Workspace
+                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Full two-way sync. Replies sent from your connected address.
+                </p>
               </div>
               <Button size="sm" onClick={() => setShowAddConnectionDialog(true)}>
-                <Plus className="mr-1 h-4 w-4" /> Add Connection
+                <Plus className="mr-1 h-4 w-4" /> Connect
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
+
             {emailConnections && emailConnections.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {emailConnections.map((connection) => (
-                  <div key={connection.id} className="rounded-lg border p-4 space-y-3">
-                    {/* Connection header */}
+                  <div key={connection.id} className="rounded-lg bg-muted/50 p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`rounded-full p-2 ${
+                        <div className={`rounded-full p-1.5 ${
                           connection.status === 'ACTIVE'
                             ? 'bg-green-100 text-green-700'
                             : 'bg-red-100 text-red-700'
                         }`}>
                           {connection.status === 'ACTIVE' ? (
-                            <CheckCircle className="h-5 w-5" />
+                            <CheckCircle className="h-4 w-4" />
                           ) : (
-                            <AlertCircle className="h-5 w-5" />
+                            <AlertCircle className="h-4 w-4" />
                           )}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-medium">{connection.email}</p>
+                            <span className="font-medium">{connection.email}</span>
                             {connection.isPrimary && (
                               <Badge variant="outline" className="text-xs">
                                 <Star className="mr-1 h-3 w-3 fill-current" /> Primary
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {connection.name} &middot; {connection.provider === 'GMAIL' ? 'Gmail' : connection.provider}
-                          </p>
+                          <span className="text-xs text-muted-foreground">{connection.name}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={connection.status === 'ACTIVE' ? 'default' : 'destructive'}>
-                          {connection.status === 'ACTIVE' ? 'Connected' : 'Error'}
-                        </Badge>
                         {!connection.isPrimary && (
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleSetPrimaryConnection(connection.id)}
                             disabled={setPrimaryConnection.isPending}
@@ -604,278 +421,402 @@ export default function EmailSettingsPage() {
                       </div>
                     </div>
 
-                    {/* Error message if any */}
+                    {/* Error state */}
                     {(connection.status === 'ERROR' || connection.status === 'DISCONNECTED') && (
-                      <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-sm text-red-700">
-                              <strong>Error:</strong> {connection.errorMessage || 'Connection failed'}
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Try Retry first, or click Reconnect to re-authenticate with Google.
-                            </p>
-                          </div>
-                          <div className="flex gap-2 shrink-0">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRetryConnection(connection.id)}
-                              disabled={retryConnection.isPending || reconnectEmail.isPending}
-                            >
-                              {retryConnection.isPending ? (
-                                <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
-                              ) : (
-                                <RefreshCw className="mr-1 h-4 w-4" />
-                              )}
-                              Retry
-                            </Button>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleReconnectEmail(connection.id)}
-                              disabled={retryConnection.isPending || reconnectEmail.isPending}
-                            >
-                              {reconnectEmail.isPending ? (
-                                <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Link2 className="mr-1 h-4 w-4" />
-                              )}
-                              Reconnect
-                            </Button>
-                          </div>
+                      <div className="rounded border border-red-200 bg-red-50 p-2 flex items-center justify-between gap-2">
+                        <span className="text-sm text-red-700">{connection.errorMessage || 'Connection failed'}</span>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRetryConnection(connection.id)}
+                            disabled={retryConnection.isPending}
+                          >
+                            <RefreshCw className={`mr-1 h-3 w-3 ${retryConnection.isPending ? 'animate-spin' : ''}`} />
+                            Retry
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleReconnectEmail(connection.id)}
+                            disabled={reconnectEmail.isPending}
+                          >
+                            <Link2 className="mr-1 h-3 w-3" />
+                            Reconnect
+                          </Button>
                         </div>
                       </div>
                     )}
 
-                    {/* Last sync info and sync buttons */}
-                    <div className="flex items-center justify-between pt-2 border-t">
-                      {connection.lastSyncAt ? (
-                        <p className="text-sm text-muted-foreground">
-                          <RefreshCw className="inline h-3 w-3 mr-1" />
-                          Last synced: {new Date(connection.lastSyncAt).toLocaleString()}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Never synced</p>
-                      )}
+                    {/* Sync info */}
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {connection.lastSyncAt
+                          ? `Last synced: ${new Date(connection.lastSyncAt).toLocaleString()}`
+                          : 'Never synced'}
+                      </span>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleSyncEmail(connection.id, true)}
                         disabled={syncEmail.isPending}
-                        title="Re-import last 50 emails (use this to recover missed emails)"
                       >
-                        {syncEmail.isPending ? (
-                          <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="mr-1 h-4 w-4" />
-                        )}
-                        Full Sync
+                        <RefreshCw className={`mr-1 h-3 w-3 ${syncEmail.isPending ? 'animate-spin' : ''}`} />
+                        Sync Now
                       </Button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* Not connected state */}
-                <div className="rounded-lg border border-dashed p-6 text-center">
-                  <Mail className="mx-auto h-10 w-10 text-muted-foreground/50" />
-                  <p className="mt-2 text-sm font-medium">No email connected</p>
-                  <p className="text-sm text-muted-foreground">
-                    Connect your Gmail account to automatically import emails as tickets and reply from this brand.
-                  </p>
-                  <Button
-                    className="mt-4"
-                    onClick={() => setShowAddConnectionDialog(true)}
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    Connect Gmail
-                  </Button>
-                </div>
-
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <p><strong>What happens when you connect:</strong></p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li>Incoming emails are automatically converted to tickets</li>
-                    <li>Replies from agents are sent from your connected email</li>
-                    <li>Customer replies to tickets update the ticket thread</li>
-                  </ul>
-                </div>
-              </div>
+              <p className="text-sm text-muted-foreground">No Gmail accounts connected.</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Outbound Email Domains */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Outbound Email Domains</CardTitle>
-                <CardDescription>
-                  Send emails from your own domains instead of dispatchtickets.com
-                </CardDescription>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => setAddDomainDialogOpen(true)}
-              >
-                <Plus className="mr-1 h-4 w-4" /> Add Domain
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {outboundDomains.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No outbound domains configured. Add one to send emails from your own domain.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {outboundDomains.map((domain) => (
-                  <DomainCard
-                    key={domain.id}
-                    domain={domain}
-                    brandId={brandId}
-                    onVerify={() => handleVerifyDomain(domain.id)}
-                    onSetPrimary={() => handleSetPrimary(domain.id)}
-                    onUpdateSender={(fromName, fromEmail) =>
-                      handleUpdateSender(domain.id, fromName, fromEmail)
-                    }
-                    onRemove={() => handleRemoveDomain(domain.id)}
-                    isVerifying={verifyDomain.isPending}
-                    isUpdating={updateDomain.isPending}
-                    isRemoving={removeDomain.isPending}
-                  />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Email Forwarding (Inbound) */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Email Forwarding</CardTitle>
-            <CardDescription>
-              Forward emails from your support address to receive them as tickets
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Forwarding address */}
-            <div className="rounded-lg bg-muted p-4 space-y-3">
-              <div>
-                <p className="text-sm font-medium">Your Forwarding Address</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <code className="text-sm bg-background px-2 py-1 rounded border">{brandId}@inbound.dispatchtickets.com</code>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(`${brandId}@inbound.dispatchtickets.com`)}
-                  >
-                    <Copy className="h-3 w-3 mr-1" /> Copy
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-sm text-muted-foreground space-y-2">
-              <p className="font-medium text-foreground">How to set up email forwarding:</p>
-              <ol className="list-decimal list-inside space-y-1 ml-2">
-                <li>Go to your email provider&apos;s settings (Gmail, Outlook, etc.)</li>
-                <li>Set up email forwarding from your support address (e.g., support@yourcompany.com)</li>
-                <li>Forward to the address above</li>
-                <li>All forwarded emails will automatically become tickets</li>
-              </ol>
-              <p className="mt-3 text-xs">
-                Works with Gmail, Google Workspace, Microsoft 365, and most email providers.
+          {/* Email Forwarding */}
+          <div className="rounded-lg border p-4 space-y-4">
+            <div>
+              <h3 className="font-medium flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email Forwarding
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Forward emails from any provider. Receive-only (replies use sending settings below).
               </p>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Autoresponse */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Autoresponse</CardTitle>
-            <CardDescription>
-              Automatically reply to new tickets created via email
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="autoresponse-enabled">Enable Autoresponse</Label>
-                <p className="text-sm text-muted-foreground">
-                  Send an automatic reply when a new ticket is created via email
-                </p>
+            <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+              <p className="text-sm font-medium">Your forwarding address:</p>
+              <div className="flex items-center gap-2">
+                <code className="text-sm bg-background px-2 py-1 rounded border flex-1 truncate">
+                  {brandId}@inbound.dispatchtickets.com
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(`${brandId}@inbound.dispatchtickets.com`)}
+                >
+                  <Copy className="h-3 w-3 mr-1" /> Copy
+                </Button>
               </div>
-              <Switch
-                id="autoresponse-enabled"
-                checked={autoresponseEnabled}
-                onCheckedChange={setAutoresponseEnabled}
-              />
             </div>
 
-            {autoresponseEnabled && (
-              <>
-                <Separator />
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">How to set up:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Go to your email provider&apos;s settings</li>
+                <li>Set up forwarding from your support address (e.g., support@yourcompany.com)</li>
+                <li>Forward to the address above</li>
+              </ol>
+              <p className="mt-2 text-xs">
+                Works with Gmail, Google Workspace, Microsoft 365, and most email providers.
+                You can forward from multiple addresses.
+              </p>
+            </div>
+          </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="autoresponse-subject">Email Subject</Label>
-                    <Input
-                      id="autoresponse-subject"
-                      placeholder="e.g., We received your request [{{ticketNumber}}]"
-                      value={autoresponseSubject}
-                      onChange={(e) => setAutoresponseSubject(e.target.value)}
-                      maxLength={200}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Use <code className="rounded bg-muted px-1">{'{{ticketNumber}}'}</code> for
-                      ticket ID
-                    </p>
-                  </div>
+          {/* Microsoft 365 - Coming Soon */}
+          <div className="rounded-lg border border-dashed p-4 opacity-60">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Microsoft 365 / Outlook
+                  <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Connect Outlook or Exchange accounts for two-way sync.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-                  <div className="space-y-2 lg:row-span-2">
-                    <Label htmlFor="autoresponse-body">Message Body</Label>
-                    <Textarea
-                      id="autoresponse-body"
-                      placeholder="Thank you for contacting us. We have received your request and will respond shortly."
-                      value={autoresponseBody}
-                      onChange={(e) => setAutoresponseBody(e.target.value)}
-                      rows={6}
-                      className="min-h-[150px]"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Placeholders:{' '}
-                      <code className="rounded bg-muted px-1">{'{{ticketNumber}}'}</code>,{' '}
-                      <code className="rounded bg-muted px-1">{'{{ticketTitle}}'}</code>,{' '}
-                      <code className="rounded bg-muted px-1">{'{{customerName}}'}</code>,{' '}
-                      <code className="rounded bg-muted px-1">{'{{brandName}}'}</code>
-                    </p>
-                  </div>
+      {/* ================================================================== */}
+      {/* SENDING EMAIL */}
+      {/* ================================================================== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Sending Email
+          </CardTitle>
+          <CardDescription>
+            Configure how replies are sent. Gmail-connected tickets reply through their account.
+            Other tickets use these settings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!outboundDomain ? (
+            <>
+              <div className="rounded-lg bg-muted/50 p-4">
+                <p className="text-sm">
+                  <strong>Current:</strong> Replies sent from{' '}
+                  <code className="bg-background px-1 rounded">notifications@dispatchtickets.com</code>
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-dashed p-4 space-y-3">
+                <div>
+                  <p className="font-medium">Add a custom domain</p>
+                  <p className="text-sm text-muted-foreground">
+                    Send replies from your own address (e.g., support@yourcompany.com)
+                  </p>
                 </div>
-              </>
-            )}
+                <Button onClick={() => setAddDomainDialogOpen(true)}>
+                  <Plus className="mr-1 h-4 w-4" /> Add Custom Domain
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Domain status */}
+              <div className="rounded-lg border p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{outboundDomain.domain}</span>
+                    {outboundDomain.verified ? (
+                      <Badge variant="default" className="bg-green-600">
+                        <CheckCircle className="mr-1 h-3 w-3" /> Verified
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">
+                        <Clock className="mr-1 h-3 w-3" /> Pending
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveDomain(outboundDomain.id)}
+                    disabled={removeDomain.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
 
-            <Separator />
+                {/* DNS records if not verified */}
+                {!outboundDomain.verified && outboundDomain.records.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Add these DNS records to verify:</p>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-16">Type</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Value</TableHead>
+                            <TableHead className="w-16">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {outboundDomain.records.map((record, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="font-mono text-xs">{record.type}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <code className="text-xs truncate max-w-32" title={record.name}>{record.name}</code>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => copyToClipboard(record.name)}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <code className="text-xs truncate max-w-48" title={record.value}>{record.value}</code>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => copyToClipboard(record.value)}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {record.status === 'verified' ? (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                ) : record.status === 'failed' ? (
+                                  <XCircle className="h-4 w-4 text-red-600" />
+                                ) : (
+                                  <Clock className="h-4 w-4 text-yellow-600" />
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <Button
+                      onClick={() => handleVerifyDomain(outboundDomain.id)}
+                      disabled={verifyDomain.isPending}
+                    >
+                      {verifyDomain.isPending ? 'Verifying...' : 'Verify Domain'}
+                    </Button>
+                  </div>
+                )}
 
-            <Button onClick={handleSaveAutoresponse} disabled={updateBrand.isPending}>
-              {updateBrand.isPending ? 'Saving...' : 'Save Autoresponse Settings'}
-            </Button>
-          </CardContent>
-        </Card>
+                {/* Sender settings - only show if verified */}
+                {outboundDomain.verified && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="fromName">Sender Name</Label>
+                        <Input
+                          id="fromName"
+                          placeholder="e.g., Acme Support"
+                          value={fromName}
+                          onChange={(e) => setFromName(e.target.value)}
+                          maxLength={100}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fromEmail">Sender Email</Label>
+                        <Input
+                          id="fromEmail"
+                          type="email"
+                          placeholder={`support@${outboundDomain.domain}`}
+                          value={fromEmail}
+                          onChange={(e) => setFromEmail(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-3">
+                      <Label>Reply behavior</Label>
+                      <RadioGroup value={replyMode} onValueChange={(v) => setReplyMode(v as OutboundReplyMode)}>
+                        <div className="flex items-start space-x-3 p-3 rounded-lg border">
+                          <RadioGroupItem value="SINGLE" id="reply-single" className="mt-1" />
+                          <div className="space-y-1">
+                            <Label htmlFor="reply-single" className="font-medium cursor-pointer">
+                              Send all replies from one address
+                              <Badge variant="secondary" className="ml-2 text-xs">Recommended</Badge>
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              All tickets reply from {fromEmail || `support@${outboundDomain.domain}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3 p-3 rounded-lg border">
+                          <RadioGroupItem value="MATCH" id="reply-match" className="mt-1" />
+                          <div className="space-y-1">
+                            <Label htmlFor="reply-match" className="font-medium cursor-pointer">
+                              Match the address the email was sent to
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              Replies to hr@{outboundDomain.domain} come from hr@{outboundDomain.domain}, etc.
+                            </p>
+                            <p className="text-xs text-amber-600">
+                              Make sure these addresses exist on your domain
+                            </p>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <Button
+                      onClick={handleSaveOutboundSettings}
+                      disabled={updateDomain.isPending}
+                    >
+                      {updateDomain.isPending ? 'Saving...' : 'Save Sending Settings'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ================================================================== */}
+      {/* AUTO-REPLY */}
+      {/* ================================================================== */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Auto-Reply</CardTitle>
+          <CardDescription>
+            Automatically reply when new tickets are created via email
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="autoresponse-enabled">Enable auto-reply</Label>
+              <p className="text-sm text-muted-foreground">
+                Send an automatic confirmation when a ticket is created
+              </p>
+            </div>
+            <Switch
+              id="autoresponse-enabled"
+              checked={autoresponseEnabled}
+              onCheckedChange={setAutoresponseEnabled}
+            />
+          </div>
+
+          {autoresponseEnabled && (
+            <>
+              <Separator />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="autoresponse-subject">Email Subject</Label>
+                  <Input
+                    id="autoresponse-subject"
+                    placeholder="e.g., We received your request [{{ticketNumber}}]"
+                    value={autoresponseSubject}
+                    onChange={(e) => setAutoresponseSubject(e.target.value)}
+                    maxLength={200}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use <code className="bg-muted px-1 rounded">{'{{ticketNumber}}'}</code> for ticket ID
+                  </p>
+                </div>
+                <div className="space-y-2 lg:row-span-2">
+                  <Label htmlFor="autoresponse-body">Message Body</Label>
+                  <Textarea
+                    id="autoresponse-body"
+                    placeholder="Thank you for contacting us..."
+                    value={autoresponseBody}
+                    onChange={(e) => setAutoresponseBody(e.target.value)}
+                    rows={6}
+                    className="min-h-[150px]"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Placeholders: <code className="bg-muted px-1 rounded">{'{{ticketNumber}}'}</code>,{' '}
+                    <code className="bg-muted px-1 rounded">{'{{ticketTitle}}'}</code>,{' '}
+                    <code className="bg-muted px-1 rounded">{'{{customerName}}'}</code>,{' '}
+                    <code className="bg-muted px-1 rounded">{'{{brandName}}'}</code>
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          <Separator />
+          <Button onClick={handleSaveAutoresponse} disabled={updateBrand.isPending}>
+            {updateBrand.isPending ? 'Saving...' : 'Save Auto-Reply Settings'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ================================================================== */}
+      {/* DIALOGS */}
+      {/* ================================================================== */}
 
       {/* Add Domain Dialog */}
       <Dialog open={addDomainDialogOpen} onOpenChange={setAddDomainDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Outbound Domain</DialogTitle>
+            <DialogTitle>Add Custom Domain</DialogTitle>
             <DialogDescription>
-              Add a domain to send emails from your own address instead of dispatchtickets.com
+              Send replies from your own domain instead of dispatchtickets.com
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -907,7 +848,7 @@ export default function EmailSettingsPage() {
       <Dialog open={showAddConnectionDialog} onOpenChange={setShowAddConnectionDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Email Connection</DialogTitle>
+            <DialogTitle>Connect Gmail Account</DialogTitle>
             <DialogDescription>
               Connect a Gmail or Google Workspace account to receive and send emails
             </DialogDescription>
@@ -917,7 +858,7 @@ export default function EmailSettingsPage() {
               <Label htmlFor="connectionName">Connection Name (optional)</Label>
               <Input
                 id="connectionName"
-                placeholder="e.g., Marketing, Support, Sales"
+                placeholder="e.g., Support, Sales"
                 value={newConnectionName}
                 onChange={(e) => setNewConnectionName(e.target.value)}
                 maxLength={50}
@@ -960,7 +901,7 @@ export default function EmailSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Disconnect Email Account?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will stop syncing emails from {disconnectingConnection?.email}. Existing tickets will not be affected, but new emails will no longer create tickets automatically.
+              This will stop syncing emails from {disconnectingConnection?.email}. Existing tickets will not be affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 
 export type DomainType = 'INBOUND' | 'OUTBOUND';
+export type OutboundReplyMode = 'SINGLE' | 'MATCH';
 
 export interface DnsRecord {
   type: 'MX' | 'TXT' | 'CNAME';
@@ -20,6 +21,7 @@ export interface BrandDomain {
   resendDomainId: string | null;
   fromName: string | null;
   fromEmail: string | null;
+  replyMode: OutboundReplyMode;
   isPrimary: boolean;
   createdAt: string;
   updatedAt: string;
@@ -35,6 +37,7 @@ export interface UpdateDomainData {
   fromEmail?: string;
   fromName?: string;
   isPrimary?: boolean;
+  replyMode?: OutboundReplyMode;
 }
 
 export interface VerifyResult {
