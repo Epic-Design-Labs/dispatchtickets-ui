@@ -721,9 +721,6 @@ We'll reach back out soon!
                             <p className="text-sm text-muted-foreground">
                               Replies to hr@{outboundDomain.domain} come from hr@{outboundDomain.domain}, etc.
                             </p>
-                            <p className="text-xs text-amber-600">
-                              Make sure these addresses exist on your domain
-                            </p>
                           </div>
                         </div>
                       </RadioGroup>
