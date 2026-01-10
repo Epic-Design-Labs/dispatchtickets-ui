@@ -47,7 +47,7 @@ export default function TicketDetailPage() {
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
 
-  const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId);
+  const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId, { polling: true });
   const { data: comments, isLoading: commentsLoading } = useComments(brandId, ticketId, { polling: true });
   const { data: ticketsData } = useTickets(brandId, { status: 'open', limit: 100 });
   const { data: teamData } = useTeamMembers();

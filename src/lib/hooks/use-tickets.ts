@@ -20,11 +20,14 @@ export function useTickets(brandId: string, filters?: TicketFilters) {
   });
 }
 
-export function useTicket(brandId: string, ticketId: string) {
+export function useTicket(brandId: string, ticketId: string, options?: { polling?: boolean }) {
   return useQuery({
     queryKey: ticketKeys.detail(brandId, ticketId),
     queryFn: () => ticketsApi.get(brandId, ticketId),
     enabled: !!brandId && !!ticketId,
+    // Poll every 10 seconds when viewing a ticket to catch status changes from other users
+    refetchInterval: options?.polling ? 10000 : false,
+    refetchIntervalInBackground: false, // Don't poll when tab is not focused
   });
 }
 
