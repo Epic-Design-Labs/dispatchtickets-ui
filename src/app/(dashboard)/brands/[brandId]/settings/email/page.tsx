@@ -115,6 +115,13 @@ export default function EmailSettingsPage() {
   const [autoresponseSubject, setAutoresponseSubject] = useState('');
   const [autoresponseBody, setAutoresponseBody] = useState('');
 
+  // Default autoresponse content
+  const DEFAULT_AUTORESPONSE_SUBJECT = "We've received your request [{{ticketNumber}}]";
+  const DEFAULT_AUTORESPONSE_BODY = `Thanks for contacting us.
+We'll reach back out soon!
+
+- {{brandName}}`;
+
   // Add domain dialog state
   const [addDomainDialogOpen, setAddDomainDialogOpen] = useState(false);
   const [newDomainInput, setNewDomainInput] = useState('');
@@ -757,7 +764,18 @@ export default function EmailSettingsPage() {
             <Switch
               id="autoresponse-enabled"
               checked={autoresponseEnabled}
-              onCheckedChange={setAutoresponseEnabled}
+              onCheckedChange={(enabled) => {
+                setAutoresponseEnabled(enabled);
+                // Set default content when enabling if fields are empty
+                if (enabled) {
+                  if (!autoresponseSubject.trim()) {
+                    setAutoresponseSubject(DEFAULT_AUTORESPONSE_SUBJECT);
+                  }
+                  if (!autoresponseBody.trim()) {
+                    setAutoresponseBody(DEFAULT_AUTORESPONSE_BODY);
+                  }
+                }
+              }}
             />
           </div>
 
@@ -775,7 +793,15 @@ export default function EmailSettingsPage() {
                     maxLength={200}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Use <code className="bg-muted px-1 rounded">{'{{ticketNumber}}'}</code> for ticket ID
+                    Use{' '}
+                    <code
+                      className="bg-muted px-1 rounded cursor-pointer hover:bg-muted/80"
+                      onClick={() => copyToClipboard('{{ticketNumber}}')}
+                      title="Click to copy"
+                    >
+                      {'{{ticketNumber}}'}
+                    </code>{' '}
+                    for ticket ID
                   </p>
                 </div>
                 <div className="space-y-2 lg:row-span-2">
@@ -789,10 +815,35 @@ export default function EmailSettingsPage() {
                     className="min-h-[150px]"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Placeholders: <code className="bg-muted px-1 rounded">{'{{ticketNumber}}'}</code>,{' '}
-                    <code className="bg-muted px-1 rounded">{'{{ticketTitle}}'}</code>,{' '}
-                    <code className="bg-muted px-1 rounded">{'{{customerName}}'}</code>,{' '}
-                    <code className="bg-muted px-1 rounded">{'{{brandName}}'}</code>
+                    Placeholders:{' '}
+                    <code
+                      className="bg-muted px-1 rounded cursor-pointer hover:bg-muted/80"
+                      onClick={() => copyToClipboard('{{ticketNumber}}')}
+                      title="Click to copy"
+                    >
+                      {'{{ticketNumber}}'}
+                    </code>,{' '}
+                    <code
+                      className="bg-muted px-1 rounded cursor-pointer hover:bg-muted/80"
+                      onClick={() => copyToClipboard('{{ticketTitle}}')}
+                      title="Click to copy"
+                    >
+                      {'{{ticketTitle}}'}
+                    </code>,{' '}
+                    <code
+                      className="bg-muted px-1 rounded cursor-pointer hover:bg-muted/80"
+                      onClick={() => copyToClipboard('{{customerName}}')}
+                      title="Click to copy"
+                    >
+                      {'{{customerName}}'}
+                    </code>,{' '}
+                    <code
+                      className="bg-muted px-1 rounded cursor-pointer hover:bg-muted/80"
+                      onClick={() => copyToClipboard('{{brandName}}')}
+                      title="Click to copy"
+                    >
+                      {'{{brandName}}'}
+                    </code>
                   </p>
                 </div>
               </div>
