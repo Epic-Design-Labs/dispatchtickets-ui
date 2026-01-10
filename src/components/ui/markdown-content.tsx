@@ -1,12 +1,73 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Code } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code, Forward } from 'lucide-react';
 
 interface MarkdownContentProps {
   content: string;
   className?: string;
   showSourceToggle?: boolean;
+}
+
+interface ForwardedContent {
+  userMessage: string;
+  forwardedMessage: string;
+  forwardedFrom?: string;
+  forwardedSubject?: string;
+  forwardedDate?: string;
+}
+
+/**
+ * Detect and extract forwarded email content
+ */
+function parseForwardedEmail(content: string): ForwardedContent | null {
+  // Common forwarding patterns
+  const forwardPatterns = [
+    // Gmail style
+    /^([\s\S]*?)---------- Forwarded message ----------\s*\n([\s\S]*)$/i,
+    // Apple Mail style
+    /^([\s\S]*?)Begin forwarded message:\s*\n([\s\S]*)$/i,
+    // Outlook style
+    /^([\s\S]*?)-------- Original Message --------\s*\n([\s\S]*)$/i,
+    // Generic forward marker
+    /^([\s\S]*?)[-—]{3,}\s*Forwarded\s*[-—]{3,}\s*\n([\s\S]*)$/i,
+  ];
+
+  for (const pattern of forwardPatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      const userMessage = match[1].trim();
+      const forwardedPart = match[2].trim();
+
+      // Try to extract forwarded email headers
+      const result: ForwardedContent = {
+        userMessage,
+        forwardedMessage: forwardedPart,
+      };
+
+      // Extract From header
+      const fromMatch = forwardedPart.match(/^From:\s*(.+)$/im);
+      if (fromMatch) {
+        result.forwardedFrom = fromMatch[1].trim();
+      }
+
+      // Extract Subject header
+      const subjectMatch = forwardedPart.match(/^Subject:\s*(.+)$/im);
+      if (subjectMatch) {
+        result.forwardedSubject = subjectMatch[1].trim();
+      }
+
+      // Extract Date header
+      const dateMatch = forwardedPart.match(/^(?:Date|Sent):\s*(.+)$/im);
+      if (dateMatch) {
+        result.forwardedDate = dateMatch[1].trim();
+      }
+
+      return result;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -325,7 +386,7 @@ function processTextWithLinks(
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline break-all"
+          className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 break-all"
           title={url}
         >
           {truncateUrl(url)}
@@ -349,22 +410,9 @@ function processTextWithLinks(
 }
 
 /**
- * Simple markdown renderer that handles:
- * - Images: ![alt](url) and standalone image URLs
- * - Links: [text](url) and plain URLs (auto-linked)
- * - Long URL truncation for readability
- * - Email footer/signature detection and styling
- * - Line breaks
+ * Render content with inline processing for links, images, and signatures
  */
-export function MarkdownContent({ content, className = '', showSourceToggle = false }: MarkdownContentProps) {
-  const [showSource, setShowSource] = useState(false);
-
-  // Check if content was transformed (HTML or had headers stripped)
-  const wasTransformed = useMemo(() => {
-    if (!content) return false;
-    return isHtmlContent(content) || /^(From|Subject|To|Date|Sent|Cc|Reply-To):\s/im.test(content);
-  }, [content]);
-
+function RenderContent({ content, className = '' }: { content: string; className?: string }) {
   const rendered = useMemo(() => {
     if (!content) return null;
 
@@ -437,7 +485,7 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300"
               title={url}
             >
               {text}
@@ -474,9 +522,120 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
     return elements;
   }, [content]);
 
+  return <div className={`whitespace-pre-wrap ${className}`}>{rendered}</div>;
+}
+
+export function MarkdownContent({ content, className = '', showSourceToggle = false }: MarkdownContentProps) {
+  const [showSource, setShowSource] = useState(false);
+  const [showForwarded, setShowForwarded] = useState(false);
+
+  // Check if content was transformed (HTML or had headers stripped)
+  const wasTransformed = useMemo(() => {
+    if (!content) return false;
+    return isHtmlContent(content) || /^(From|Subject|To|Date|Sent|Cc|Reply-To):\s/im.test(content);
+  }, [content]);
+
+  // Check for forwarded content
+  const forwardedContent = useMemo(() => {
+    if (!content) return null;
+    return parseForwardedEmail(content);
+  }, [content]);
+
+  // If this is a forwarded email, render with collapsible section
+  if (forwardedContent) {
+    return (
+      <div className={className}>
+        {/* User's message (if any) */}
+        {forwardedContent.userMessage && (
+          <RenderContent content={forwardedContent.userMessage} />
+        )}
+
+        {/* Forwarded content section */}
+        <div className="mt-4 border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowForwarded(!showForwarded)}
+            className="w-full flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted transition-colors text-left text-sm"
+          >
+            {showForwarded ? (
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            )}
+            <Forward className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="font-medium">Forwarded message</span>
+            {forwardedContent.forwardedFrom && (
+              <span className="text-muted-foreground truncate">
+                from {forwardedContent.forwardedFrom}
+              </span>
+            )}
+          </button>
+
+          {showForwarded && (
+            <div className="px-3 py-2 border-t bg-background">
+              {/* Forwarded headers */}
+              {(forwardedContent.forwardedFrom || forwardedContent.forwardedSubject || forwardedContent.forwardedDate) && (
+                <div className="mb-3 pb-2 border-b text-sm space-y-1">
+                  {forwardedContent.forwardedFrom && (
+                    <div>
+                      <span className="text-muted-foreground">From: </span>
+                      <span>{forwardedContent.forwardedFrom}</span>
+                    </div>
+                  )}
+                  {forwardedContent.forwardedDate && (
+                    <div>
+                      <span className="text-muted-foreground">Date: </span>
+                      <span>{forwardedContent.forwardedDate}</span>
+                    </div>
+                  )}
+                  {forwardedContent.forwardedSubject && (
+                    <div>
+                      <span className="text-muted-foreground">Subject: </span>
+                      <span>{forwardedContent.forwardedSubject}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Forwarded body */}
+              <RenderContent
+                content={forwardedContent.forwardedMessage}
+                className="text-sm"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* View source toggle */}
+        {showSourceToggle && wasTransformed && (
+          <div className="mt-4 border-t pt-3">
+            <button
+              onClick={() => setShowSource(!showSource)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showSource ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
+              <Code className="h-3 w-3" />
+              <span>View original</span>
+            </button>
+
+            {showSource && (
+              <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                <code>{content}</code>
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Regular content (no forwarding detected)
   return (
     <div className={className}>
-      <div className="whitespace-pre-wrap">{rendered}</div>
+      <RenderContent content={content} />
 
       {/* View source toggle - only show if content was transformed */}
       {showSourceToggle && wasTransformed && (
