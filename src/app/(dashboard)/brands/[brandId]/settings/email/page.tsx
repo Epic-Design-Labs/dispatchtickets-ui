@@ -45,7 +45,7 @@ import {
   useRetryConnection,
   useReconnectEmail,
 } from '@/lib/hooks';
-import { WorkspaceDomain, DomainType } from '@/lib/api/domains';
+import { WorkspaceDomain } from '@/lib/api/domains';
 import { toast } from 'sonner';
 import { CheckCircle, XCircle, Clock, Copy, Trash2, Plus, Star, Mail, AlertCircle, RefreshCw, Unplug, Link2 } from 'lucide-react';
 import {
@@ -322,7 +322,6 @@ export default function EmailSettingsPage() {
 
   // Add domain dialog state
   const [addDomainDialogOpen, setAddDomainDialogOpen] = useState(false);
-  const [addDomainType, setAddDomainType] = useState<DomainType>('OUTBOUND');
   const [newDomainInput, setNewDomainInput] = useState('');
 
   // Add email connection dialog state
@@ -355,9 +354,9 @@ export default function EmailSettingsPage() {
     try {
       await addDomain.mutateAsync({
         brandId,
-        data: { domain: newDomainInput.trim(), type: addDomainType },
+        data: { domain: newDomainInput.trim(), type: 'OUTBOUND' },
       });
-      toast.success(`${addDomainType === 'INBOUND' ? 'Inbound' : 'Outbound'} domain added`);
+      toast.success('Outbound domain added');
       setNewDomainInput('');
       setAddDomainDialogOpen(false);
     } catch (error: any) {
@@ -510,9 +509,8 @@ export default function EmailSettingsPage() {
     }
   };
 
-  // Filter domains by type
+  // Filter domains by type (only outbound supported now)
   const outboundDomains = domains?.filter((d) => d.type === 'OUTBOUND') || [];
-  const inboundDomains = domains?.filter((d) => d.type === 'INBOUND') || [];
 
   const isLoading = brandLoading || domainsLoading || emailConnectionsLoading;
 
@@ -721,10 +719,7 @@ export default function EmailSettingsPage() {
               </div>
               <Button
                 size="sm"
-                onClick={() => {
-                  setAddDomainType('OUTBOUND');
-                  setAddDomainDialogOpen(true);
-                }}
+                onClick={() => setAddDomainDialogOpen(true)}
               >
                 <Plus className="mr-1 h-4 w-4" /> Add Domain
               </Button>
@@ -760,68 +755,44 @@ export default function EmailSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Inbound Email Domains */}
+        {/* Email Forwarding (Inbound) */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Inbound Email Domains</CardTitle>
-                <CardDescription>
-                  Receive tickets from custom email addresses
-                </CardDescription>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => {
-                  setAddDomainType('INBOUND');
-                  setAddDomainDialogOpen(true);
-                }}
-              >
-                <Plus className="mr-1 h-4 w-4" /> Add Domain
-              </Button>
-            </div>
+            <CardTitle>Email Forwarding</CardTitle>
+            <CardDescription>
+              Forward emails from your support address to receive them as tickets
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Default inbound address */}
-            <div className="rounded-lg bg-muted p-4">
-              <p className="text-sm font-medium">Default Inbound Address</p>
-              <div className="flex items-center gap-2">
-                <code className="text-sm">{brandId}@inbound.dispatchtickets.com</code>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => copyToClipboard(`${brandId}@inbound.dispatchtickets.com`)}
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
+            {/* Forwarding address */}
+            <div className="rounded-lg bg-muted p-4 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Your Forwarding Address</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <code className="text-sm bg-background px-2 py-1 rounded border">{brandId}@inbound.dispatchtickets.com</code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(`${brandId}@inbound.dispatchtickets.com`)}
+                  >
+                    <Copy className="h-3 w-3 mr-1" /> Copy
+                  </Button>
+                </div>
               </div>
             </div>
 
-            {inboundDomains.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No custom inbound domains. Add one to receive emails at your own domain.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {inboundDomains.map((domain) => (
-                  <DomainCard
-                    key={domain.id}
-                    domain={domain}
-                    brandId={brandId}
-                    onVerify={() => handleVerifyDomain(domain.id)}
-                    onSetPrimary={() => handleSetPrimary(domain.id)}
-                    onUpdateSender={() => {}}
-                    onRemove={() => handleRemoveDomain(domain.id)}
-                    isVerifying={verifyDomain.isPending}
-                    isUpdating={updateDomain.isPending}
-                    isRemoving={removeDomain.isPending}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p className="font-medium text-foreground">How to set up email forwarding:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Go to your email provider&apos;s settings (Gmail, Outlook, etc.)</li>
+                <li>Set up email forwarding from your support address (e.g., support@yourcompany.com)</li>
+                <li>Forward to the address above</li>
+                <li>All forwarded emails will automatically become tickets</li>
+              </ol>
+              <p className="mt-3 text-xs">
+                Works with Gmail, Google Workspace, Microsoft 365, and most email providers.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
@@ -902,13 +873,9 @@ export default function EmailSettingsPage() {
       <Dialog open={addDomainDialogOpen} onOpenChange={setAddDomainDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Add {addDomainType === 'INBOUND' ? 'Inbound' : 'Outbound'} Domain
-            </DialogTitle>
+            <DialogTitle>Add Outbound Domain</DialogTitle>
             <DialogDescription>
-              {addDomainType === 'INBOUND'
-                ? 'Use a subdomain like support.acme.com for receiving emails'
-                : 'Add a domain to send emails from your own address'}
+              Add a domain to send emails from your own address instead of dispatchtickets.com
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -916,12 +883,13 @@ export default function EmailSettingsPage() {
               <Label htmlFor="newDomain">Domain</Label>
               <Input
                 id="newDomain"
-                placeholder={
-                  addDomainType === 'INBOUND' ? 'e.g., support.acme.com' : 'e.g., acme.com'
-                }
+                placeholder="e.g., acme.com"
                 value={newDomainInput}
                 onChange={(e) => setNewDomainInput(e.target.value)}
               />
+              <p className="text-sm text-muted-foreground">
+                You&apos;ll need to add DNS records to verify ownership
+              </p>
             </div>
           </div>
           <DialogFooter>
