@@ -356,6 +356,48 @@ We'll reach back out soon!
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Email Forwarding */}
+          <div className="rounded-lg border p-4 space-y-4">
+            <div>
+              <h3 className="font-medium flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email Forwarding
+                <Badge variant="secondary" className="text-xs">Recommended</Badge>
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Forward emails from any provider. Works with Gmail, Microsoft 365, and more.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+              <p className="text-sm font-medium">Your forwarding address:</p>
+              <div className="flex items-center gap-2">
+                <code className="text-sm bg-background px-2 py-1 rounded border flex-1 truncate">
+                  {brandId}@inbound.dispatchtickets.com
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(`${brandId}@inbound.dispatchtickets.com`)}
+                >
+                  <Copy className="h-3 w-3 mr-1" /> Copy
+                </Button>
+              </div>
+            </div>
+
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">How to set up:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Go to your email provider&apos;s settings</li>
+                <li>Set up forwarding from your support address (e.g., support@yourcompany.com)</li>
+                <li>Forward to the address above</li>
+              </ol>
+              <p className="mt-2 text-xs">
+                You can forward from multiple addresses. Configure sending settings below to reply from your domain.
+              </p>
+            </div>
+          </div>
+
           {/* Gmail / Google Workspace */}
           <div className="rounded-lg border p-4 space-y-4">
             <div className="flex items-center justify-between">
@@ -363,10 +405,9 @@ We'll reach back out soon!
                 <h3 className="font-medium flex items-center gap-2">
                   <Mail className="h-4 w-4" />
                   Gmail / Google Workspace
-                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Full two-way sync. Replies sent from your connected address.
+                  Two-way sync. Replies sent directly from your Gmail account.
                 </p>
               </div>
               <Button size="sm" onClick={() => setShowAddConnectionDialog(true)}>
@@ -477,48 +518,6 @@ We'll reach back out soon!
             ) : (
               <p className="text-sm text-muted-foreground">No Gmail accounts connected.</p>
             )}
-          </div>
-
-          {/* Email Forwarding */}
-          <div className="rounded-lg border p-4 space-y-4">
-            <div>
-              <h3 className="font-medium flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Email Forwarding
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Forward emails from any provider. Receive-only (replies use sending settings below).
-              </p>
-            </div>
-
-            <div className="rounded-lg bg-muted/50 p-3 space-y-2">
-              <p className="text-sm font-medium">Your forwarding address:</p>
-              <div className="flex items-center gap-2">
-                <code className="text-sm bg-background px-2 py-1 rounded border flex-1 truncate">
-                  {brandId}@inbound.dispatchtickets.com
-                </code>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(`${brandId}@inbound.dispatchtickets.com`)}
-                >
-                  <Copy className="h-3 w-3 mr-1" /> Copy
-                </Button>
-              </div>
-            </div>
-
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground">How to set up:</p>
-              <ol className="list-decimal list-inside space-y-1 ml-2">
-                <li>Go to your email provider&apos;s settings</li>
-                <li>Set up forwarding from your support address (e.g., support@yourcompany.com)</li>
-                <li>Forward to the address above</li>
-              </ol>
-              <p className="mt-2 text-xs">
-                Works with Gmail, Google Workspace, Microsoft 365, and most email providers.
-                You can forward from multiple addresses.
-              </p>
-            </div>
           </div>
 
           {/* Microsoft 365 - Coming Soon */}
