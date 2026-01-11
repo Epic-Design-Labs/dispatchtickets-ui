@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useBrand } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge, TicketHistory } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -47,6 +47,7 @@ export default function TicketDetailPage() {
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
 
+  const { data: brand } = useBrand(brandId);
   const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId, { polling: true });
   const { data: comments, isLoading: commentsLoading } = useComments(brandId, ticketId, { polling: true });
   const { data: ticketsData } = useTickets(brandId, { status: 'open', limit: 100 });
@@ -303,7 +304,7 @@ export default function TicketDetailPage() {
               href={`/brands/${brandId}`}
               className="hover:underline"
             >
-              Tickets
+              {brand?.name || 'Brand'} Tickets
             </Link>
             <span>/</span>
             <span>{ticket.id.slice(0, 12)}</span>
@@ -361,51 +362,127 @@ export default function TicketDetailPage() {
           </div>
 
           {/* Quick info bar */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground border-b pb-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm border-b pb-4 mt-3">
+            {/* Status - clickable */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+                  <StatusBadge status={ticket.status || 'open'} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Change status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={ticket.status || 'open'}
+                  onValueChange={handleStatusChange}
+                >
+                  <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="resolved">Resolved</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Priority - clickable */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+                  <PriorityBadge priority={ticket.priority || 'normal'} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Change priority</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={ticket.priority || 'normal'}
+                  onValueChange={handlePriorityChange}
+                >
+                  <DropdownMenuRadioItem value="low">Low</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="normal">Normal</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <span className="text-muted-foreground">|</span>
+
             {/* Customer */}
             {ticket.customer && (
-              <div className="flex items-center gap-1.5">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <User className="h-4 w-4" />
                 <Link
                   href={`/brands/${brandId}/customers/${ticket.customer.id}`}
                   className="hover:text-foreground hover:underline"
                 >
                   {ticket.customer.name || ticket.customer.email}
                 </Link>
-                {ticket.customer.name && (
-                  <span className="text-xs">({ticket.customer.email})</span>
-                )}
               </div>
             )}
-            {/* Company */}
-            {ticket.customer?.company && (
-              <div className="flex items-center gap-1.5">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <Link
-                  href={`/brands/${brandId}/companies/${ticket.customer.company.id}`}
-                  className="hover:text-foreground hover:underline"
+
+            {/* Company - clickable to set */}
+            {ticket.customer && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Building2 className="h-4 w-4" />
+                <CompanyCombobox
+                  brandId={brandId}
+                  value={ticket.customer.companyId}
+                  companyName={ticket.customer.company?.name}
+                  onChange={handleCompanyChange}
+                  disabled={updateCustomer.isPending}
+                  placeholder="Set company..."
+                  variant="inline"
+                />
+              </div>
+            )}
+
+            {/* Assignee - clickable */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                  {ticket.assigneeId ? (
+                    <>
+                      <User className="h-4 w-4" />
+                      <span>{getMemberName(ticket.assigneeId)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserX className="h-4 w-4" />
+                      <span>Unassigned</span>
+                    </>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuLabel>Assign to</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={ticket.assigneeId || ''}
+                  onValueChange={handleAssigneeChange}
                 >
-                  {ticket.customer.company.name}
-                </Link>
-              </div>
-            )}
-            {/* Assignee */}
-            <div className="flex items-center gap-1.5">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {ticket.assigneeId ? (
-                <span className="text-foreground">{getMemberName(ticket.assigneeId)}</span>
-              ) : (
-                <span>Unassigned</span>
-              )}
-            </div>
+                  <DropdownMenuRadioItem value="">
+                    <span className="flex items-center gap-1.5">
+                      <UserX className="h-3.5 w-3.5" />
+                      Unassigned
+                    </span>
+                  </DropdownMenuRadioItem>
+                  {teamMembers.map((member) => (
+                    <DropdownMenuRadioItem key={member.id} value={member.id}>
+                      <span className="flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5" />
+                        {member.firstName || member.lastName
+                          ? [member.firstName, member.lastName].filter(Boolean).join(' ')
+                          : member.email}
+                      </span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Source */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
@@ -454,69 +531,6 @@ export default function TicketDetailPage() {
                 <CardTitle>Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Status</p>
-                  {ticket.status ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="mt-1 h-auto p-0">
-                          <StatusBadge status={ticket.status} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel>Change status</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuRadioGroup
-                          value={ticket.status}
-                          onValueChange={handleStatusChange}
-                        >
-                          <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="pending">
-                            Pending
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="resolved">
-                            Resolved
-                          </DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : (
-                    <p className="mt-1 text-muted-foreground">Not set</p>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Priority</p>
-                  {ticket.priority ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="mt-1 h-auto p-0">
-                          <PriorityBadge priority={ticket.priority} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel>Change priority</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuRadioGroup
-                          value={ticket.priority}
-                          onValueChange={handlePriorityChange}
-                        >
-                          <DropdownMenuRadioItem value="low">Low</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="normal">
-                            Normal
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="urgent">
-                            Urgent
-                          </DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : (
-                    <p className="mt-1 text-muted-foreground">Not set</p>
-                  )}
-                </div>
-
                 {/* Category */}
                 {categories && categories.length > 0 && (
                   <div>
@@ -636,114 +650,6 @@ export default function TicketDetailPage() {
                     </DropdownMenu>
                   </div>
                 )}
-
-                <Separator />
-
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Source</p>
-                  <p className="mt-1">{ticket.source}</p>
-                </div>
-
-                {/* Customer Info */}
-                {ticket.customer ? (
-                  <>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Customer</p>
-                      <Link
-                        href={`/brands/${brandId}/customers/${ticket.customer.id}`}
-                        className="mt-1 block text-primary hover:underline"
-                      >
-                        {ticket.customer.name || ticket.customer.email}
-                      </Link>
-                      {ticket.customer.name && (
-                        <p className="text-sm text-muted-foreground">{ticket.customer.email}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                        <Building2 className="h-3 w-3" />
-                        Company
-                      </p>
-                      <div className="mt-1">
-                        <CompanyCombobox
-                          brandId={brandId}
-                          value={ticket.customer.companyId}
-                          companyName={ticket.customer.company?.name}
-                          onChange={handleCompanyChange}
-                          disabled={updateCustomer.isPending}
-                          placeholder="Search or create company..."
-                        />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {customerEmail && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Customer Email
-                        </p>
-                        <p className="mt-1">{customerEmail}</p>
-                      </div>
-                    )}
-
-                    {customerName && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Customer Name
-                        </p>
-                        <p className="mt-1">{customerName}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Assignee</p>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="mt-1 h-auto p-0">
-                        {ticket.assigneeId ? (
-                          <span className="flex items-center gap-1.5 text-sm">
-                            <User className="h-3.5 w-3.5" />
-                            {getMemberName(ticket.assigneeId)}
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <UserX className="h-3.5 w-3.5" />
-                            Unassigned
-                          </span>
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuLabel>Assign to</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuRadioGroup
-                        value={ticket.assigneeId || ''}
-                        onValueChange={handleAssigneeChange}
-                      >
-                        <DropdownMenuRadioItem value="">
-                          <span className="flex items-center gap-1.5">
-                            <UserX className="h-3.5 w-3.5" />
-                            Unassigned
-                          </span>
-                        </DropdownMenuRadioItem>
-                        {teamMembers.map((member) => (
-                          <DropdownMenuRadioItem key={member.id} value={member.id}>
-                            <span className="flex items-center gap-1.5">
-                              <User className="h-3.5 w-3.5" />
-                              {member.firstName || member.lastName
-                                ? [member.firstName, member.lastName].filter(Boolean).join(' ')
-                                : member.email}
-                            </span>
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
 
                 <Separator />
 

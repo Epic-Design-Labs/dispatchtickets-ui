@@ -27,6 +27,7 @@ interface CompanyComboboxProps {
   onChange: (companyId: string | undefined, companyName?: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  variant?: 'default' | 'inline'; // inline renders as text link instead of button
 }
 
 export function CompanyCombobox({
@@ -36,6 +37,7 @@ export function CompanyCombobox({
   onChange,
   disabled,
   placeholder = 'Select or create company...',
+  variant = 'default',
 }: CompanyComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -92,16 +94,25 @@ export function CompanyCombobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-          disabled={disabled}
-        >
-          {displayValue || <span className="text-muted-foreground">{placeholder}</span>}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+        {variant === 'inline' ? (
+          <button
+            className="hover:text-foreground hover:underline transition-colors text-left"
+            disabled={disabled}
+          >
+            {displayValue || <span>{placeholder}</span>}
+          </button>
+        ) : (
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between font-normal"
+            disabled={disabled}
+          >
+            {displayValue || <span className="text-muted-foreground">{placeholder}</span>}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0" align="start">
         <Command shouldFilter={false}>
