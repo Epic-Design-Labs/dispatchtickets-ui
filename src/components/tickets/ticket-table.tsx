@@ -79,6 +79,7 @@ const BUILT_IN_COLUMNS: ColumnDef[] = [
   { key: 'status', label: 'Status', defaultVisible: true, sortable: true },
   { key: 'priority', label: 'Priority', defaultVisible: true, sortable: true },
   { key: 'customer', label: 'Customer', defaultVisible: true, sortable: true },
+  { key: 'company', label: 'Company', defaultVisible: false, sortable: true },
   { key: 'assignee', label: 'Assignee', defaultVisible: false, sortable: true },
   { key: 'category', label: 'Category', defaultVisible: false, sortable: true },
   { key: 'created', label: 'Created', defaultVisible: true, sortable: true },
@@ -457,6 +458,10 @@ export function TicketTable({
             aVal = a.assigneeId || '';
             bVal = b.assigneeId || '';
             break;
+          case 'company':
+            aVal = a.customer?.company?.name?.toLowerCase() || '';
+            bVal = b.customer?.company?.name?.toLowerCase() || '';
+            break;
           case 'category':
             aVal = a.category?.name?.toLowerCase() || '';
             bVal = b.category?.name?.toLowerCase() || '';
@@ -636,6 +641,17 @@ export function TicketTable({
         return ticket.priority ? <PriorityBadge priority={ticket.priority} /> : <span className="text-muted-foreground">-</span>;
       case 'customer':
         return <span className="text-muted-foreground">{customerName || customerEmail || '-'}</span>;
+      case 'company':
+        return ticket.customer?.company ? (
+          <Link
+            href={`/brands/${brandId}/companies/${ticket.customer.company.id}`}
+            className="text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {ticket.customer.company.name}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
       case 'assignee':
         return <span className="text-muted-foreground">{getAssigneeName(ticket.assigneeId)}</span>;
       case 'category':
