@@ -98,6 +98,7 @@ interface SortState {
 interface ColumnSettings {
   visible: string[]; // Array of visible column keys in display order
   order: string[]; // Full ordered list of all column keys
+  widths: Record<string, number>; // Column widths in pixels
 }
 
 // Sortable column item for the settings dropdown
@@ -202,32 +203,41 @@ export function TicketTable({
     return [...BUILT_IN_COLUMNS, ...customFieldColumns];
   }, [customFields]);
 
-  // Column settings state (visibility + order)
+  // Column settings state (visibility + order + widths)
   const [columnSettings, setColumnSettings] = useState<ColumnSettings>(() => {
     const defaultVisible = BUILT_IN_COLUMNS.filter(c => c.defaultVisible).map(c => c.key);
     const defaultOrder = BUILT_IN_COLUMNS.map(c => c.key);
 
     if (typeof window === 'undefined') {
-      return { visible: defaultVisible, order: defaultOrder };
+      return { visible: defaultVisible, order: defaultOrder, widths: {} };
     }
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        // Handle v2 format
-        if (parsed.visible && parsed.order) {
+        // Handle v3 format (with widths)
+        if (parsed.visible && parsed.order && parsed.widths !== undefined) {
           return parsed as ColumnSettings;
+        }
+        // Handle v2 format (without widths)
+        if (parsed.visible && parsed.order) {
+          return { ...parsed, widths: {} } as ColumnSettings;
         }
         // Migrate from v1 format (just array of visible keys)
         if (Array.isArray(parsed)) {
-          return { visible: parsed, order: defaultOrder };
+          return { visible: parsed, order: defaultOrder, widths: {} };
         }
       } catch {
         // Fall through to default
       }
     }
-    return { visible: defaultVisible, order: defaultOrder };
+    return { visible: defaultVisible, order: defaultOrder, widths: {} };
   });
+
+  // Column resize state
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const [resizeStartX, setResizeStartX] = useState(0);
+  const [resizeStartWidth, setResizeStartWidth] = useState(0);
 
   // Update order when custom fields change
   useEffect(() => {
@@ -342,6 +352,52 @@ export function TicketTable({
         return { column, direction: 'desc' };
       }
       return { column: null, direction: null };
+    });
+  }, []);
+
+  // Column resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent, columnKey: string, currentWidth: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingColumn(columnKey);
+    setResizeStartX(e.clientX);
+    setResizeStartWidth(currentWidth);
+  }, []);
+
+  useEffect(() => {
+    if (!resizingColumn) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const diff = e.clientX - resizeStartX;
+      const newWidth = Math.max(80, resizeStartWidth + diff); // Min width 80px
+      setColumnSettings(prev => ({
+        ...prev,
+        widths: { ...prev.widths, [resizingColumn]: newWidth },
+      }));
+    };
+
+    const handleMouseUp = () => {
+      setResizingColumn(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizingColumn, resizeStartX, resizeStartWidth]);
+
+  const getColumnWidth = useCallback((columnKey: string): number | undefined => {
+    return columnSettings.widths[columnKey];
+  }, [columnSettings.widths]);
+
+  const resetColumnWidth = useCallback((columnKey: string) => {
+    setColumnSettings(prev => {
+      const newWidths = { ...prev.widths };
+      delete newWidths[columnKey];
+      return { ...prev, widths: newWidths };
     });
   }, []);
 
@@ -795,8 +851,8 @@ export function TicketTable({
         </div>
       )}
 
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className={resizingColumn ? 'select-none' : ''} style={{ tableLayout: 'fixed', minWidth: '100%' }}>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">
@@ -811,21 +867,41 @@ export function TicketTable({
                   aria-label="Select all"
                 />
               </TableHead>
-              {visibleColumns.map(col => (
-                <TableHead key={col.key}>
-                  {col.sortable ? (
-                    <button
-                      className="flex items-center hover:text-foreground transition-colors"
-                      onClick={() => handleSort(col.key)}
-                    >
-                      {col.label}
-                      <SortIcon column={col.key} />
-                    </button>
-                  ) : (
-                    col.label
-                  )}
-                </TableHead>
-              ))}
+              {visibleColumns.map(col => {
+                const width = getColumnWidth(col.key);
+                return (
+                  <TableHead
+                    key={col.key}
+                    className="relative group"
+                    style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
+                  >
+                    {col.sortable ? (
+                      <button
+                        className="flex items-center hover:text-foreground transition-colors"
+                        onClick={() => handleSort(col.key)}
+                      >
+                        {col.label}
+                        <SortIcon column={col.key} />
+                      </button>
+                    ) : (
+                      col.label
+                    )}
+                    {/* Resize handle */}
+                    <div
+                      className={`absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/50 ${
+                        resizingColumn === col.key ? 'bg-primary' : 'bg-transparent group-hover:bg-border'
+                      }`}
+                      onMouseDown={(e) => {
+                        const th = e.currentTarget.parentElement;
+                        const currentWidth = th?.offsetWidth || 150;
+                        handleResizeStart(e, col.key, currentWidth);
+                      }}
+                      onDoubleClick={() => resetColumnWidth(col.key)}
+                      title="Drag to resize, double-click to reset"
+                    />
+                  </TableHead>
+                );
+              })}
               <TableHead className="w-10">
                 <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
                   <DropdownMenuTrigger asChild>
@@ -877,11 +953,18 @@ export function TicketTable({
                       aria-label={`Select ticket ${ticket.title}`}
                     />
                   </TableCell>
-                  {visibleColumns.map(col => (
-                    <TableCell key={col.key}>
-                      {renderCellValue(ticket, col.key)}
-                    </TableCell>
-                  ))}
+                  {visibleColumns.map(col => {
+                    const width = getColumnWidth(col.key);
+                    return (
+                      <TableCell
+                        key={col.key}
+                        style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
+                        className={width ? 'truncate' : ''}
+                      >
+                        {renderCellValue(ticket, col.key)}
+                      </TableCell>
+                    );
+                  })}
                   <TableCell>
                     {renderActions?.(ticket)}
                   </TableCell>
