@@ -363,51 +363,6 @@ export default function TicketDetailPage() {
 
           {/* Quick info bar */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm border-b pb-4 mt-3">
-            {/* Status - clickable */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
-                  <StatusBadge status={ticket.status || 'open'} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>Change status</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup
-                  value={ticket.status || 'open'}
-                  onValueChange={handleStatusChange}
-                >
-                  <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="resolved">Resolved</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Priority - clickable */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
-                  <PriorityBadge priority={ticket.priority || 'normal'} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>Change priority</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup
-                  value={ticket.priority || 'normal'}
-                  onValueChange={handlePriorityChange}
-                >
-                  <DropdownMenuRadioItem value="low">Low</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="normal">Normal</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <span className="text-muted-foreground">|</span>
-
             {/* Customer */}
             {ticket.customer && (
               <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -416,7 +371,9 @@ export default function TicketDetailPage() {
                   href={`/brands/${brandId}/customers/${ticket.customer.id}`}
                   className="hover:text-foreground hover:underline"
                 >
-                  {ticket.customer.name || ticket.customer.email}
+                  {ticket.customer.name
+                    ? `${ticket.customer.name} (${ticket.customer.email})`
+                    : ticket.customer.email}
                 </Link>
               </div>
             )}
@@ -481,13 +438,51 @@ export default function TicketDetailPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Source */}
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              <span className="capitalize">{ticket.source}</span>
-            </div>
+            {/* Spacer to push status/priority to the right */}
+            <div className="flex-1" />
+
+            {/* Status - clickable (far right) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+                  <StatusBadge status={ticket.status || 'open'} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Change status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={ticket.status || 'open'}
+                  onValueChange={handleStatusChange}
+                >
+                  <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="resolved">Resolved</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Priority - clickable (far right) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+                  <PriorityBadge priority={ticket.priority || 'normal'} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Change priority</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={ticket.priority || 'normal'}
+                  onValueChange={handlePriorityChange}
+                >
+                  <DropdownMenuRadioItem value="low">Low</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="normal">Normal</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
