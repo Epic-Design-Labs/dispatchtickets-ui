@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useBrand } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge, TicketHistory } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -14,6 +14,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MarkdownContent } from '@/components/ui/markdown-content';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +37,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority } from '@/types';
-import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History } from 'lucide-react';
+import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers } from 'lucide-react';
+import { CustomFieldInput } from '@/components/fields';
 
 export default function TicketDetailPage() {
   const params = useParams();
@@ -46,6 +49,8 @@ export default function TicketDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [tagInputValue, setTagInputValue] = useState('');
 
   const { data: brand } = useBrand(brandId);
   const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId, { polling: true });
@@ -67,6 +72,10 @@ export default function TicketDetailPage() {
   // Categories and tags
   const { data: categories } = useCategories(brandId);
   const { data: tags } = useTags(brandId);
+  const createTag = useCreateTag(brandId);
+
+  // Custom fields
+  const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
 
   // Get active team members for assignment
   const teamMembers = teamData?.members || [];
@@ -136,8 +145,40 @@ export default function TicketDetailPage() {
         tags: [...currentTags, tagName]
       });
       toast.success('Tag added');
+      setTagPopoverOpen(false);
+      setTagInputValue('');
     } catch {
       toast.error('Failed to add tag');
+    }
+  };
+
+  const handleCreateAndAddTag = async (tagName: string) => {
+    if (!ticket || !tagName.trim()) return;
+    const trimmedName = tagName.trim();
+    const currentTags = ticket.tags?.map(t => t.name) || [];
+    if (currentTags.includes(trimmedName)) {
+      toast.error('Tag already added to this ticket');
+      return;
+    }
+    // Check if tag already exists (case-insensitive)
+    const existingTag = tags?.find(t => t.name.toLowerCase() === trimmedName.toLowerCase());
+    if (existingTag) {
+      // Just add the existing tag
+      await handleAddTag(existingTag.name);
+      return;
+    }
+    try {
+      // Create the new tag first
+      await createTag.mutateAsync({ name: trimmedName });
+      // Then add it to the ticket
+      await updateTicket.mutateAsync({
+        tags: [...currentTags, trimmedName]
+      });
+      toast.success('Tag created and added');
+      setTagPopoverOpen(false);
+      setTagInputValue('');
+    } catch {
+      toast.error('Failed to create tag');
     }
   };
 
@@ -205,6 +246,22 @@ export default function TicketDetailPage() {
       toast.success('Customer company updated');
     } catch {
       toast.error('Failed to update company');
+    }
+  };
+
+  const handleCustomFieldChange = async (key: string, value: unknown) => {
+    if (!ticket) return;
+    try {
+      const currentCustomFields = ticket.customFields || {};
+      await updateTicket.mutateAsync({
+        customFields: {
+          ...currentCustomFields,
+          [key]: value,
+        },
+      });
+      toast.success('Field updated');
+    } catch {
+      toast.error('Failed to update field');
     }
   };
 
@@ -604,41 +661,70 @@ export default function TicketDetailPage() {
                           </span>
                         ))
                       ) : null}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                      <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+                        <PopoverTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
                             <Plus className="h-3 w-3" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Add tag</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          {tags.filter(t => !ticket.tags?.some(tt => tt.id === t.id)).length === 0 ? (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                              All tags applied
-                            </div>
-                          ) : (
-                            tags
-                              .filter(t => !ticket.tags?.some(tt => tt.id === t.id))
-                              .map((tag) => (
-                                <Button
-                                  key={tag.id}
-                                  variant="ghost"
-                                  className="w-full justify-start h-8 px-2"
-                                  onClick={() => handleAddTag(tag.name)}
-                                >
-                                  <span className="flex items-center gap-1.5">
-                                    <span
-                                      className="h-2.5 w-2.5 rounded-full"
-                                      style={{ backgroundColor: tag.color || '#6366f1' }}
-                                    />
-                                    {tag.name}
-                                  </span>
-                                </Button>
-                              ))
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-0" align="end">
+                          <Command>
+                            <CommandInput
+                              placeholder="Search or create tag..."
+                              value={tagInputValue}
+                              onValueChange={setTagInputValue}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && tagInputValue.trim()) {
+                                  e.preventDefault();
+                                  handleCreateAndAddTag(tagInputValue);
+                                }
+                              }}
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                {tagInputValue.trim() ? (
+                                  <button
+                                    className="flex w-full items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent rounded cursor-pointer"
+                                    onClick={() => handleCreateAndAddTag(tagInputValue)}
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Create &quot;{tagInputValue.trim()}&quot;
+                                  </button>
+                                ) : (
+                                  <span className="text-muted-foreground">No tags found</span>
+                                )}
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {tags
+                                  .filter(t => !ticket.tags?.some(tt => tt.id === t.id))
+                                  .map((tag) => (
+                                    <CommandItem
+                                      key={tag.id}
+                                      value={tag.name}
+                                      onSelect={() => handleAddTag(tag.name)}
+                                    >
+                                      <span
+                                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                                        style={{ backgroundColor: tag.color || '#6366f1' }}
+                                      />
+                                      {tag.name}
+                                    </CommandItem>
+                                  ))}
+                                {tagInputValue.trim() &&
+                                  !tags.some(t => t.name.toLowerCase() === tagInputValue.trim().toLowerCase()) && (
+                                    <CommandItem
+                                      value={`create-${tagInputValue}`}
+                                      onSelect={() => handleCreateAndAddTag(tagInputValue)}
+                                    >
+                                      <Plus className="h-3.5 w-3.5" />
+                                      Create &quot;{tagInputValue.trim()}&quot;
+                                    </CommandItem>
+                                  )}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 )}
@@ -656,6 +742,34 @@ export default function TicketDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Custom Fields */}
+            {ticketFields && ticketFields.filter(f => f.visible).length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Layers className="h-4 w-4" />
+                    Custom Fields
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {ticketFields
+                    .filter(f => f.visible)
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((field) => {
+                      const customFields = ticket.customFields as Record<string, unknown> || {};
+                      return (
+                        <CustomFieldInput
+                          key={field.key}
+                          field={field}
+                          value={customFields[field.key]}
+                          onChange={(value) => handleCustomFieldChange(field.key, value)}
+                        />
+                      );
+                    })}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Other tickets from this customer */}
             {ticket.customer && (

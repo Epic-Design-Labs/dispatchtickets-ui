@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Table,
@@ -31,6 +31,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -42,7 +44,38 @@ import { Ticket, TeamMember } from '@/types';
 import { Category } from '@/lib/api/categories';
 import { Tag } from '@/lib/api/tags';
 import { BulkActionType } from '@/lib/hooks/use-tickets';
-import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus } from 'lucide-react';
+import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2 } from 'lucide-react';
+
+// Column definitions
+type ColumnKey = 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated';
+
+interface ColumnDef {
+  key: ColumnKey;
+  label: string;
+  defaultVisible: boolean;
+  sortable: boolean;
+}
+
+const COLUMNS: ColumnDef[] = [
+  { key: 'subject', label: 'Subject', defaultVisible: true, sortable: true },
+  { key: 'status', label: 'Status', defaultVisible: true, sortable: true },
+  { key: 'priority', label: 'Priority', defaultVisible: true, sortable: true },
+  { key: 'customer', label: 'Customer', defaultVisible: true, sortable: true },
+  { key: 'assignee', label: 'Assignee', defaultVisible: false, sortable: true },
+  { key: 'category', label: 'Category', defaultVisible: false, sortable: true },
+  { key: 'created', label: 'Created', defaultVisible: true, sortable: true },
+  { key: 'updated', label: 'Updated', defaultVisible: false, sortable: true },
+];
+
+const STORAGE_KEY = 'dispatch-ticket-columns';
+const SORT_STORAGE_KEY = 'dispatch-ticket-sort';
+
+type SortDirection = 'asc' | 'desc' | null;
+
+interface SortState {
+  column: ColumnKey | null;
+  direction: SortDirection;
+}
 
 interface BulkActionOptions {
   assigneeId?: string | null;
@@ -78,6 +111,38 @@ export function TicketTable({
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [mergeTargetId, setMergeTargetId] = useState<string>('');
 
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(() => {
+    if (typeof window === 'undefined') {
+      return new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
+    }
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        return new Set(JSON.parse(stored) as ColumnKey[]);
+      } catch {
+        return new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
+      }
+    }
+    return new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
+  });
+
+  // Sort state
+  const [sortState, setSortState] = useState<SortState>(() => {
+    if (typeof window === 'undefined') {
+      return { column: null, direction: null };
+    }
+    const stored = localStorage.getItem(SORT_STORAGE_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored) as SortState;
+      } catch {
+        return { column: null, direction: null };
+      }
+    }
+    return { column: null, direction: null };
+  });
+
   // New bulk action dialogs state
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
@@ -85,6 +150,96 @@ export function TicketTable({
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
+
+  // Persist column visibility
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(visibleColumns)));
+  }, [visibleColumns]);
+
+  // Persist sort state
+  useEffect(() => {
+    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sortState));
+  }, [sortState]);
+
+  const toggleColumn = useCallback((key: ColumnKey) => {
+    setVisibleColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSort = useCallback((column: ColumnKey) => {
+    setSortState(prev => {
+      if (prev.column !== column) {
+        return { column, direction: 'asc' };
+      }
+      if (prev.direction === 'asc') {
+        return { column, direction: 'desc' };
+      }
+      return { column: null, direction: null };
+    });
+  }, []);
+
+  // Sort tickets
+  const sortedTickets = useMemo(() => {
+    if (!sortState.column || !sortState.direction) {
+      return tickets;
+    }
+
+    return [...tickets].sort((a, b) => {
+      const column = sortState.column!;
+      const direction = sortState.direction === 'asc' ? 1 : -1;
+
+      let aVal: string | number | null = null;
+      let bVal: string | number | null = null;
+
+      switch (column) {
+        case 'subject':
+          aVal = a.title.toLowerCase();
+          bVal = b.title.toLowerCase();
+          break;
+        case 'status':
+          aVal = a.status || '';
+          bVal = b.status || '';
+          break;
+        case 'priority':
+          const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+          aVal = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 99;
+          bVal = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 99;
+          break;
+        case 'customer':
+          aVal = (a.customer?.name || a.customer?.email || '').toLowerCase();
+          bVal = (b.customer?.name || b.customer?.email || '').toLowerCase();
+          break;
+        case 'assignee':
+          aVal = a.assigneeId || '';
+          bVal = b.assigneeId || '';
+          break;
+        case 'category':
+          aVal = a.category?.name?.toLowerCase() || '';
+          bVal = b.category?.name?.toLowerCase() || '';
+          break;
+        case 'created':
+          aVal = new Date(a.createdAt).getTime();
+          bVal = new Date(b.createdAt).getTime();
+          break;
+        case 'updated':
+          aVal = new Date(a.updatedAt).getTime();
+          bVal = new Date(b.updatedAt).getTime();
+          break;
+      }
+
+      if (aVal === null || bVal === null) return 0;
+      if (aVal < bVal) return -1 * direction;
+      if (aVal > bVal) return 1 * direction;
+      return 0;
+    });
+  }, [tickets, sortState]);
 
   const allSelected = tickets.length > 0 && selectedIds.size === tickets.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < tickets.length;
@@ -121,7 +276,6 @@ export function TicketTable({
   }, [onBulkAction, selectedIds]);
 
   const handleAssign = useCallback(async () => {
-    // selectedAssigneeId can be '' (unassign), or a valid member ID
     const assigneeId = selectedAssigneeId === '' ? null : selectedAssigneeId;
     await handleBulkAction('assign', { assigneeId });
     setShowAssignDialog(false);
@@ -129,7 +283,6 @@ export function TicketTable({
   }, [handleBulkAction, selectedAssigneeId]);
 
   const handleSetCategory = useCallback(async () => {
-    // selectedCategoryId can be '' (remove category), or a valid category ID
     const categoryId = selectedCategoryId === '' ? null : selectedCategoryId;
     await handleBulkAction('setCategory', { categoryId });
     setShowCategoryDialog(false);
@@ -169,14 +322,32 @@ export function TicketTable({
   }, [onMerge, mergeTargetId, selectedIds]);
 
   const openMergeDialog = useCallback(() => {
-    // Default to first selected ticket as target
     const firstSelected = Array.from(selectedIds)[0];
     setMergeTargetId(firstSelected || '');
     setShowMergeDialog(true);
   }, [selectedIds]);
 
-  // Get selected tickets for merge dialog
   const selectedTickets = tickets.filter(t => selectedIds.has(t.id));
+
+  // Helper to get assignee name
+  const getAssigneeName = (assigneeId: string | null | undefined) => {
+    if (!assigneeId) return '-';
+    const member = teamMembers.find(m => m.id === assigneeId);
+    if (!member) return '-';
+    const name = [member.firstName, member.lastName].filter(Boolean).join(' ');
+    return name || member.email;
+  };
+
+  // Render sort icon
+  const SortIcon = ({ column }: { column: ColumnKey }) => {
+    if (sortState.column !== column) {
+      return <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />;
+    }
+    if (sortState.direction === 'asc') {
+      return <ArrowUp className="ml-1 h-3 w-3" />;
+    }
+    return <ArrowDown className="ml-1 h-3 w-3" />;
+  };
 
   if (isLoading) {
     return (
@@ -195,24 +366,12 @@ export function TicketTable({
           <TableBody>
             {[1, 2, 3, 4, 5].map((i) => (
               <TableRow key={i}>
-                <TableCell>
-                  <Skeleton className="h-4 w-4" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-48" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-16" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-14" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-32" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-20" />
-                </TableCell>
+                <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-14" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -255,27 +414,15 @@ export function TicketTable({
           </span>
           <div className="flex-1" />
 
-          {/* Status Actions */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleBulkAction('resolve')}
-            disabled={isProcessing}
-          >
+          <Button variant="outline" size="sm" onClick={() => handleBulkAction('resolve')} disabled={isProcessing}>
             <CheckCircle className="mr-1 h-4 w-4" />
             Resolve
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleBulkAction('close')}
-            disabled={isProcessing}
-          >
+          <Button variant="outline" size="sm" onClick={() => handleBulkAction('close')} disabled={isProcessing}>
             <Clock className="mr-1 h-4 w-4" />
             Close
           </Button>
 
-          {/* Assign Dropdown */}
           {teamMembers.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -309,7 +456,6 @@ export function TicketTable({
             </DropdownMenu>
           )}
 
-          {/* Category Dropdown */}
           {categories.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -341,7 +487,6 @@ export function TicketTable({
             </DropdownMenu>
           )}
 
-          {/* Tags Button */}
           {availableTags.length > 0 && (
             <Button
               variant="outline"
@@ -357,7 +502,6 @@ export function TicketTable({
             </Button>
           )}
 
-          {/* Merge */}
           {onMerge && selectedIds.size >= 2 && (
             <Button
               variant="outline"
@@ -371,7 +515,6 @@ export function TicketTable({
             </Button>
           )}
 
-          {/* Destructive Actions */}
           <Button
             variant="outline"
             size="sm"
@@ -392,12 +535,7 @@ export function TicketTable({
             <Trash2 className="mr-1 h-4 w-4" />
             Delete
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearSelection}
-            disabled={isProcessing}
-          >
+          <Button variant="ghost" size="sm" onClick={clearSelection} disabled={isProcessing}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -419,18 +557,49 @@ export function TicketTable({
                   aria-label="Select all"
                 />
               </TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Created</TableHead>
-              {renderActions && <TableHead className="w-24">Actions</TableHead>}
+              {COLUMNS.filter(col => visibleColumns.has(col.key)).map(col => (
+                <TableHead key={col.key}>
+                  {col.sortable ? (
+                    <button
+                      className="flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort(col.key)}
+                    >
+                      {col.label}
+                      <SortIcon column={col.key} />
+                    </button>
+                  ) : (
+                    col.label
+                  )}
+                </TableHead>
+              ))}
+              <TableHead className="w-10">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Settings2 className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {COLUMNS.map(col => (
+                      <DropdownMenuCheckboxItem
+                        key={col.key}
+                        checked={visibleColumns.has(col.key)}
+                        onCheckedChange={() => toggleColumn(col.key)}
+                      >
+                        {col.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tickets.map((ticket) => {
-              const customerEmail = ticket.customFields?.requesterEmail as string | undefined;
-              const customerName = ticket.customFields?.requesterName as string | undefined;
+            {sortedTickets.map((ticket) => {
+              const customerEmail = ticket.customer?.email || (ticket.customFields?.requesterEmail as string | undefined);
+              const customerName = ticket.customer?.name || (ticket.customFields?.requesterName as string | undefined);
               const isSelected = selectedIds.has(ticket.id);
               return (
                 <TableRow
@@ -444,31 +613,64 @@ export function TicketTable({
                       aria-label={`Select ticket ${ticket.title}`}
                     />
                   </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/brands/${brandId}/tickets/${ticket.id}`}
-                      className="block font-medium hover:underline"
-                    >
-                      {ticket.title}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    {ticket.status ? <StatusBadge status={ticket.status} /> : <span className="text-muted-foreground">-</span>}
-                  </TableCell>
-                  <TableCell>
-                    {ticket.priority ? <PriorityBadge priority={ticket.priority} /> : <span className="text-muted-foreground">-</span>}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {customerEmail || customerName || '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {new Date(ticket.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  {renderActions && (
+                  {visibleColumns.has('subject') && (
                     <TableCell>
-                      {renderActions(ticket)}
+                      <Link
+                        href={`/brands/${brandId}/tickets/${ticket.id}`}
+                        className="block font-medium hover:underline"
+                      >
+                        {ticket.title}
+                      </Link>
                     </TableCell>
                   )}
+                  {visibleColumns.has('status') && (
+                    <TableCell>
+                      {ticket.status ? <StatusBadge status={ticket.status} /> : <span className="text-muted-foreground">-</span>}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('priority') && (
+                    <TableCell>
+                      {ticket.priority ? <PriorityBadge priority={ticket.priority} /> : <span className="text-muted-foreground">-</span>}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('customer') && (
+                    <TableCell className="text-muted-foreground">
+                      {customerName || customerEmail || '-'}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('assignee') && (
+                    <TableCell className="text-muted-foreground">
+                      {getAssigneeName(ticket.assigneeId)}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('category') && (
+                    <TableCell>
+                      {ticket.category ? (
+                        <span className="flex items-center gap-1.5 text-sm">
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: ticket.category.color || '#6366f1' }}
+                          />
+                          {ticket.category.name}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('created') && (
+                    <TableCell className="text-muted-foreground">
+                      {new Date(ticket.createdAt).toLocaleDateString()}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('updated') && (
+                    <TableCell className="text-muted-foreground">
+                      {new Date(ticket.updatedAt).toLocaleDateString()}
+                    </TableCell>
+                  )}
+                  <TableCell>
+                    {renderActions?.(ticket)}
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -483,7 +685,6 @@ export function TicketTable({
             <DialogTitle>Merge Tickets</DialogTitle>
             <DialogDescription>
               Select which ticket to keep. The other {selectedIds.size - 1} ticket(s) will be merged into it.
-              Their messages and attachments will be moved to the target ticket.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -525,7 +726,7 @@ export function TicketTable({
           <DialogHeader>
             <DialogTitle>Set Tags</DialogTitle>
             <DialogDescription>
-              Select tags to apply to {selectedIds.size} ticket(s). This will replace all existing tags on the selected tickets.
+              Select tags to apply to {selectedIds.size} ticket(s). This will replace all existing tags.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

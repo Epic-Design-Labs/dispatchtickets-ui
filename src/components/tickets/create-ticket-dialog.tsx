@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateTicket, useCreateTicketDynamic, useBrands } from '@/lib/hooks';
+import { useCreateTicket, useCreateTicketDynamic, useBrands, useFieldsByEntity } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { CustomFieldsFormSection, validateCustomFields } from '@/components/fields';
 
 const createTicketSchema = z.object({
   brandId: z.string().min(1, 'Brand is required'),
@@ -61,6 +62,8 @@ interface CreateTicketDialogProps {
 
 export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTicketDialogProps) {
   const [open, setOpen] = useState(false);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
+  const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
   const { data: brands } = useBrands();
 
   // Use fixed brand mutation if brandId is provided, otherwise use dynamic
@@ -93,7 +96,26 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
   const requesterEmail = form.watch('requesterEmail');
   const hasRequesterEmail = requesterEmail && requesterEmail.length > 0;
 
+  // Watch brandId for custom fields
+  const selectedBrandId = form.watch('brandId');
+  const currentBrandId = fixedBrandId || selectedBrandId;
+  const { data: ticketFields } = useFieldsByEntity(currentBrandId, 'ticket');
+
+  // Reset custom field values when brand changes
+  useEffect(() => {
+    setCustomFieldValues({});
+    setCustomFieldErrors({});
+  }, [currentBrandId]);
+
   const onSubmit = async (data: CreateTicketForm) => {
+    // Validate custom fields
+    const cfErrors = validateCustomFields(ticketFields, customFieldValues);
+    if (Object.keys(cfErrors).length > 0) {
+      setCustomFieldErrors(cfErrors);
+      return;
+    }
+    setCustomFieldErrors({});
+
     try {
       const ticketData = {
         title: data.title,
@@ -103,6 +125,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
         customFields: {
           ...(data.requesterName && { requesterName: data.requesterName }),
           ...(data.requesterEmail && { requesterEmail: data.requesterEmail }),
+          ...customFieldValues,
         },
         notifyCustomer: data.notifyCustomer,
       };
@@ -118,6 +141,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
       toast.success('Ticket created successfully');
       setOpen(false);
       form.reset();
+      setCustomFieldValues({});
     } catch {
       toast.error('Failed to create ticket');
     }
@@ -291,6 +315,19 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                   </FormItem>
                 )}
               />
+            )}
+
+            {currentBrandId && ticketFields && ticketFields.filter(f => f.visible).length > 0 && (
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium mb-4">Custom Fields</h4>
+                <CustomFieldsFormSection
+                  brandId={currentBrandId}
+                  entityType="ticket"
+                  values={customFieldValues}
+                  onChange={setCustomFieldValues}
+                  errors={customFieldErrors}
+                />
+              </div>
             )}
 
             <DialogFooter>

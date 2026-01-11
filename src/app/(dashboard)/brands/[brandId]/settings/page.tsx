@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useBrand, useUpdateBrand, useDeleteBrand } from '@/lib/hooks';
+import { useAuth } from '@/providers/auth-provider';
 import { toast } from 'sonner';
 import { Copy, Trash2 } from 'lucide-react';
 
@@ -26,6 +27,9 @@ export default function SettingsPage() {
   const params = useParams();
   const router = useRouter();
   const brandId = params.brandId as string;
+
+  const { session } = useAuth();
+  const isOwner = session?.orgRole === 'owner';
 
   const { data: brand, isLoading } = useBrand(brandId);
   const updateBrand = useUpdateBrand(brandId);
@@ -281,30 +285,32 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Danger Zone */}
-        <Card className="lg:col-span-2 border-destructive/50">
-          <CardHeader>
-            <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            <CardDescription>Irreversible actions for this brand</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between rounded-lg border border-destructive/30 p-4">
-              <div>
-                <p className="font-medium">Delete this brand</p>
-                <p className="text-sm text-muted-foreground">
-                  Permanently delete this brand and all its tickets, comments, and attachments.
-                </p>
+        {/* Danger Zone - Owner only */}
+        {isOwner && (
+          <Card className="lg:col-span-2 border-destructive/50">
+            <CardHeader>
+              <CardTitle className="text-destructive">Danger Zone</CardTitle>
+              <CardDescription>Irreversible actions for this brand</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between rounded-lg border border-destructive/30 p-4">
+                <div>
+                  <p className="font-medium">Delete this brand</p>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently delete this brand and all its tickets, comments, and attachments.
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Brand
+                </Button>
               </div>
-              <Button
-                variant="destructive"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Brand
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
