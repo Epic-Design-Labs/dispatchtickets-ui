@@ -131,7 +131,7 @@ function htmlToPlainText(html: string): string {
 }
 
 /**
- * Clean email body by removing redundant headers and handling HTML
+ * Clean email body by removing redundant headers, image placeholders, and handling HTML
  */
 function cleanEmailBody(content: string): string {
   let cleaned = content;
@@ -140,6 +140,10 @@ function cleanEmailBody(content: string): string {
   if (isHtmlContent(cleaned)) {
     cleaned = htmlToPlainText(cleaned);
   }
+
+  // Remove [image: X] placeholders that email clients add for inline images
+  // These add no value and clutter the display
+  cleaned = cleaned.replace(/\[image:[^\]]*\]/gi, '');
 
   // Remove common email header lines that are redundant with our UI
   const headerPatterns = [
@@ -156,8 +160,11 @@ function cleanEmailBody(content: string): string {
     cleaned = cleaned.replace(pattern, '');
   }
 
-  // Collapse multiple blank lines to max 1 blank line
-  cleaned = cleaned.replace(/\n{2,}/g, '\n\n');
+  // Clean up whitespace left behind by removals
+  cleaned = cleaned.replace(/[ \t]+/g, ' '); // Multiple spaces to single
+  cleaned = cleaned.replace(/\n[ \t]+/g, '\n'); // Leading whitespace on lines
+  cleaned = cleaned.replace(/[ \t]+\n/g, '\n'); // Trailing whitespace on lines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n'); // Max 1 blank line
 
   // Trim leading/trailing whitespace
   return cleaned.trim();
@@ -277,6 +284,24 @@ function isMarketingFooterStart(line: string): boolean {
 }
 
 /**
+ * Check if a line looks like a name or company name (short, no sentence punctuation)
+ */
+function looksLikeNameOrCompany(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+
+  const words = trimmed.split(/\s+/);
+
+  // 1-5 words, under 50 chars, doesn't end with sentence punctuation
+  // Not a greeting or sign-off
+  return words.length >= 1 &&
+    words.length <= 5 &&
+    trimmed.length < 50 &&
+    !/[.!?]$/.test(trimmed) &&
+    !/^(hi|hello|hey|dear|thanks|thank you|regards|best|sincerely|cheers|warm regards)/i.test(trimmed);
+}
+
+/**
  * Detect where an email signature block starts
  * Returns the line index where signature begins, or -1 if not found
  */
@@ -291,13 +316,14 @@ function findSignatureStart(lines: string[]): number {
       // Found a signature line - now look backward to find where signature starts
       let signatureStart = i;
 
-      // For marketing footers, look back more aggressively (up to 20 lines)
-      const isMarketingFooter = isMarketingFooterStart(line);
-      const lookbackLimit = isMarketingFooter ? 20 : 5;
+      // Look back more aggressively (up to 10 lines) to find name/company
+      const lookbackLimit = 10;
 
       // Look back for the start of signature/footer block
       for (let j = i - 1; j >= Math.max(0, i - lookbackLimit); j--) {
         const prevLine = lines[j].trim();
+
+        // Skip empty lines but don't stop
         if (!prevLine) continue;
 
         // If previous line is also a signature element, include it
@@ -306,34 +332,20 @@ function findSignatureStart(lines: string[]): number {
           continue;
         }
 
-        // For marketing emails, also include images and short lines (branding)
-        if (isMarketingFooter) {
-          // Include standalone images (logos, icons)
-          if (/^!\[[^\]]*\]\([^)]+\)/.test(prevLine)) {
-            signatureStart = j;
-            continue;
-          }
-          // Include short lines that might be branding/company names
-          if (prevLine.length < 30 && !/[.!?]$/.test(prevLine)) {
-            signatureStart = j;
-            continue;
-          }
-        }
-
-        // Check if this looks like a name or company (short line, 1-4 words)
-        const words = prevLine.split(/\s+/);
-        const looksLikeName = words.length <= 4 &&
-          words.length >= 1 &&
-          prevLine.length < 40 &&
-          !/[.!?;:]$/.test(prevLine) && // Doesn't end with sentence punctuation
-          !/^(hi|hello|hey|dear|thanks|thank you|regards|best|sincerely)/i.test(prevLine);
-
-        if (looksLikeName) {
+        // Include standalone images (logos, icons)
+        if (/^!\[[^\]]*\]\([^)]+\)/.test(prevLine)) {
           signatureStart = j;
-        } else {
-          // Hit content that doesn't look like signature - stop
-          break;
+          continue;
         }
+
+        // Check if this looks like a name or company
+        if (looksLikeNameOrCompany(prevLine)) {
+          signatureStart = j;
+          continue;
+        }
+
+        // Hit content that doesn't look like signature - stop
+        break;
       }
 
       return signatureStart;
