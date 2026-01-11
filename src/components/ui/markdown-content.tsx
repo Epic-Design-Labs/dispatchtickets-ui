@@ -212,13 +212,15 @@ function isSignatureLine(line: string): boolean {
     return true;
   }
 
-  // Phone number patterns (various formats)
-  if (/^[\d\s\-.()+]{10,}$/.test(trimmed) || /^\d{3}[-.\s]?\d{3}[-.\s]?\d{4}$/.test(trimmed)) {
+  // Phone number patterns - can appear anywhere in line
+  // Matches: 503-536-7350, (503) 536-7350, 503.536.7350, +1 503 536 7350
+  if (/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(trimmed)) {
     return true;
   }
 
-  // Standalone website/domain (not a full URL, just domain.com)
-  if (/^[a-z0-9][-a-z0-9]*\.(com|org|net|io|co|ai|dev|app|us|uk|ca)$/i.test(trimmed)) {
+  // Website/domain anywhere in line (domain.com format, not full URLs)
+  if (/[a-z0-9][-a-z0-9]*\.(com|org|net|io|co|ai|dev|app|us|uk|ca)\b/i.test(trimmed) &&
+      !trimmed.startsWith('http') && trimmed.length < 80) {
     return true;
   }
 
@@ -229,6 +231,11 @@ function isSignatureLine(line: string): boolean {
 
   // Line is just an image (markdown image syntax alone on line)
   if (/^!\[[^\]]*\]\([^)]+\)$/.test(trimmed)) {
+    return true;
+  }
+
+  // Line contains mostly URLs (signature with links)
+  if (/<https?:\/\/[^>]+>/i.test(trimmed) && trimmed.length < 100) {
     return true;
   }
 

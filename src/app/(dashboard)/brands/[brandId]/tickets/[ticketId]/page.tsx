@@ -359,9 +359,62 @@ export default function TicketDetailPage() {
               </Button>
             </div>
           </div>
+
+          {/* Quick info bar */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground border-b pb-4">
+            {/* Customer */}
+            {ticket.customer && (
+              <div className="flex items-center gap-1.5">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <Link
+                  href={`/brands/${brandId}/customers/${ticket.customer.id}`}
+                  className="hover:text-foreground hover:underline"
+                >
+                  {ticket.customer.name || ticket.customer.email}
+                </Link>
+                {ticket.customer.name && (
+                  <span className="text-xs">({ticket.customer.email})</span>
+                )}
+              </div>
+            )}
+            {/* Company */}
+            {ticket.customer?.company && (
+              <div className="flex items-center gap-1.5">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <Link
+                  href={`/brands/${brandId}/companies/${ticket.customer.company.id}`}
+                  className="hover:text-foreground hover:underline"
+                >
+                  {ticket.customer.company.name}
+                </Link>
+              </div>
+            )}
+            {/* Assignee */}
+            <div className="flex items-center gap-1.5">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {ticket.assigneeId ? (
+                <span className="text-foreground">{getMemberName(ticket.assigneeId)}</span>
+              ) : (
+                <span>Unassigned</span>
+              )}
+            </div>
+            {/* Source */}
+            <div className="flex items-center gap-1.5">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <span className="capitalize">{ticket.source}</span>
+            </div>
+          </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 mt-6">
           {/* Main content */}
           <div className="space-y-6 lg:col-span-2">
             {/* Description */}
@@ -370,20 +423,6 @@ export default function TicketDetailPage() {
                 <CardTitle>Description</CardTitle>
               </CardHeader>
               <CardContent>
-                {/* Show sender info for email tickets */}
-                {ticket.source === 'email' && ticket.customer && (
-                  <div className="mb-4 pb-3 border-b text-sm">
-                    <span className="text-muted-foreground">From: </span>
-                    <span className="font-medium">
-                      {ticket.customer.name || ticket.customer.email}
-                    </span>
-                    {ticket.customer.name && (
-                      <span className="text-muted-foreground ml-1">
-                        &lt;{ticket.customer.email}&gt;
-                      </span>
-                    )}
-                  </div>
-                )}
                 {ticket.body ? (
                   <MarkdownContent content={ticket.body} showSourceToggle />
                 ) : (
