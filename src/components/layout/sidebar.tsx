@@ -16,9 +16,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
-import { useProfile, useBrands, useDashboardStats } from '@/lib/hooks';
+import { useProfile, useBrands, useDashboardStats, useSetupStatus } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
-import { Inbox, User, AlertCircle, Key, Rocket } from 'lucide-react';
+import { Inbox, User, AlertCircle, Key, Rocket, Check } from 'lucide-react';
 
 interface SidebarProps {
   brandId?: string;
@@ -38,6 +38,9 @@ export function Sidebar({ brandId }: SidebarProps) {
 
   // Only fetch stats when on dashboard (for queue counts)
   const { data: stats } = useDashboardStats(isDashboard ? [] : undefined);
+
+  // Setup status for brand-specific Getting Started badge
+  const setupStatus = useSetupStatus(brandId || '');
 
   // Get display name: profile > email-derived > email
   const displayName = profile?.displayName || (email ? email.split('@')[0].split(/[._-]/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User');
@@ -105,6 +108,11 @@ export function Sidebar({ brandId }: SidebarProps) {
           name: 'Getting Started',
           href: `/brands/${brandId}/getting-started`,
           icon: <Rocket className="h-4 w-4" />,
+          badge: setupStatus.percentComplete < 100 && !setupStatus.isLoading
+            ? `${setupStatus.completedCount}/${setupStatus.requiredCount}`
+            : setupStatus.percentComplete === 100
+            ? <Check className="h-3 w-3" />
+            : undefined,
         },
       ]
     : [];
@@ -199,6 +207,11 @@ export function Sidebar({ brandId }: SidebarProps) {
                     <Link href={item.href}>
                       {item.icon}
                       {item.name}
+                      {item.badge && (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          {item.badge}
+                        </span>
+                      )}
                     </Link>
                   </Button>
                 );

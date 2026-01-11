@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Code, Forward } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code, Forward, User } from 'lucide-react';
 
 interface MarkdownContentProps {
   content: string;
@@ -15,6 +15,11 @@ interface ForwardedContent {
   forwardedFrom?: string;
   forwardedSubject?: string;
   forwardedDate?: string;
+}
+
+interface ParsedContent {
+  mainBody: string;
+  signature: string | null;
 }
 
 /**
@@ -339,6 +344,39 @@ function findSignatureStart(lines: string[]): number {
 }
 
 /**
+ * Separate email content into main body and signature
+ */
+function separateSignature(content: string): ParsedContent {
+  const cleaned = cleanEmailBody(content);
+  const lines = cleaned.split('\n');
+  const signatureStartIndex = findSignatureStart(lines);
+
+  if (signatureStartIndex < 0 || signatureStartIndex === 0) {
+    // No signature found or entire content is signature
+    return { mainBody: cleaned, signature: null };
+  }
+
+  // Split into main body and signature
+  const mainBodyLines = lines.slice(0, signatureStartIndex);
+  const signatureLines = lines.slice(signatureStartIndex);
+
+  // Clean up trailing empty lines from main body
+  while (mainBodyLines.length > 0 && !mainBodyLines[mainBodyLines.length - 1].trim()) {
+    mainBodyLines.pop();
+  }
+
+  const mainBody = mainBodyLines.join('\n').trim();
+  const signature = signatureLines.join('\n').trim();
+
+  // Only return signature if it's meaningful
+  if (!signature || signature.length < 5) {
+    return { mainBody: cleaned, signature: null };
+  }
+
+  return { mainBody, signature };
+}
+
+/**
  * Process text to convert plain URLs to clickable links
  */
 function processTextWithLinks(
@@ -410,31 +448,20 @@ function processTextWithLinks(
 }
 
 /**
- * Render content with inline processing for links, images, and signatures
+ * Render content with inline processing for links and images
+ * Does NOT handle signature separation - that's done at a higher level
  */
-function RenderContent({ content, className = '' }: { content: string; className?: string }) {
+function RenderContent({ content, className = '', isSignature = false }: { content: string; className?: string; isSignature?: boolean }) {
   const rendered = useMemo(() => {
     if (!content) return null;
 
-    // Clean email content (HTML to text, strip headers)
-    const cleanedContent = cleanEmailBody(content);
-
     // Split content by lines to process each line
-    const lines = cleanedContent.split('\n');
+    const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
-    let inFooter = false;
-
-    // Detect where signature/footer starts
-    const footerStartIndex = findSignatureStart(lines);
 
     lines.forEach((line, lineIndex) => {
       const keyIndex = { current: 0 };
       const lineElements: React.ReactNode[] = [];
-
-      // Check if we're in the footer section
-      if (footerStartIndex >= 0 && lineIndex >= footerStartIndex) {
-        inFooter = true;
-      }
 
       // Process markdown images first: ![alt](url)
       const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -507,13 +534,8 @@ function RenderContent({ content, className = '' }: { content: string; className
         lineElements.push(<span key={`${lineIndex}-empty`}>&nbsp;</span>);
       }
 
-      // Wrap line with footer styling if in footer section
-      const lineClassName = inFooter
-        ? 'min-h-[1.4em] text-muted-foreground text-sm'
-        : 'min-h-[1.5em]';
-
       elements.push(
-        <div key={`line-${lineIndex}`} className={lineClassName}>
+        <div key={`line-${lineIndex}`} className="min-h-[1.5em]">
           {lineElements}
         </div>
       );
@@ -522,12 +544,17 @@ function RenderContent({ content, className = '' }: { content: string; className
     return elements;
   }, [content]);
 
-  return <div className={`whitespace-pre-wrap ${className}`}>{rendered}</div>;
+  return (
+    <div className={`whitespace-pre-wrap ${isSignature ? 'text-muted-foreground text-sm' : ''} ${className}`}>
+      {rendered}
+    </div>
+  );
 }
 
 export function MarkdownContent({ content, className = '', showSourceToggle = false }: MarkdownContentProps) {
   const [showSource, setShowSource] = useState(false);
   const [showForwarded, setShowForwarded] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
 
   // Check if content was transformed (HTML or had headers stripped)
   const wasTransformed = useMemo(() => {
@@ -540,6 +567,12 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
     if (!content) return null;
     return parseForwardedEmail(content);
   }, [content]);
+
+  // Separate main body from signature
+  const parsedContent = useMemo(() => {
+    if (!content || forwardedContent) return null;
+    return separateSignature(content);
+  }, [content, forwardedContent]);
 
   // If this is a forwarded email, render with collapsible section
   if (forwardedContent) {
@@ -633,9 +666,37 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
   }
 
   // Regular content (no forwarding detected)
+  // Use parsed content to separate main body from signature
+  const mainBody = parsedContent?.mainBody || cleanEmailBody(content);
+  const signature = parsedContent?.signature;
+
   return (
     <div className={className}>
-      <RenderContent content={content} />
+      <RenderContent content={mainBody} />
+
+      {/* Signature section - collapsible */}
+      {signature && (
+        <div className="mt-4 border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowSignature(!showSignature)}
+            className="w-full flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted transition-colors text-left text-sm"
+          >
+            {showSignature ? (
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            )}
+            <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="text-muted-foreground">Signature</span>
+          </button>
+
+          {showSignature && (
+            <div className="px-3 py-2 border-t bg-background">
+              <RenderContent content={signature} isSignature />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* View source toggle - only show if content was transformed */}
       {showSourceToggle && wasTransformed && (

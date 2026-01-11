@@ -1,23 +1,35 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { useBrand, useUpdateBrand } from '@/lib/hooks';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useBrand, useUpdateBrand, useDeleteBrand } from '@/lib/hooks';
 import { toast } from 'sonner';
-import { Copy } from 'lucide-react';
+import { Copy, Trash2 } from 'lucide-react';
 
 export default function SettingsPage() {
   const params = useParams();
+  const router = useRouter();
   const brandId = params.brandId as string;
 
   const { data: brand, isLoading } = useBrand(brandId);
   const updateBrand = useUpdateBrand(brandId);
+  const deleteBrand = useDeleteBrand();
 
   const [name, setName] = useState('');
   const [ticketPrefix, setTicketPrefix] = useState('');
@@ -26,6 +38,9 @@ export default function SettingsPage() {
   // Brand identity state
   const [url, setUrl] = useState('');
   const [iconUrl, setIconUrl] = useState('');
+
+  // Delete confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Initialize form with brand data
   useEffect(() => {
@@ -90,6 +105,16 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDeleteBrand = async () => {
+    try {
+      await deleteBrand.mutateAsync(brandId);
+      toast.success('Brand deleted successfully');
+      router.push('/brands');
+    } catch {
+      toast.error('Failed to delete brand');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -114,7 +139,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <>
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Brand Settings */}
         <Card>
           <CardHeader>
@@ -254,6 +280,53 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Danger Zone */}
+        <Card className="lg:col-span-2 border-destructive/50">
+          <CardHeader>
+            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+            <CardDescription>Irreversible actions for this brand</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between rounded-lg border border-destructive/30 p-4">
+              <div>
+                <p className="font-medium">Delete this brand</p>
+                <p className="text-sm text-muted-foreground">
+                  Permanently delete this brand and all its tickets, comments, and attachments.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Brand
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Brand</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{brand?.name}&quot;? This will permanently delete all tickets, comments, and attachments associated with this brand. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBrand}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteBrand.isPending ? 'Deleting...' : 'Delete Brand'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

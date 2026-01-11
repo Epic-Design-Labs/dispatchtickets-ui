@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useBrands, useCreateBrand, useDeleteBrand, useUsage } from '@/lib/hooks';
+import { useBrands, useCreateBrand, useUsage } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,16 +21,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -40,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 export function BrandSwitcher() {
   const router = useRouter();
@@ -49,11 +39,8 @@ export function BrandSwitcher() {
   const { data: brands, isLoading } = useBrands();
   const { data: usageData } = useUsage();
   const createBrand = useCreateBrand();
-  const deleteBrand = useDeleteBrand();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [brandToDelete, setBrandToDelete] = useState<{ id: string; name: string } | null>(null);
   const [newBrandName, setNewBrandName] = useState('');
 
   const currentBrand = brands?.find((b) => b.id === currentBrandId);
@@ -90,29 +77,6 @@ export function BrandSwitcher() {
     } catch (error) {
       toast.error('Failed to create brand');
     }
-  };
-
-  const handleDeleteBrand = async () => {
-    if (!brandToDelete) return;
-
-    try {
-      await deleteBrand.mutateAsync(brandToDelete.id);
-      toast.success('Brand deleted successfully');
-      setDeleteDialogOpen(false);
-      setBrandToDelete(null);
-
-      // If we deleted the current brand, go to brands list
-      if (brandToDelete.id === currentBrandId) {
-        router.push('/brands');
-      }
-    } catch (error) {
-      toast.error('Failed to delete brand');
-    }
-  };
-
-  const openDeleteDialog = (brand: { id: string; name: string }) => {
-    setBrandToDelete(brand);
-    setDeleteDialogOpen(true);
   };
 
   if (isLoading) {
@@ -176,38 +140,25 @@ export function BrandSwitcher() {
           {brands?.map((brand) => (
             <DropdownMenuItem
               key={brand.id}
-              className="cursor-pointer flex items-center justify-between group"
+              className="cursor-pointer flex items-center justify-between"
               onClick={() => router.push(`/brands/${brand.id}`)}
             >
               <span className="truncate">{brand.name}</span>
-              <div className="flex items-center gap-1">
-                {brand.id === currentBrandId && (
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openDeleteDialog({ id: brand.id, name: brand.name });
-                  }}
+              {brand.id === currentBrandId && (
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  <Trash2 className="h-3 w-3 text-destructive" />
-                </Button>
-              </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              )}
             </DropdownMenuItem>
           ))}
           {(!brands || brands.length === 0) && (
@@ -251,27 +202,6 @@ export function BrandSwitcher() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Brand Confirmation */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Brand</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{brandToDelete?.name}&quot;? This will permanently delete all tickets, comments, and attachments associated with this brand. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteBrand}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteBrand.isPending ? 'Deleting...' : 'Delete Brand'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

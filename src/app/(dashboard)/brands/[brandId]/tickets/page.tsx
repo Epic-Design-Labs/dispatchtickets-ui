@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, BulkActionType } from '@/lib/hooks';
+import { useQueryClient } from '@tanstack/react-query';
+import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, BulkActionType, ticketKeys } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
 import { Header } from '@/components/layout';
@@ -27,9 +28,11 @@ export default function BrandDashboardPage() {
   // Enable real-time notifications for ticket updates
   useTicketNotifications(brandId);
 
-  // Email sync
+  // Email sync and refresh
+  const queryClient = useQueryClient();
   const { data: emailConnections } = useEmailConnections(brandId);
   const syncEmail = useSyncEmail();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const hasActiveEmailConnection = emailConnections?.some(c => c.status === 'ACTIVE');
 
   // Categories and tags for filtering
@@ -44,16 +47,26 @@ export default function BrandDashboardPage() {
   const bulkAction = useBulkAction(brandId);
   const mergeTickets = useMergeTickets(brandId);
 
-  const handleSync = async () => {
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      const result = await syncEmail.mutateAsync({ brandId });
-      if (result.ticketsCreated > 0) {
-        toast.success(`Synced ${result.ticketsCreated} new ticket(s)`);
+      if (hasActiveEmailConnection) {
+        // Sync Gmail and refresh
+        const result = await syncEmail.mutateAsync({ brandId });
+        if (result.ticketsCreated > 0) {
+          toast.success(`Synced ${result.ticketsCreated} new ticket(s)`);
+        } else {
+          toast.success('No new emails');
+        }
       } else {
-        toast.success('No new emails');
+        // Just refresh the ticket list
+        await queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
+        toast.success('Refreshed');
       }
     } catch {
-      toast.error('Failed to sync emails');
+      toast.error(hasActiveEmailConnection ? 'Failed to sync emails' : 'Failed to refresh');
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -267,17 +280,19 @@ export default function BrandDashboardPage() {
             )}
           </h3>
           <div className="flex items-center gap-2">
-            {hasActiveEmailConnection && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSync}
-                disabled={syncEmail.isPending}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${syncEmail.isPending ? 'animate-spin' : ''}`} />
-                {syncEmail.isPending ? 'Syncing...' : 'Sync Email'}
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing || syncEmail.isPending}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing || syncEmail.isPending ? 'animate-spin' : ''}`} />
+              {isRefreshing || syncEmail.isPending
+                ? 'Refreshing...'
+                : hasActiveEmailConnection
+                ? 'Sync Email'
+                : 'Refresh'}
+            </Button>
             <CreateTicketDialog brandId={brandId}>
               <Button size="sm">
                 <svg
