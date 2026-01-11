@@ -21,6 +21,13 @@ interface CommentEditorProps {
 
 type SubmitAction = 'comment' | 'pending' | 'resolved';
 
+interface UploadedFile {
+  id: string;
+  name: string;
+  url: string;
+  isImage: boolean;
+}
+
 export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const [body, setBody] = useState('');
   const [isInternal, setIsInternal] = useState(false);
@@ -29,6 +36,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const [ccRecipients, setCcRecipients] = useState<string[]>([]);
   const [ccInput, setCcInput] = useState('');
   const [showCcInput, setShowCcInput] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,15 +76,30 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   };
 
   const handleSubmit = useCallback(async (action: SubmitAction) => {
-    if (!body.trim()) {
-      toast.error('Please enter a comment');
+    if (!body.trim() && uploadedFiles.length === 0) {
+      toast.error('Please enter a comment or add an attachment');
       return;
     }
 
     try {
+      // Build final body with attachments appended as markdown
+      let finalBody = body.trim();
+      if (uploadedFiles.length > 0) {
+        const attachmentMarkdown = uploadedFiles
+          .map((file) =>
+            file.isImage
+              ? `![${file.name}](${file.url})`
+              : `[${file.name}](${file.url})`
+          )
+          .join('\n');
+        finalBody = finalBody
+          ? `${finalBody}\n\n${attachmentMarkdown}`
+          : attachmentMarkdown;
+      }
+
       const authorName = getAuthorName();
       await createComment.mutateAsync({
-        body: body.trim(),
+        body: finalBody,
         authorType: 'AGENT',
         authorName,
         metadata: {
@@ -92,6 +115,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
       setCcRecipients([]);
       setShowCcInput(false);
       setCcInput('');
+      setUploadedFiles([]);
 
       const messages: Record<SubmitAction, string> = {
         comment: 'Comment added',
@@ -102,7 +126,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
     } catch {
       toast.error('Failed to add comment');
     }
-  }, [body, isInternal, createComment, profile?.displayName, session?.email, selectedConnection, ccRecipients]);
+  }, [body, isInternal, createComment, profile?.displayName, session?.email, selectedConnection, ccRecipients, uploadedFiles]);
 
   // Handle adding a CC recipient
   const handleAddCc = useCallback(() => {
@@ -161,31 +185,23 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
     setIsUploading(true);
     try {
       const attachment = await uploadAttachment.mutateAsync(file);
-      // Insert markdown: image syntax for images, link syntax for files
-      const markdown = isImage
-        ? `![${file.name}](${attachment.downloadUrl})`
-        : `[${file.name}](${attachment.downloadUrl})`;
-      const textarea = textareaRef.current;
-      if (textarea) {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const newBody = body.slice(0, start) + markdown + body.slice(end);
-        setBody(newBody);
-        // Move cursor after the inserted content
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = start + markdown.length;
-          textarea.focus();
-        }, 0);
-      } else {
-        setBody((prev) => prev + (prev ? '\n' : '') + markdown);
-      }
+      // Add to uploaded files list (don't insert markdown into body)
+      setUploadedFiles((prev) => [
+        ...prev,
+        {
+          id: attachment.id,
+          name: file.name,
+          url: attachment.downloadUrl,
+          isImage,
+        },
+      ]);
       toast.success(isImage ? 'Image uploaded' : 'File attached');
     } catch {
       toast.error(isImage ? 'Failed to upload image' : 'Failed to attach file');
     } finally {
       setIsUploading(false);
     }
-  }, [body, uploadAttachment]);
+  }, [uploadAttachment]);
 
   // Handle image input change
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -229,46 +245,13 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const modKey = isMac ? '⌘' : 'Ctrl';
 
-  // Extract images from markdown body for preview
-  const images = useMemo(() => {
-    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-    const matches: { alt: string; url: string; fullMatch: string }[] = [];
-    let match;
-    while ((match = imageRegex.exec(body)) !== null) {
-      matches.push({
-        alt: match[1],
-        url: match[2],
-        fullMatch: match[0],
-      });
-    }
-    return matches;
-  }, [body]);
+  // Split uploaded files into images and attachments for display
+  const images = useMemo(() => uploadedFiles.filter((f) => f.isImage), [uploadedFiles]);
+  const attachments = useMemo(() => uploadedFiles.filter((f) => !f.isImage), [uploadedFiles]);
 
-  // Extract file attachments (non-image links) from markdown body for preview
-  const attachments = useMemo(() => {
-    // Match [text](url) but NOT ![text](url)
-    const linkRegex = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
-    const matches: { name: string; url: string; fullMatch: string }[] = [];
-    let match;
-    while ((match = linkRegex.exec(body)) !== null) {
-      // Only include if it looks like a storage URL (R2/S3)
-      if (match[2].includes('r2.cloudflarestorage.com') || match[2].includes('X-Amz-')) {
-        matches.push({
-          name: match[1],
-          url: match[2],
-          fullMatch: match[0],
-        });
-      }
-    }
-    return matches;
-  }, [body]);
-
-  // Remove an attachment from the body
-  const removeAttachment = useCallback((fullMatch: string) => {
-    setBody((prev) => {
-      // Remove the markdown and any trailing newline
-      return prev.replace(fullMatch + '\n', '').replace(fullMatch, '').trim();
-    });
+  // Remove an uploaded file
+  const removeUploadedFile = useCallback((fileId: string) => {
+    setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
   }, []);
 
   return (
@@ -293,16 +276,16 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
       {/* Image and attachment previews */}
       {(images.length > 0 || attachments.length > 0) && (
         <div className="flex flex-wrap gap-2">
-          {images.map((img, index) => (
-            <div key={`img-${index}`} className="relative group">
+          {images.map((img) => (
+            <div key={img.id} className="relative group">
               <img
                 src={img.url}
-                alt={img.alt || 'Uploaded image'}
+                alt={img.name}
                 className="h-20 w-20 object-cover rounded-md border"
               />
               <button
                 type="button"
-                onClick={() => removeAttachment(img.fullMatch)}
+                onClick={() => removeUploadedFile(img.id)}
                 className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                 title="Remove image"
               >
@@ -310,13 +293,13 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
               </button>
             </div>
           ))}
-          {attachments.map((file, index) => (
-            <div key={`file-${index}`} className="relative group flex items-center gap-2 px-3 py-2 bg-muted rounded-md border">
+          {attachments.map((file) => (
+            <div key={file.id} className="relative group flex items-center gap-2 px-3 py-2 bg-muted rounded-md border">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm truncate max-w-[150px]">{file.name}</span>
               <button
                 type="button"
-                onClick={() => removeAttachment(file.fullMatch)}
+                onClick={() => removeUploadedFile(file.id)}
                 className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
                 title="Remove file"
               >
