@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, BulkActionType, ticketKeys } from '@/lib/hooks';
+import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, BulkActionType, ticketKeys } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
 import { Header } from '@/components/layout';
@@ -35,9 +35,10 @@ export default function BrandDashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const hasActiveEmailConnection = emailConnections?.some(c => c.status === 'ACTIVE');
 
-  // Categories and tags for filtering
+  // Categories, tags, and custom fields
   const { data: categories } = useCategories(brandId);
   const { data: tags } = useTags(brandId);
+  const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
 
   // Team members for assignee selection (only active members, not pending invites)
   const { data: teamMembersData } = useTeamMembers();
@@ -334,6 +335,7 @@ export default function BrandDashboardPage() {
           teamMembers={teamMembers}
           categories={categories}
           tags={tags}
+          customFields={ticketFields}
         />
 
         {/* Load More */}

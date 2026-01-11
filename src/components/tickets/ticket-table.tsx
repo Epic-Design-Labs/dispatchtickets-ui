@@ -3,6 +3,23 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   Table,
   TableBody,
   TableCell,
@@ -31,32 +48,33 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { StatusBadge } from './status-badge';
 import { PriorityBadge } from './priority-badge';
-import { Ticket, TeamMember } from '@/types';
+import { Ticket, TeamMember, FieldDefinition } from '@/types';
 import { Category } from '@/lib/api/categories';
 import { Tag } from '@/lib/api/tags';
 import { BulkActionType } from '@/lib/hooks/use-tickets';
-import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2 } from 'lucide-react';
+import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical } from 'lucide-react';
 
-// Column definitions
-type ColumnKey = 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated';
+// Column definitions - built-in columns use these keys
+type BuiltInColumnKey = 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated';
 
 interface ColumnDef {
-  key: ColumnKey;
+  key: string; // Can be built-in key or custom field key prefixed with 'cf_'
   label: string;
   defaultVisible: boolean;
   sortable: boolean;
+  isCustomField?: boolean;
 }
 
-const COLUMNS: ColumnDef[] = [
+const BUILT_IN_COLUMNS: ColumnDef[] = [
   { key: 'subject', label: 'Subject', defaultVisible: true, sortable: true },
   { key: 'status', label: 'Status', defaultVisible: true, sortable: true },
   { key: 'priority', label: 'Priority', defaultVisible: true, sortable: true },
@@ -67,14 +85,70 @@ const COLUMNS: ColumnDef[] = [
   { key: 'updated', label: 'Updated', defaultVisible: false, sortable: true },
 ];
 
-const STORAGE_KEY = 'dispatch-ticket-columns';
+const STORAGE_KEY = 'dispatch-ticket-columns-v2'; // v2 to support new format with order
 const SORT_STORAGE_KEY = 'dispatch-ticket-sort';
 
 type SortDirection = 'asc' | 'desc' | null;
 
 interface SortState {
-  column: ColumnKey | null;
+  column: string | null;
   direction: SortDirection;
+}
+
+interface ColumnSettings {
+  visible: string[]; // Array of visible column keys in display order
+  order: string[]; // Full ordered list of all column keys
+}
+
+// Sortable column item for the settings dropdown
+function SortableColumnItem({
+  column,
+  isVisible,
+  onToggle
+}: {
+  column: ColumnDef;
+  isVisible: boolean;
+  onToggle: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: column.key });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded-sm"
+    >
+      <button
+        className="cursor-grab touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </button>
+      <Switch
+        checked={isVisible}
+        onCheckedChange={onToggle}
+        className="scale-75"
+      />
+      <span className="text-sm flex-1">{column.label}</span>
+      {column.isCustomField && (
+        <Badge variant="outline" className="text-[10px] px-1 py-0">custom</Badge>
+      )}
+    </div>
+  );
 }
 
 interface BulkActionOptions {
@@ -93,6 +167,7 @@ interface TicketTableProps {
   teamMembers?: TeamMember[];
   categories?: Category[];
   tags?: Tag[];
+  customFields?: FieldDefinition[];
 }
 
 export function TicketTable({
@@ -105,27 +180,67 @@ export function TicketTable({
   teamMembers = [],
   categories = [],
   tags: availableTags = [],
+  customFields = [],
 }: TicketTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [mergeTargetId, setMergeTargetId] = useState<string>('');
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
 
-  // Column visibility state
-  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(() => {
+  // Build all columns including custom fields
+  const allColumns = useMemo<ColumnDef[]>(() => {
+    const customFieldColumns: ColumnDef[] = customFields
+      .filter(f => f.visible)
+      .map(f => ({
+        key: `cf_${f.key}`,
+        label: f.label,
+        defaultVisible: false,
+        sortable: ['text', 'number', 'date', 'select'].includes(f.type),
+        isCustomField: true,
+      }));
+    return [...BUILT_IN_COLUMNS, ...customFieldColumns];
+  }, [customFields]);
+
+  // Column settings state (visibility + order)
+  const [columnSettings, setColumnSettings] = useState<ColumnSettings>(() => {
+    const defaultVisible = BUILT_IN_COLUMNS.filter(c => c.defaultVisible).map(c => c.key);
+    const defaultOrder = BUILT_IN_COLUMNS.map(c => c.key);
+
     if (typeof window === 'undefined') {
-      return new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
+      return { visible: defaultVisible, order: defaultOrder };
     }
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        return new Set(JSON.parse(stored) as ColumnKey[]);
+        const parsed = JSON.parse(stored);
+        // Handle v2 format
+        if (parsed.visible && parsed.order) {
+          return parsed as ColumnSettings;
+        }
+        // Migrate from v1 format (just array of visible keys)
+        if (Array.isArray(parsed)) {
+          return { visible: parsed, order: defaultOrder };
+        }
       } catch {
-        return new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
+        // Fall through to default
       }
     }
-    return new Set(COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
+    return { visible: defaultVisible, order: defaultOrder };
   });
+
+  // Update order when custom fields change
+  useEffect(() => {
+    const allKeys = allColumns.map(c => c.key);
+    setColumnSettings(prev => {
+      // Add any new columns that aren't in order yet
+      const newKeys = allKeys.filter(k => !prev.order.includes(k));
+      if (newKeys.length > 0) {
+        return { ...prev, order: [...prev.order, ...newKeys] };
+      }
+      return prev;
+    });
+  }, [allColumns]);
 
   // Sort state
   const [sortState, setSortState] = useState<SortState>(() => {
@@ -151,29 +266,74 @@ export function TicketTable({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
 
-  // Persist column visibility
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Get ordered columns (respecting user's order preference)
+  const orderedColumns = useMemo(() => {
+    const columnMap = new Map(allColumns.map(c => [c.key, c]));
+    const ordered: ColumnDef[] = [];
+    // First add columns in user's order
+    for (const key of columnSettings.order) {
+      const col = columnMap.get(key);
+      if (col) ordered.push(col);
+    }
+    // Then add any remaining columns not in order
+    for (const col of allColumns) {
+      if (!columnSettings.order.includes(col.key)) {
+        ordered.push(col);
+      }
+    }
+    return ordered;
+  }, [allColumns, columnSettings.order]);
+
+  // Visible columns in order
+  const visibleColumns = useMemo(() => {
+    return orderedColumns.filter(c => columnSettings.visible.includes(c.key));
+  }, [orderedColumns, columnSettings.visible]);
+
+  // Persist column settings
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(visibleColumns)));
-  }, [visibleColumns]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(columnSettings));
+  }, [columnSettings]);
 
   // Persist sort state
   useEffect(() => {
     localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sortState));
   }, [sortState]);
 
-  const toggleColumn = useCallback((key: ColumnKey) => {
-    setVisibleColumns(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
+  const toggleColumn = useCallback((key: string) => {
+    setColumnSettings(prev => {
+      const isVisible = prev.visible.includes(key);
+      return {
+        ...prev,
+        visible: isVisible
+          ? prev.visible.filter(k => k !== key)
+          : [...prev.visible, key],
+      };
     });
   }, []);
 
-  const handleSort = useCallback((column: ColumnKey) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setColumnSettings(prev => {
+        const oldIndex = prev.order.indexOf(active.id as string);
+        const newIndex = prev.order.indexOf(over.id as string);
+        return {
+          ...prev,
+          order: arrayMove(prev.order, oldIndex, newIndex),
+        };
+      });
+    }
+  }, []);
+
+  const handleSort = useCallback((column: string) => {
     setSortState(prev => {
       if (prev.column !== column) {
         return { column, direction: 'asc' };
@@ -198,40 +358,62 @@ export function TicketTable({
       let aVal: string | number | null = null;
       let bVal: string | number | null = null;
 
-      switch (column) {
-        case 'subject':
-          aVal = a.title.toLowerCase();
-          bVal = b.title.toLowerCase();
-          break;
-        case 'status':
-          aVal = a.status || '';
-          bVal = b.status || '';
-          break;
-        case 'priority':
-          const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
-          aVal = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 99;
-          bVal = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 99;
-          break;
-        case 'customer':
-          aVal = (a.customer?.name || a.customer?.email || '').toLowerCase();
-          bVal = (b.customer?.name || b.customer?.email || '').toLowerCase();
-          break;
-        case 'assignee':
-          aVal = a.assigneeId || '';
-          bVal = b.assigneeId || '';
-          break;
-        case 'category':
-          aVal = a.category?.name?.toLowerCase() || '';
-          bVal = b.category?.name?.toLowerCase() || '';
-          break;
-        case 'created':
-          aVal = new Date(a.createdAt).getTime();
-          bVal = new Date(b.createdAt).getTime();
-          break;
-        case 'updated':
-          aVal = new Date(a.updatedAt).getTime();
-          bVal = new Date(b.updatedAt).getTime();
-          break;
+      // Handle custom field columns
+      if (column.startsWith('cf_')) {
+        const fieldKey = column.slice(3); // Remove 'cf_' prefix
+        const aCustomFields = a.customFields as Record<string, unknown> || {};
+        const bCustomFields = b.customFields as Record<string, unknown> || {};
+        const aFieldVal = aCustomFields[fieldKey];
+        const bFieldVal = bCustomFields[fieldKey];
+
+        // Handle different value types
+        if (typeof aFieldVal === 'number' && typeof bFieldVal === 'number') {
+          aVal = aFieldVal;
+          bVal = bFieldVal;
+        } else if (aFieldVal instanceof Date || bFieldVal instanceof Date) {
+          aVal = aFieldVal ? new Date(aFieldVal as string).getTime() : 0;
+          bVal = bFieldVal ? new Date(bFieldVal as string).getTime() : 0;
+        } else {
+          aVal = String(aFieldVal || '').toLowerCase();
+          bVal = String(bFieldVal || '').toLowerCase();
+        }
+      } else {
+        // Built-in columns
+        switch (column) {
+          case 'subject':
+            aVal = a.title.toLowerCase();
+            bVal = b.title.toLowerCase();
+            break;
+          case 'status':
+            aVal = a.status || '';
+            bVal = b.status || '';
+            break;
+          case 'priority':
+            const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+            aVal = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 99;
+            bVal = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 99;
+            break;
+          case 'customer':
+            aVal = (a.customer?.name || a.customer?.email || '').toLowerCase();
+            bVal = (b.customer?.name || b.customer?.email || '').toLowerCase();
+            break;
+          case 'assignee':
+            aVal = a.assigneeId || '';
+            bVal = b.assigneeId || '';
+            break;
+          case 'category':
+            aVal = a.category?.name?.toLowerCase() || '';
+            bVal = b.category?.name?.toLowerCase() || '';
+            break;
+          case 'created':
+            aVal = new Date(a.createdAt).getTime();
+            bVal = new Date(b.createdAt).getTime();
+            break;
+          case 'updated':
+            aVal = new Date(a.updatedAt).getTime();
+            bVal = new Date(b.updatedAt).getTime();
+            break;
+        }
       }
 
       if (aVal === null || bVal === null) return 0;
@@ -339,7 +521,7 @@ export function TicketTable({
   };
 
   // Render sort icon
-  const SortIcon = ({ column }: { column: ColumnKey }) => {
+  const SortIcon = ({ column }: { column: string }) => {
     if (sortState.column !== column) {
       return <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />;
     }
@@ -347,6 +529,78 @@ export function TicketTable({
       return <ArrowUp className="ml-1 h-3 w-3" />;
     }
     return <ArrowDown className="ml-1 h-3 w-3" />;
+  };
+
+  // Render cell value for a column
+  const renderCellValue = (ticket: Ticket, columnKey: string) => {
+    // Handle custom fields
+    if (columnKey.startsWith('cf_')) {
+      const fieldKey = columnKey.slice(3);
+      const customFields = ticket.customFields as Record<string, unknown> || {};
+      const value = customFields[fieldKey];
+
+      if (value === undefined || value === null) {
+        return <span className="text-muted-foreground">-</span>;
+      }
+
+      // Handle different value types
+      if (typeof value === 'boolean') {
+        return value ? 'Yes' : 'No';
+      }
+      if (Array.isArray(value)) {
+        return value.length > 0 ? value.join(', ') : <span className="text-muted-foreground">-</span>;
+      }
+      if (typeof value === 'object') {
+        return <span className="text-xs font-mono">{JSON.stringify(value)}</span>;
+      }
+      // Check if it's a date string
+      if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+        return new Date(value).toLocaleDateString();
+      }
+      return String(value);
+    }
+
+    // Built-in columns
+    const customerEmail = ticket.customer?.email || (ticket.customFields?.requesterEmail as string | undefined);
+    const customerName = ticket.customer?.name || (ticket.customFields?.requesterName as string | undefined);
+
+    switch (columnKey) {
+      case 'subject':
+        return (
+          <Link
+            href={`/brands/${brandId}/tickets/${ticket.id}`}
+            className="block font-medium hover:underline"
+          >
+            {ticket.title}
+          </Link>
+        );
+      case 'status':
+        return ticket.status ? <StatusBadge status={ticket.status} /> : <span className="text-muted-foreground">-</span>;
+      case 'priority':
+        return ticket.priority ? <PriorityBadge priority={ticket.priority} /> : <span className="text-muted-foreground">-</span>;
+      case 'customer':
+        return <span className="text-muted-foreground">{customerName || customerEmail || '-'}</span>;
+      case 'assignee':
+        return <span className="text-muted-foreground">{getAssigneeName(ticket.assigneeId)}</span>;
+      case 'category':
+        return ticket.category ? (
+          <span className="flex items-center gap-1.5 text-sm">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: ticket.category.color || '#6366f1' }}
+            />
+            {ticket.category.name}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        );
+      case 'created':
+        return <span className="text-muted-foreground">{new Date(ticket.createdAt).toLocaleDateString()}</span>;
+      case 'updated':
+        return <span className="text-muted-foreground">{new Date(ticket.updatedAt).toLocaleDateString()}</span>;
+      default:
+        return <span className="text-muted-foreground">-</span>;
+    }
   };
 
   if (isLoading) {
@@ -557,7 +811,7 @@ export function TicketTable({
                   aria-label="Select all"
                 />
               </TableHead>
-              {COLUMNS.filter(col => visibleColumns.has(col.key)).map(col => (
+              {visibleColumns.map(col => (
                 <TableHead key={col.key}>
                   {col.sortable ? (
                     <button
@@ -573,24 +827,36 @@ export function TicketTable({
                 </TableHead>
               ))}
               <TableHead className="w-10">
-                <DropdownMenu>
+                <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                       <Settings2 className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Columns</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {COLUMNS.map(col => (
-                      <DropdownMenuCheckboxItem
-                        key={col.key}
-                        checked={visibleColumns.has(col.key)}
-                        onCheckedChange={() => toggleColumn(col.key)}
+                    <div className="max-h-64 overflow-y-auto py-1">
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
                       >
-                        {col.label}
-                      </DropdownMenuCheckboxItem>
-                    ))}
+                        <SortableContext
+                          items={orderedColumns.map(c => c.key)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {orderedColumns.map(col => (
+                            <SortableColumnItem
+                              key={col.key}
+                              column={col}
+                              isVisible={columnSettings.visible.includes(col.key)}
+                              onToggle={() => toggleColumn(col.key)}
+                            />
+                          ))}
+                        </SortableContext>
+                      </DndContext>
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableHead>
@@ -598,8 +864,6 @@ export function TicketTable({
           </TableHeader>
           <TableBody>
             {sortedTickets.map((ticket) => {
-              const customerEmail = ticket.customer?.email || (ticket.customFields?.requesterEmail as string | undefined);
-              const customerName = ticket.customer?.name || (ticket.customFields?.requesterName as string | undefined);
               const isSelected = selectedIds.has(ticket.id);
               return (
                 <TableRow
@@ -613,61 +877,11 @@ export function TicketTable({
                       aria-label={`Select ticket ${ticket.title}`}
                     />
                   </TableCell>
-                  {visibleColumns.has('subject') && (
-                    <TableCell>
-                      <Link
-                        href={`/brands/${brandId}/tickets/${ticket.id}`}
-                        className="block font-medium hover:underline"
-                      >
-                        {ticket.title}
-                      </Link>
+                  {visibleColumns.map(col => (
+                    <TableCell key={col.key}>
+                      {renderCellValue(ticket, col.key)}
                     </TableCell>
-                  )}
-                  {visibleColumns.has('status') && (
-                    <TableCell>
-                      {ticket.status ? <StatusBadge status={ticket.status} /> : <span className="text-muted-foreground">-</span>}
-                    </TableCell>
-                  )}
-                  {visibleColumns.has('priority') && (
-                    <TableCell>
-                      {ticket.priority ? <PriorityBadge priority={ticket.priority} /> : <span className="text-muted-foreground">-</span>}
-                    </TableCell>
-                  )}
-                  {visibleColumns.has('customer') && (
-                    <TableCell className="text-muted-foreground">
-                      {customerName || customerEmail || '-'}
-                    </TableCell>
-                  )}
-                  {visibleColumns.has('assignee') && (
-                    <TableCell className="text-muted-foreground">
-                      {getAssigneeName(ticket.assigneeId)}
-                    </TableCell>
-                  )}
-                  {visibleColumns.has('category') && (
-                    <TableCell>
-                      {ticket.category ? (
-                        <span className="flex items-center gap-1.5 text-sm">
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: ticket.category.color || '#6366f1' }}
-                          />
-                          {ticket.category.name}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                  )}
-                  {visibleColumns.has('created') && (
-                    <TableCell className="text-muted-foreground">
-                      {new Date(ticket.createdAt).toLocaleDateString()}
-                    </TableCell>
-                  )}
-                  {visibleColumns.has('updated') && (
-                    <TableCell className="text-muted-foreground">
-                      {new Date(ticket.updatedAt).toLocaleDateString()}
-                    </TableCell>
-                  )}
+                  ))}
                   <TableCell>
                     {renderActions?.(ticket)}
                   </TableCell>

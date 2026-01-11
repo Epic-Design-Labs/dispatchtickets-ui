@@ -8,6 +8,7 @@ import {
   useUpdateCustomer,
   useDeleteCustomer,
   useTickets,
+  useFieldsByEntity,
 } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { TicketTable } from '@/components/tickets';
@@ -49,6 +50,7 @@ export default function CustomerDetailPage() {
   });
   const updateCustomer = useUpdateCustomer(brandId, customerId);
   const deleteCustomer = useDeleteCustomer(brandId);
+  const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
 
   // Filter tickets for this customer
   const customerTickets = ticketsData?.data?.filter(
@@ -270,6 +272,7 @@ export default function CustomerDetailPage() {
                   tickets={customerTickets}
                   brandId={brandId}
                   isLoading={ticketsLoading}
+                  customFields={ticketFields}
                 />
               )}
             </CardContent>

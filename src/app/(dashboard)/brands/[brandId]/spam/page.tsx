@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useBrand, useTickets, useMarkAsSpam } from '@/lib/hooks';
+import { useBrand, useTickets, useMarkAsSpam, useFieldsByEntity } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { TicketTable } from '@/components/tickets';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ export default function SpamPage() {
   const { data: brand } = useBrand(brandId);
   const { data: ticketsData, isLoading } = useTickets(brandId, { isSpam: true });
   const markAsSpam = useMarkAsSpam(brandId);
+  const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
 
   const spamTickets = ticketsData?.data || [];
 
@@ -57,6 +58,7 @@ export default function SpamPage() {
               tickets={spamTickets}
               brandId={brandId}
               isLoading={isLoading}
+              customFields={ticketFields}
               renderActions={(ticket) => (
                 <Button
                   variant="outline"
