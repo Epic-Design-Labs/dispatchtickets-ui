@@ -128,7 +128,12 @@ export function TicketHistory({ brandId, ticketId }: TicketHistoryProps) {
     );
   }
 
-  if (!logs || logs.length === 0) {
+  // Filter out comment events - those are shown in Activity
+  const filteredLogs = logs?.filter(log =>
+    !log.event.startsWith('comment.')
+  ) || [];
+
+  if (filteredLogs.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         No activity recorded yet
@@ -138,8 +143,8 @@ export function TicketHistory({ brandId, ticketId }: TicketHistoryProps) {
 
   return (
     <div className="space-y-0">
-      {logs.map((log, index) => {
-        const isLast = index === logs.length - 1;
+      {filteredLogs.map((log, index) => {
+        const isLast = index === filteredLogs.length - 1;
         const changes = formatChanges(log.changes);
         const performedBy = log.performedBy as AuditLog['performedBy'];
 

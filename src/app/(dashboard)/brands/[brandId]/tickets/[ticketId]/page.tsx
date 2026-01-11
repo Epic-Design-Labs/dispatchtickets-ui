@@ -525,31 +525,31 @@ export default function TicketDetailPage() {
               <CardHeader>
                 <CardTitle>Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-2">
                 {/* Category */}
                 {categories && categories.length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
                       <FolderOpen className="h-3 w-3" />
                       Category
-                    </p>
+                    </span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="mt-1 h-auto p-0">
+                        <Button variant="ghost" size="sm" className="h-auto py-0.5 px-1.5">
                           {ticket.category ? (
                             <span className="flex items-center gap-1.5 text-sm">
                               <span
-                                className="h-2.5 w-2.5 rounded-full"
+                                className="h-2 w-2 rounded-full"
                                 style={{ backgroundColor: ticket.category.color || '#6366f1' }}
                               />
                               {ticket.category.name}
                             </span>
                           ) : (
-                            <span className="text-sm text-muted-foreground">No category</span>
+                            <span className="text-sm text-muted-foreground">None</span>
                           )}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
+                      <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Set category</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuRadioGroup
@@ -578,17 +578,17 @@ export default function TicketDetailPage() {
 
                 {/* Tags */}
                 {tags && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1 pt-0.5">
                       <Tag className="h-3 w-3" />
                       Tags
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-1.5">
+                    </span>
+                    <div className="flex flex-wrap gap-1 justify-end">
                       {ticket.tags && ticket.tags.length > 0 ? (
                         ticket.tags.map((tag) => (
                           <span
                             key={tag.id}
-                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                            className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium"
                             style={{
                               backgroundColor: tag.color ? `${tag.color}20` : '#6366f120',
                               color: tag.color || '#6366f1',
@@ -597,69 +597,62 @@ export default function TicketDetailPage() {
                             {tag.name}
                             <button
                               onClick={() => handleRemoveTag(tag.name)}
-                              className="hover:opacity-70 ml-0.5"
+                              className="hover:opacity-70"
                             >
-                              <X className="h-3 w-3" />
+                              <X className="h-2.5 w-2.5" />
                             </button>
                           </span>
                         ))
-                      ) : (
-                        <span className="text-sm text-muted-foreground">No tags</span>
-                      )}
+                      ) : null}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Add tag</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {tags.filter(t => !ticket.tags?.some(tt => tt.id === t.id)).length === 0 ? (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                              All tags applied
+                            </div>
+                          ) : (
+                            tags
+                              .filter(t => !ticket.tags?.some(tt => tt.id === t.id))
+                              .map((tag) => (
+                                <Button
+                                  key={tag.id}
+                                  variant="ghost"
+                                  className="w-full justify-start h-8 px-2"
+                                  onClick={() => handleAddTag(tag.name)}
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-full"
+                                      style={{ backgroundColor: tag.color || '#6366f1' }}
+                                    />
+                                    {tag.name}
+                                  </span>
+                                </Button>
+                              ))
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="mt-1.5 h-7 px-2 text-xs">
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add tag
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <DropdownMenuLabel>Add tag</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {tags.filter(t => !ticket.tags?.some(tt => tt.id === t.id)).length === 0 ? (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                            All tags applied
-                          </div>
-                        ) : (
-                          tags
-                            .filter(t => !ticket.tags?.some(tt => tt.id === t.id))
-                            .map((tag) => (
-                              <Button
-                                key={tag.id}
-                                variant="ghost"
-                                className="w-full justify-start h-8 px-2"
-                                onClick={() => handleAddTag(tag.name)}
-                              >
-                                <span className="flex items-center gap-1.5">
-                                  <span
-                                    className="h-2.5 w-2.5 rounded-full"
-                                    style={{ backgroundColor: tag.color || '#6366f1' }}
-                                  />
-                                  {tag.name}
-                                </span>
-                              </Button>
-                            ))
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
                 )}
 
                 <Separator />
 
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Created</p>
-                  <p className="mt-1">
-                    {new Date(ticket.createdAt).toLocaleString()}
-                  </p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Created</span>
+                  <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
                 </div>
 
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Updated</p>
-                  <p className="mt-1">
-                    {new Date(ticket.updatedAt).toLocaleString()}
-                  </p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Updated</span>
+                  <span>{new Date(ticket.updatedAt).toLocaleDateString()}</span>
                 </div>
               </CardContent>
             </Card>
