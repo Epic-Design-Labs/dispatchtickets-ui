@@ -27,7 +27,7 @@ export const brandsApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/brands/${id}`);
+    await apiClient.delete(`/brands/${id}?confirm=true`);
   },
 };
 
