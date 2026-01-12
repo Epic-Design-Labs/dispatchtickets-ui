@@ -15,6 +15,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api
 
 interface Session {
   customerId: string;
+  memberId?: string; // Stackbe member ID (for ticket assignment matching)
   email: string;
   organizationId: string;
   orgRole?: string;
@@ -158,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.valid) {
           const newSession: Session = {
             customerId: data.customerId,
+            memberId: data.memberId,
             email: data.email,
             organizationId: data.organizationId,
             orgRole: data.orgRole,
@@ -256,6 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSessionToken(data.sessionToken);
         const newSession: Session = {
           customerId: data.customerId,
+          memberId: data.memberId,
           email: data.email,
           organizationId: data.organizationId,
           connected: data.connected,

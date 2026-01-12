@@ -171,7 +171,7 @@ export default function DashboardPage() {
         // Show tickets assigned to current user (non-closed)
         return {
           ...baseFilters,
-          assigneeId: session?.customerId,
+          assigneeId: session?.memberId,
           status: status || undefined, // Show all non-closed statuses
         };
       case 'unassigned':
@@ -189,7 +189,7 @@ export default function DashboardPage() {
           status: status || 'active',
         };
     }
-  }, [status, priority, search, selectedBrands, view, session?.customerId]);
+  }, [status, priority, search, selectedBrands, view, session?.memberId]);
 
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
   const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBrands);

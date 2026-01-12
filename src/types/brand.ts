@@ -1,3 +1,5 @@
+import { CsatType } from './feedback';
+
 export interface Brand {
   id: string;
   accountId: string;
@@ -20,6 +22,12 @@ export interface Brand {
   // Outbound email settings
   fromName?: string;
   fromEmail?: string;
+  // CSAT settings
+  csatEnabled?: boolean;
+  csatType?: CsatType;
+  csatDelayMinutes?: number;
+  csatEmailSubject?: string | null;
+  csatEmailBody?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,5 +55,11 @@ export interface UpdateBrandInput {
   // Outbound email settings
   fromName?: string;
   fromEmail?: string;
+  // CSAT settings
+  csatEnabled?: boolean;
+  csatType?: CsatType;
+  csatDelayMinutes?: number;
+  csatEmailSubject?: string | null;
+  csatEmailBody?: string | null;
 }
 

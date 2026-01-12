@@ -5,6 +5,7 @@ import {
   DashboardStats,
   TicketTrends,
   PaginatedResponse,
+  TeamMetricsResponse,
 } from '@/types';
 
 export const dashboardApi = {
@@ -60,6 +61,30 @@ export const dashboardApi = {
       params.append('days', String(options.days));
     }
     const response = await apiClient.get<TicketTrends>('/tickets/trends', {
+      params,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get team performance metrics (resolved tickets and CSAT scores)
+   */
+  getTeamMetrics: async (options?: {
+    brandIds?: string[];
+    startDate?: string;
+    endDate?: string;
+  }): Promise<TeamMetricsResponse> => {
+    const params = new URLSearchParams();
+    if (options?.brandIds?.length) {
+      params.append('brandIds', options.brandIds.join(','));
+    }
+    if (options?.startDate) {
+      params.append('startDate', options.startDate);
+    }
+    if (options?.endDate) {
+      params.append('endDate', options.endDate);
+    }
+    const response = await apiClient.get<TeamMetricsResponse>('/tickets/team-metrics', {
       params,
     });
     return response.data;

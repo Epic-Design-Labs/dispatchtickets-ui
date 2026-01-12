@@ -11,3 +11,4 @@ export * from './category';
 export * from './tag';
 export * from './audit-log';
 export * from './field';
+export * from './feedback';

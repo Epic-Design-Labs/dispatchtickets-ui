@@ -6,17 +6,35 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { TeamMemberTable, InviteMemberDialog } from '@/components/team';
-import { useTeamMembers, useOrganization, useUpdateOrganization } from '@/lib/hooks';
+import { useTeamMembers, useOrganization, useUpdateOrganization, useTeamMetrics } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { OrgRole } from '@/types';
 import { toast } from 'sonner';
+import { ThumbsUp, TrendingUp, BarChart3 } from 'lucide-react';
+
+function getCsatColor(score: number | null): string {
+  if (score === null) return 'text-muted-foreground';
+  if (score >= 80) return 'text-green-600';
+  if (score >= 60) return 'text-yellow-600';
+  return 'text-red-600';
+}
 
 export default function TeamPage() {
   const { session } = useAuth();
   const { data, isLoading } = useTeamMembers();
   const { data: org, isLoading: orgLoading } = useOrganization();
   const updateOrg = useUpdateOrganization();
+  const { data: teamMetrics, isLoading: metricsLoading } = useTeamMetrics();
 
   const [orgName, setOrgName] = useState('');
 
@@ -92,6 +110,89 @@ export default function TeamPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Only organization owners can change the organization name
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Team Performance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Team Performance
+            </CardTitle>
+            <CardDescription>
+              Resolution and customer satisfaction metrics for your team
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {metricsLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : teamMetrics?.members && teamMetrics.members.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Team Member</TableHead>
+                    <TableHead className="text-right">Tickets Resolved</TableHead>
+                    <TableHead className="text-right">CSAT Score</TableHead>
+                    <TableHead className="text-right">Ratings</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {teamMetrics.members.map((member) => (
+                    <TableRow key={member.memberId}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {member.memberName || 'Unknown'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {member.memberEmail}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{member.ticketsResolved}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {member.csatScore !== null ? (
+                          <span className={`font-medium ${getCsatColor(member.csatScore)}`}>
+                            {member.csatScore.toFixed(0)}%
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {member.csatCount > 0 ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <ThumbsUp className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">
+                              {member.csatPositive}/{member.csatCount}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">No ratings</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No performance data yet</p>
+                <p className="text-sm mt-1">
+                  Metrics will appear after team members resolve tickets
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
