@@ -16,9 +16,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
-import { useProfile, useBrands, useDashboardStats, useSetupStatus } from '@/lib/hooks';
+import { useProfile, useBrands, useDashboardStats, useDashboardTickets, useSetupStatus } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
-import { Inbox, User, AlertCircle, Key, Rocket, Check } from 'lucide-react';
+import { Inbox, User, AlertCircle, Key, Rocket, Check, BarChart3 } from 'lucide-react';
 
 interface SidebarProps {
   brandId?: string;
@@ -38,6 +38,12 @@ export function Sidebar({ brandId }: SidebarProps) {
 
   // Only fetch stats when on dashboard (for queue counts)
   const { data: stats } = useDashboardStats(isDashboard ? [] : undefined);
+
+  // Fetch my tickets count using memberId
+  const { data: myTicketsData } = useDashboardTickets(
+    session?.memberId ? { assigneeId: session.memberId, status: 'active', limit: 100 } : undefined
+  );
+  const myTicketsCount = myTicketsData?.data?.length ?? 0;
 
   // Setup status for brand-specific Getting Started badge
   const setupStatus = useSetupStatus(brandId || '');
@@ -164,6 +170,9 @@ export function Sidebar({ brandId }: SidebarProps) {
             >
               <User className="h-4 w-4" />
               My Tickets
+              {myTicketsCount > 0 && (
+                <span className="ml-auto text-xs opacity-70">{myTicketsCount}</span>
+              )}
             </Link>
             <Link
               href="/dashboard?view=unassigned"
@@ -176,6 +185,18 @@ export function Sidebar({ brandId }: SidebarProps) {
             >
               <AlertCircle className="h-4 w-4" />
               Unassigned
+            </Link>
+            <Link
+              href="/stats"
+              className={cn(
+                'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
+                pathname === '/stats'
+                  ? 'bg-secondary text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <BarChart3 className="h-4 w-4" />
+              Statistics
             </Link>
           </nav>
         </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateTicket, useCreateTicketDynamic, useBrands, useFieldsByEntity } from '@/lib/hooks';
+import { useCreateTicket, useCreateTicketDynamic, useBrands, useFieldsByEntity, useTeamMembers } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -27,13 +27,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -48,10 +41,18 @@ const createTicketSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   body: z.string().optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']),
+  assigneeId: z.string().optional(),
   requesterEmail: z.string().email().optional().or(z.literal('')),
   requesterName: z.string().optional(),
   notifyCustomer: z.boolean(),
 });
+
+const priorityColors: Record<string, string> = {
+  low: 'text-gray-600',
+  normal: 'text-blue-600',
+  high: 'text-orange-600',
+  urgent: 'text-red-600',
+};
 
 type CreateTicketForm = z.infer<typeof createTicketSchema>;
 
@@ -65,6 +66,8 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
   const { data: brands } = useBrands();
+  const { data: teamData } = useTeamMembers();
+  const teamMembers = teamData?.members?.filter(m => m.status === 'active') || [];
 
   // Use fixed brand mutation if brandId is provided, otherwise use dynamic
   const createTicketFixed = useCreateTicket(fixedBrandId || '');
@@ -79,6 +82,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
       title: '',
       body: '',
       priority: 'normal',
+      assigneeId: '',
       requesterEmail: '',
       requesterName: '',
       notifyCustomer: false,
@@ -121,6 +125,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
         title: data.title,
         body: data.body,
         priority: data.priority,
+        assigneeId: data.assigneeId || undefined,
         source: 'web' as const,
         customFields: {
           ...(data.requesterName && { requesterName: data.requesterName }),
@@ -222,47 +227,71 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="priority"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Priority</FormLabel>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between">
-                        {field.value.charAt(0).toUpperCase() + field.value.slice(1)}
-                        <svg
-                          className="ml-2 h-4 w-4 opacity-50"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 9l4-4 4 4m0 6l-4 4-4-4"
-                          />
-                        </svg>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-full">
-                      <DropdownMenuRadioGroup
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <DropdownMenuRadioItem value="low">Low</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="normal">Normal</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue>
+                            <span className={priorityColors[field.value]}>
+                              {field.value.charAt(0).toUpperCase() + field.value.slice(1)}
+                            </span>
+                          </SelectValue>
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="low">
+                          <span className="text-gray-600">Low</span>
+                        </SelectItem>
+                        <SelectItem value="normal">
+                          <span className="text-blue-600">Normal</span>
+                        </SelectItem>
+                        <SelectItem value="high">
+                          <span className="text-orange-600">High</span>
+                        </SelectItem>
+                        <SelectItem value="urgent">
+                          <span className="text-red-600">Urgent</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="assigneeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assignee</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Unassigned" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">Unassigned</SelectItem>
+                        {teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.firstName || member.lastName
+                              ? `${member.firstName || ''} ${member.lastName || ''}`.trim()
+                              : member.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

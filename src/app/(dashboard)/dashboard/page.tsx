@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useDashboardTickets, useDashboardStats, useDashboardTrends, useBrands } from '@/lib/hooks';
+import { useDashboardTickets, useDashboardStats, useBrands } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { DashboardTicketFilters, TicketFilters as TicketFiltersType } from '@/types';
 import { cn } from '@/lib/utils';
@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { TicketFilters } from '@/components/tickets/ticket-filters';
 import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog';
 import {
@@ -27,17 +27,7 @@ import {
   XCircle,
   MessageSquare,
   Timer,
-  TrendingUp,
 } from 'lucide-react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 
 type ViewType = 'all' | 'mine' | 'unassigned';
 
@@ -58,11 +48,6 @@ function formatDuration(minutes: number | null | undefined): string {
   if (minutes < 60) return `${minutes}m`;
   if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
   return `${Math.round(minutes / 1440)}d`;
-}
-
-function formatChartDate(date: string): string {
-  const d = new Date(date);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function getStatusColor(status: string | null) {
@@ -193,10 +178,6 @@ export default function DashboardPage() {
 
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
   const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBrands);
-  const { data: trends, isLoading: trendsLoading } = useDashboardTrends({
-    brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
-    days: 30,
-  });
 
   // Sort tickets: open first (by newest), then pending (by newest)
   const tickets = useMemo(() => {
@@ -216,184 +197,51 @@ export default function DashboardPage() {
 
   return (
     <div className="h-full overflow-auto p-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-6 gap-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open</CardTitle>
+      {/* Stats Cards - Compact */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <Card className="px-4 py-2">
+          <div className="flex items-center gap-2">
             <Ticket className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '...' : stats?.open || 0}
-            </div>
-          </CardContent>
+            <span className="text-lg font-bold">{statsLoading ? '...' : stats?.open || 0}</span>
+            <span className="text-sm text-muted-foreground">Open</span>
+          </div>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+        <Card className="px-4 py-2">
+          <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '...' : stats?.pending || 0}
-            </div>
-          </CardContent>
+            <span className="text-lg font-bold">{statsLoading ? '...' : stats?.pending || 0}</span>
+            <span className="text-sm text-muted-foreground">Pending</span>
+          </div>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resolved</CardTitle>
+        <Card className="px-4 py-2">
+          <div className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '...' : stats?.resolved || 0}
-            </div>
-          </CardContent>
+            <span className="text-lg font-bold">{statsLoading ? '...' : stats?.resolved || 0}</span>
+            <span className="text-sm text-muted-foreground">Resolved</span>
+          </div>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Closed</CardTitle>
+        <Card className="px-4 py-2">
+          <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '...' : stats?.closed || 0}
-            </div>
-          </CardContent>
+            <span className="text-lg font-bold">{statsLoading ? '...' : stats?.closed || 0}</span>
+            <span className="text-sm text-muted-foreground">Closed</span>
+          </div>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Response</CardTitle>
+        <Card className="px-4 py-2">
+          <div className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgFirstResponseMinutes)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.responseMetrics?.ticketsWithResponse || 0} tickets
-            </p>
-          </CardContent>
+            <span className="text-lg font-bold">{statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgFirstResponseMinutes)}</span>
+            <span className="text-sm text-muted-foreground">Avg Response</span>
+          </div>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Resolution</CardTitle>
+        <Card className="px-4 py-2">
+          <div className="flex items-center gap-2">
             <Timer className="h-4 w-4 text-indigo-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgResolutionMinutes)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.responseMetrics?.ticketsResolved || 0} resolved
-            </p>
-          </CardContent>
+            <span className="text-lg font-bold">{statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgResolutionMinutes)}</span>
+            <span className="text-sm text-muted-foreground">Avg Resolution</span>
+          </div>
         </Card>
       </div>
-
-      {/* Trends Chart */}
-      <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Ticket Volume (30 days)</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {trendsLoading ? (
-            <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-              Loading trends...
-            </div>
-          ) : trends?.data && trends.data.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart
-                data={trends.data}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorCreated" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorResolved" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatChartDate}
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  className="text-muted-foreground"
-                />
-                <YAxis
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  className="text-muted-foreground"
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length && label) {
-                      return (
-                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                          <div className="text-xs text-muted-foreground mb-1">
-                            {formatChartDate(String(label))}
-                          </div>
-                          <div className="grid gap-1">
-                            <div className="flex items-center gap-2 text-sm">
-                              <div className="h-2 w-2 rounded-full bg-blue-500" />
-                              <span>Created: {payload[0]?.value}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                              <div className="h-2 w-2 rounded-full bg-green-500" />
-                              <span>Resolved: {payload[1]?.value}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="created"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorCreated)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="resolved"
-                  stroke="#22c55e"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorResolved)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-              No trend data available
-            </div>
-          )}
-          <div className="flex items-center justify-center gap-6 mt-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-blue-500" />
-              <span>Created</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-green-500" />
-              <span>Resolved</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Tickets Section Header */}
       <div className="mb-4 flex items-center justify-between">
