@@ -74,7 +74,7 @@ export default function BrandDashboardPage() {
   const handleBulkAction = async (
     action: BulkActionType,
     ticketIds: string[],
-    options?: { assigneeId?: string | null; categoryId?: string | null; tags?: string[] }
+    options?: { assigneeId?: string | null; categoryId?: string | null; tags?: string[]; closeReason?: string }
   ) => {
     try {
       const result = await bulkAction.mutateAsync({ action, ticketIds, ...options });

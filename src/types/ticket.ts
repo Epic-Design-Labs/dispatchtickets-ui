@@ -1,6 +1,14 @@
 export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed' | 'spam' | null;
 export type TicketPriority = 'low' | 'normal' | 'medium' | 'high' | 'urgent' | null;
 export type TicketSource = 'api' | 'email' | 'slack' | 'sms' | 'web' | 'other';
+export type CloseReason = 'no_response' | 'out_of_scope' | 'customer_left' | 'duplicate';
+
+export const CLOSE_REASONS: { value: CloseReason; label: string }[] = [
+  { value: 'no_response', label: 'No Response' },
+  { value: 'out_of_scope', label: 'Out of Scope' },
+  { value: 'customer_left', label: 'Customer Left' },
+  { value: 'duplicate', label: 'Duplicate' },
+];
 
 import { Customer } from './customer';
 import { Category } from './category';
@@ -13,6 +21,7 @@ export interface Ticket {
   title: string;
   body?: string;
   status: TicketStatus;
+  closeReason?: CloseReason | null;  // Reason for closing (only when status=closed)
   priority: TicketPriority;
   source: TicketSource;
   sourceId?: string;
@@ -50,6 +59,7 @@ export interface UpdateTicketInput {
   title?: string;
   body?: string;
   status?: TicketStatus;
+  closeReason?: CloseReason;
   priority?: TicketPriority;
   assigneeId?: string | null;
   categoryId?: string | null;

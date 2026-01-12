@@ -93,6 +93,7 @@ export const ticketsApi = {
       assigneeId?: string | null;
       categoryId?: string | null;
       tags?: string[];
+      closeReason?: string;
     }
   ): Promise<{ success: number; failed: number }> => {
     const response = await apiClient.post<{ success: number; failed: number }>(

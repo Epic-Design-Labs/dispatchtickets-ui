@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity } from '@/lib/hooks';
 import { Header } from '@/components/layout';
-import { StatusBadge, PriorityBadge, TicketHistory } from '@/components/tickets';
+import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { TicketStatus, TicketPriority } from '@/types';
+import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS } from '@/types';
 import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers } from 'lucide-react';
 import { CustomFieldInput } from '@/components/fields';
 
@@ -47,6 +47,7 @@ export default function TicketDetailPage() {
   const ticketId = params.ticketId as string;
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([]);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
@@ -104,15 +105,31 @@ export default function TicketDetailPage() {
   };
 
   const handleStatusChange = async (status: string) => {
+    // If closing, open the dialog to select a reason
+    if (status === 'closed') {
+      setShowCloseDialog(true);
+      return;
+    }
     try {
       await updateTicket.mutateAsync({ status: status as TicketStatus });
       toast.success('Status updated');
-      // Auto-advance to next ticket when resolved/closed
-      if (status === 'resolved' || status === 'closed') {
+      // Auto-advance to next ticket when resolved
+      if (status === 'resolved') {
         navigateAfterAction();
       }
     } catch {
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleCloseWithReason = async (reason: CloseReason) => {
+    try {
+      await updateTicket.mutateAsync({ status: 'closed', closeReason: reason });
+      toast.success('Ticket closed');
+      setShowCloseDialog(false);
+      navigateAfterAction();
+    } catch {
+      toast.error('Failed to close ticket');
     }
   };
 
@@ -515,6 +532,7 @@ export default function TicketDetailPage() {
                   <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="resolved">Resolved</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="closed">Closed</DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -740,6 +758,16 @@ export default function TicketDetailPage() {
                   <span className="text-muted-foreground">Updated</span>
                   <span>{new Date(ticket.updatedAt).toLocaleDateString()}</span>
                 </div>
+
+                {ticket.status === 'closed' && ticket.closeReason && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Close reason</span>
+                      <span>{CLOSE_REASONS.find(r => r.value === ticket.closeReason)?.label || ticket.closeReason}</span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -905,6 +933,14 @@ export default function TicketDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CloseTicketDialog
+        open={showCloseDialog}
+        onOpenChange={setShowCloseDialog}
+        ticketCount={1}
+        onConfirm={handleCloseWithReason}
+        isProcessing={updateTicket.isPending}
+      />
     </div>
   );
 }

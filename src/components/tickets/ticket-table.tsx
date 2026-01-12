@@ -57,7 +57,8 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { StatusBadge } from './status-badge';
 import { PriorityBadge } from './priority-badge';
-import { Ticket, TeamMember, FieldDefinition } from '@/types';
+import { CloseTicketDialog } from './close-ticket-dialog';
+import { Ticket, TeamMember, FieldDefinition, CloseReason } from '@/types';
 import { Category } from '@/lib/api/categories';
 import { Tag } from '@/lib/api/tags';
 import { BulkActionType } from '@/lib/hooks/use-tickets';
@@ -157,6 +158,7 @@ interface BulkActionOptions {
   assigneeId?: string | null;
   categoryId?: string | null;
   tags?: string[];
+  closeReason?: string;
 }
 
 interface TicketTableProps {
@@ -187,6 +189,7 @@ export function TicketTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [mergeTargetId, setMergeTargetId] = useState<string>('');
   const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
 
@@ -538,6 +541,11 @@ export function TicketTable({
     setSelectedTagNames([]);
   }, [handleBulkAction, selectedTagNames]);
 
+  const handleClose = useCallback(async (closeReason: CloseReason) => {
+    await handleBulkAction('close', { closeReason });
+    setShowCloseDialog(false);
+  }, [handleBulkAction]);
+
   const toggleTagSelection = useCallback((tagName: string) => {
     setSelectedTagNames(prev =>
       prev.includes(tagName)
@@ -744,7 +752,7 @@ export function TicketTable({
             <CheckCircle className="mr-1 h-4 w-4" />
             Resolve
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handleBulkAction('close')} disabled={isProcessing}>
+          <Button variant="outline" size="sm" onClick={() => setShowCloseDialog(true)} disabled={isProcessing}>
             <Clock className="mr-1 h-4 w-4" />
             Close
           </Button>
@@ -1080,6 +1088,15 @@ export function TicketTable({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Close Ticket Dialog */}
+      <CloseTicketDialog
+        open={showCloseDialog}
+        onOpenChange={setShowCloseDialog}
+        ticketCount={selectedIds.size}
+        onConfirm={handleClose}
+        isProcessing={isProcessing}
+      />
     </div>
   );
 }

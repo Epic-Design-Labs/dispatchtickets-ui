@@ -150,14 +150,15 @@ export interface BulkActionParams {
   assigneeId?: string | null;
   categoryId?: string | null;
   tags?: string[];
+  closeReason?: string;
 }
 
 export function useBulkAction(brandId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ action, ticketIds, assigneeId, categoryId, tags }: BulkActionParams) =>
-      ticketsApi.bulkAction(brandId, action, ticketIds, { assigneeId, categoryId, tags }),
+    mutationFn: ({ action, ticketIds, assigneeId, categoryId, tags, closeReason }: BulkActionParams) =>
+      ticketsApi.bulkAction(brandId, action, ticketIds, { assigneeId, categoryId, tags, closeReason }),
     onSuccess: () => {
       // Invalidate all ticket queries since multiple tickets are affected
       queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
