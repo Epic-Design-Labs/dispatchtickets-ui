@@ -55,6 +55,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { StatusBadge } from './status-badge';
 import { PriorityBadge } from './priority-badge';
 import { CloseTicketDialog } from './close-ticket-dialog';
@@ -580,13 +582,25 @@ export function TicketTable({
 
   const selectedTickets = tickets.filter(t => selectedIds.has(t.id));
 
-  // Helper to get assignee name
-  const getAssigneeName = (assigneeId: string | null | undefined) => {
-    if (!assigneeId) return '-';
+  // Helper to get assignee info
+  const getAssigneeInfo = (assigneeId: string | null | undefined) => {
+    if (!assigneeId) return null;
     const member = teamMembers.find(m => m.id === assigneeId);
-    if (!member) return '-';
+    if (!member) return null;
     const name = [member.firstName, member.lastName].filter(Boolean).join(' ');
-    return name || member.email;
+    return {
+      name: name || member.email,
+      email: member.email,
+      initials: name
+        ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+        : member.email.slice(0, 2).toUpperCase(),
+    };
+  };
+
+  // Legacy helper for backward compatibility
+  const getAssigneeName = (assigneeId: string | null | undefined) => {
+    const info = getAssigneeInfo(assigneeId);
+    return info ? info.name : '-';
   };
 
   // Render sort icon
@@ -660,8 +674,31 @@ export function TicketTable({
         ) : (
           <span className="text-muted-foreground">-</span>
         );
-      case 'assignee':
-        return <span className="text-muted-foreground">{getAssigneeName(ticket.assigneeId)}</span>;
+      case 'assignee': {
+        const assignee = getAssigneeInfo(ticket.assigneeId);
+        if (!assignee) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Avatar className="h-7 w-7 cursor-default">
+                  <AvatarFallback className="text-xs">{assignee.initials}</AvatarFallback>
+                </Avatar>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-sm">
+                  <p className="font-medium">{assignee.name}</p>
+                  {assignee.name !== assignee.email && (
+                    <p className="text-muted-foreground">{assignee.email}</p>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
       case 'category':
         return ticket.category ? (
           <span className="flex items-center gap-1.5 text-sm">
