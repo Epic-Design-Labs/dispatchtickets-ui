@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { ArrowLeft, Building2, Globe, Trash2, Users, Mail, Plus, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Building2, Globe, Trash2, Users, Mail, Plus } from 'lucide-react';
 import { CreateCustomerDialog } from '@/components/customers/create-customer-dialog';
 import { LinkCustomerDialog } from '@/components/customers/link-customer-dialog';
 
