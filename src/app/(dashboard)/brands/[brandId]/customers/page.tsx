@@ -18,6 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Users } from 'lucide-react';
+import { CreateCustomerDialog } from '@/components/customers/create-customer-dialog';
 
 export default function CustomersPage() {
   const params = useParams();
@@ -32,7 +33,7 @@ export default function CustomersPage() {
     <div className="flex flex-col">
       <Header title="Customers" />
       <div className="flex-1 p-6">
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-6 flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -42,6 +43,7 @@ export default function CustomersPage() {
               className="pl-9"
             />
           </div>
+          <CreateCustomerDialog brandId={brandId} />
         </div>
 
         {isLoading ? (

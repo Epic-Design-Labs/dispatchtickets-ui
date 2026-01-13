@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -77,6 +77,9 @@ export default function TicketDetailPage() {
 
   // Custom fields
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
+
+  // Auto-acknowledge any mentions for this ticket when viewing
+  useAcknowledgeMentionsOnView(ticketId);
 
   // Get active team members for assignment
   const teamMembers = teamData?.members || [];

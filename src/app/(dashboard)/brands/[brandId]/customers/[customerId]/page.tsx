@@ -30,7 +30,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { ArrowLeft, Building2, Mail, Trash2 } from 'lucide-react';
+import { ArrowLeft, Building2, Mail, Plus, Trash2 } from 'lucide-react';
+import { CreateTicketForCustomerDialog } from '@/components/tickets/create-ticket-for-customer-dialog';
 
 export default function CustomerDetailPage() {
   const params = useParams();
@@ -257,10 +258,26 @@ export default function CustomerDetailPage() {
           {/* Tickets */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>Tickets</CardTitle>
-              <CardDescription>
-                All tickets from this customer
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Tickets</CardTitle>
+                  <CardDescription>
+                    All tickets from this customer
+                  </CardDescription>
+                </div>
+                <CreateTicketForCustomerDialog
+                  brandId={brandId}
+                  customer={{
+                    name: customer.name || '',
+                    email: customer.email,
+                  }}
+                >
+                  <Button size="sm">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Ticket
+                  </Button>
+                </CreateTicketForCustomerDialog>
+              </div>
             </CardHeader>
             <CardContent>
               {customerTickets.length === 0 && !ticketsLoading ? (

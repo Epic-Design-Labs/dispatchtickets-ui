@@ -22,6 +22,11 @@ interface ParsedContent {
   signature: string | null;
 }
 
+// Types for mention parsing
+type MentionPart =
+  | { type: 'text'; content: string }
+  | { type: 'mention'; displayName: string; key: string };
+
 /**
  * Detect and extract forwarded email content
  */
@@ -396,7 +401,52 @@ function separateSignature(content: string): ParsedContent {
 }
 
 /**
+ * Process mentions in text: @[Display Name](memberId) -> highlighted span
+ */
+function processMentions(
+  text: string,
+  keyPrefix: string,
+  keyIndex: { current: number }
+): MentionPart[] {
+  const elements: MentionPart[] = [];
+  const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+
+  let lastIndex = 0;
+  let match;
+
+  while ((match = mentionRegex.exec(text)) !== null) {
+    // Add text before the mention
+    if (match.index > lastIndex) {
+      elements.push({
+        type: 'text',
+        content: text.slice(lastIndex, match.index),
+      });
+    }
+
+    const displayName = match[1];
+    elements.push({
+      type: 'mention',
+      displayName,
+      key: `${keyPrefix}-mention-${keyIndex.current++}`,
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    elements.push({
+      type: 'text',
+      content: text.slice(lastIndex),
+    });
+  }
+
+  return elements;
+}
+
+/**
  * Process text to convert plain URLs to clickable links
+ * Also handles @mentions
  */
 function processTextWithLinks(
   text: string,
@@ -405,62 +455,90 @@ function processTextWithLinks(
 ): React.ReactNode[] {
   const elements: React.ReactNode[] = [];
 
-  // Match URLs that aren't already in markdown format
-  // This regex matches http/https URLs
-  const urlRegex = /(https?:\/\/[^\s<>\[\]"']+)/g;
+  // First, process mentions to extract them
+  const mentionParts = processMentions(text, keyPrefix, keyIndex);
 
-  let lastIndex = 0;
-  let match;
-
-  while ((match = urlRegex.exec(text)) !== null) {
-    // Add text before the URL
-    if (match.index > lastIndex) {
+  // Process each part - mentions are rendered, text is further processed for URLs
+  for (const part of mentionParts) {
+    if (part.type === 'mention') {
       elements.push(
-        <span key={`${keyPrefix}-text-${keyIndex.current++}`}>
-          {text.slice(lastIndex, match.index)}
+        <span
+          key={part.key}
+          className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded font-medium text-sm"
+        >
+          @{part.displayName}
         </span>
       );
+    } else if (part.type === 'text' && part.content) {
+      // Process text for URLs
+      const textContent = part.content;
+
+        // Match URLs that aren't already in markdown format
+        const urlRegex = /(https?:\/\/[^\s<>\[\]"']+)/g;
+
+        let lastIndex = 0;
+        let match;
+
+        while ((match = urlRegex.exec(textContent)) !== null) {
+          // Add text before the URL
+          if (match.index > lastIndex) {
+            elements.push(
+              <span key={`${keyPrefix}-text-${keyIndex.current++}`}>
+                {textContent.slice(lastIndex, match.index)}
+              </span>
+            );
+          }
+
+          const url = match[1];
+          // Check if it's an image URL
+          const isImage = /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(url);
+
+          if (isImage) {
+            elements.push(
+              <img
+                key={`${keyPrefix}-img-${keyIndex.current++}`}
+                src={url}
+                alt="Image"
+                className="max-w-full max-h-96 rounded-md my-2 border"
+                loading="lazy"
+              />
+            );
+          } else {
+            elements.push(
+              <a
+                key={`${keyPrefix}-link-${keyIndex.current++}`}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 break-all"
+                title={url}
+              >
+                {truncateUrl(url)}
+              </a>
+            );
+          }
+
+          lastIndex = match.index + match[0].length;
+        }
+
+        // Add remaining text
+        if (lastIndex < textContent.length) {
+          elements.push(
+            <span key={`${keyPrefix}-text-${keyIndex.current++}`}>
+              {textContent.slice(lastIndex)}
+            </span>
+          );
+        }
+
+        // If no URLs were found, add the whole text
+        if (lastIndex === 0) {
+          elements.push(
+            <span key={`${keyPrefix}-text-${keyIndex.current++}`}>
+              {textContent}
+            </span>
+          );
+        }
     }
-
-    const url = match[1];
-    // Check if it's an image URL
-    const isImage = /\.(png|jpg|jpeg|gif|webp|svg)(\?|$)/i.test(url);
-
-    if (isImage) {
-      elements.push(
-        <img
-          key={`${keyPrefix}-img-${keyIndex.current++}`}
-          src={url}
-          alt="Image"
-          className="max-w-full max-h-96 rounded-md my-2 border"
-          loading="lazy"
-        />
-      );
-    } else {
-      elements.push(
-        <a
-          key={`${keyPrefix}-link-${keyIndex.current++}`}
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 break-all"
-          title={url}
-        >
-          {truncateUrl(url)}
-        </a>
-      );
-    }
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    elements.push(
-      <span key={`${keyPrefix}-text-${keyIndex.current++}`}>
-        {text.slice(lastIndex)}
-      </span>
-    );
   }
 
   return elements;

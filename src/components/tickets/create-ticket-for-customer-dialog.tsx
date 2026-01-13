@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateTicket, useCreateTicketDynamic, useBrands, useFieldsByEntity, useTeamMembers } from '@/lib/hooks';
+import { useCreateTicket, useFieldsByEntity, useTeamMembers } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -35,16 +35,12 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { CustomFieldsFormSection, validateCustomFields } from '@/components/fields';
-import { CustomerCombobox } from '@/components/customers/customer-combobox';
 
 const createTicketSchema = z.object({
-  brandId: z.string().min(1, 'Brand is required'),
   title: z.string().min(1, 'Title is required'),
   body: z.string().optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']),
   assigneeId: z.string().optional(),
-  requesterEmail: z.string().email().optional().or(z.literal('')),
-  requesterName: z.string().optional(),
   notifyCustomer: z.boolean(),
 });
 
@@ -57,60 +53,48 @@ const priorityColors: Record<string, string> = {
 
 type CreateTicketForm = z.infer<typeof createTicketSchema>;
 
-interface CreateTicketDialogProps {
-  brandId?: string;  // Optional - if not provided, show brand selector
+interface CreateTicketForCustomerDialogProps {
+  brandId: string;
+  customer: {
+    name: string;
+    email: string;
+  };
   children?: React.ReactNode;
 }
 
-export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTicketDialogProps) {
+export function CreateTicketForCustomerDialog({
+  brandId,
+  customer,
+  children,
+}: CreateTicketForCustomerDialogProps) {
   const [open, setOpen] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
-  const { data: brands } = useBrands();
   const { data: teamData } = useTeamMembers();
   const teamMembers = teamData?.members?.filter(m => m.status === 'active') || [];
 
-  // Use fixed brand mutation if brandId is provided, otherwise use dynamic
-  const createTicketFixed = useCreateTicket(fixedBrandId || '');
-  const createTicketDynamic = useCreateTicketDynamic();
-
-  const showBrandSelector = !fixedBrandId;
+  const createTicket = useCreateTicket(brandId);
+  const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
 
   const form = useForm<CreateTicketForm>({
     resolver: zodResolver(createTicketSchema),
     defaultValues: {
-      brandId: fixedBrandId || '',
       title: '',
       body: '',
       priority: 'normal',
       assigneeId: '',
-      requesterEmail: '',
-      requesterName: '',
       notifyCustomer: false,
     },
   });
 
-  // Update brandId when fixedBrandId changes
+  // Reset form when dialog opens
   useEffect(() => {
-    if (fixedBrandId) {
-      form.setValue('brandId', fixedBrandId);
+    if (open) {
+      form.reset();
+      setCustomFieldValues({});
+      setCustomFieldErrors({});
     }
-  }, [fixedBrandId, form]);
-
-  // Watch requesterEmail to show/hide notify option
-  const requesterEmail = form.watch('requesterEmail');
-  const hasRequesterEmail = requesterEmail && requesterEmail.length > 0;
-
-  // Watch brandId for custom fields
-  const selectedBrandId = form.watch('brandId');
-  const currentBrandId = fixedBrandId || selectedBrandId;
-  const { data: ticketFields } = useFieldsByEntity(currentBrandId, 'ticket');
-
-  // Reset custom field values when brand changes
-  useEffect(() => {
-    setCustomFieldValues({});
-    setCustomFieldErrors({});
-  }, [currentBrandId]);
+  }, [open, form]);
 
   const onSubmit = async (data: CreateTicketForm) => {
     // Validate custom fields
@@ -129,21 +113,14 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
         assigneeId: data.assigneeId || undefined,
         source: 'web' as const,
         customFields: {
-          ...(data.requesterName && { requesterName: data.requesterName }),
-          ...(data.requesterEmail && { requesterEmail: data.requesterEmail }),
+          requesterName: customer.name,
+          requesterEmail: customer.email,
           ...customFieldValues,
         },
         notifyCustomer: data.notifyCustomer,
       };
 
-      if (fixedBrandId) {
-        await createTicketFixed.mutateAsync(ticketData);
-      } else {
-        await createTicketDynamic.mutateAsync({
-          brandId: data.brandId,
-          data: ticketData,
-        });
-      }
+      await createTicket.mutateAsync(ticketData);
       toast.success('Ticket created successfully');
       setOpen(false);
       form.reset();
@@ -153,8 +130,6 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
     }
   };
 
-  const isPending = fixedBrandId ? createTicketFixed.isPending : createTicketDynamic.isPending;
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -162,39 +137,18 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create Ticket</DialogTitle>
+          <DialogTitle>Create Ticket for {customer.name || customer.email}</DialogTitle>
           <DialogDescription>
-            Create a new support ticket{showBrandSelector ? '' : ' in this workspace'}.
+            Create a new support ticket for this customer.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {showBrandSelector && (
-              <FormField
-                control={form.control}
-                name="brandId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Brand</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a brand" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {brands?.map((brand) => (
-                          <SelectItem key={brand.id} value={brand.id}>
-                            {brand.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            {/* Customer info display */}
+            <div className="rounded-md border bg-muted/50 p-3 text-sm">
+              <div className="font-medium">{customer.name || 'No name'}</div>
+              <div className="text-muted-foreground">{customer.email}</div>
+            </div>
 
             <FormField
               control={form.control}
@@ -294,84 +248,32 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="requesterName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Customer Name</FormLabel>
-                    {currentBrandId ? (
-                      <CustomerCombobox
-                        brandId={currentBrandId}
-                        value={field.value}
-                        onChange={(customer) => {
-                          if (customer) {
-                            field.onChange(customer.name);
-                            form.setValue('requesterEmail', customer.email);
-                          } else {
-                            field.onChange('');
-                          }
-                        }}
-                        disabled={!currentBrandId}
-                        placeholder="Search or enter name..."
-                      />
-                    ) : (
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="requesterEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Customer Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="john@example.com" {...field} />
-                    </FormControl>
-                    <FormDescription className="text-xs">
-                      Auto-filled when selecting a customer
+            <FormField
+              control={form.control}
+              name="notifyCustomer"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Notify customer</FormLabel>
+                    <FormDescription>
+                      Send a confirmation email to the customer about this ticket
                     </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                  </div>
+                </FormItem>
+              )}
+            />
 
-            {hasRequesterEmail && (
-              <FormField
-                control={form.control}
-                name="notifyCustomer"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>Notify customer</FormLabel>
-                      <FormDescription>
-                        Send a confirmation email to the customer about this ticket
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {currentBrandId && ticketFields && ticketFields.filter(f => f.visible).length > 0 && (
+            {ticketFields && ticketFields.filter(f => f.visible).length > 0 && (
               <div className="border-t pt-4">
                 <h4 className="text-sm font-medium mb-4">Custom Fields</h4>
                 <CustomFieldsFormSection
-                  brandId={currentBrandId}
+                  brandId={brandId}
                   entityType="ticket"
                   values={customFieldValues}
                   onChange={setCustomFieldValues}
@@ -388,8 +290,8 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? 'Creating...' : 'Create Ticket'}
+              <Button type="submit" disabled={createTicket.isPending}>
+                {createTicket.isPending ? 'Creating...' : 'Create Ticket'}
               </Button>
             </DialogFooter>
           </form>

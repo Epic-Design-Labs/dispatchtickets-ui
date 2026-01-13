@@ -6,7 +6,13 @@ import { useAuth } from '@/providers';
 import { Sidebar } from '@/components/layout';
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
 import { ConnectionWarningBanner } from '@/components/connection-warning-banner';
-import { useKeyboardShortcuts } from '@/lib/hooks';
+import { useKeyboardShortcuts, useMentionNotifications } from '@/lib/hooks';
+
+// Separate component to enable mention polling only when authenticated
+function MentionNotificationPoller() {
+  useMentionNotifications();
+  return null;
+}
 
 export default function DashboardLayout({
   children,
@@ -20,6 +26,7 @@ export default function DashboardLayout({
 
   // Global keyboard shortcuts (just ? for help modal, handled in the hook)
   useKeyboardShortcuts([]);
+
 
   useEffect(() => {
     if (!isLoading) {
@@ -57,6 +64,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen">
+      <MentionNotificationPoller />
       <Sidebar brandId={brandId} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <ConnectionWarningBanner />

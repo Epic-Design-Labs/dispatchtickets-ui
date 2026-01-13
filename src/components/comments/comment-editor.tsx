@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useCreateComment, useProfile, useUploadAttachment, useEmailConnections } from '@/lib/hooks';
+import { useCreateComment, useProfile, useUploadAttachment, useEmailConnections, useTeamMembers } from '@/lib/hooks';
+import { MentionAutocomplete } from './mention-autocomplete';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
 import { Send, Clock, CheckCircle, ImagePlus, Paperclip, Loader2, X, FileText, Mail, Plus, ChevronDown } from 'lucide-react';
@@ -45,6 +46,11 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const { session } = useAuth();
   const { data: profile } = useProfile();
   const { data: emailConnections } = useEmailConnections(brandId);
+  const { data: teamData } = useTeamMembers();
+  const activeMembers = useMemo(
+    () => teamData?.members?.filter((m) => m.status === 'active') || [],
+    [teamData?.members]
+  );
 
   // Filter active connections
   const activeConnections = useMemo(
@@ -59,6 +65,26 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
     }
     return activeConnections.find((c) => c.isPrimary) || activeConnections[0];
   }, [activeConnections, selectedConnectionId]);
+
+  // Parse mentions from body text
+  const parseMentions = useCallback((text: string) => {
+    const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+    const mentions: Array<{ memberId: string; displayName: string; email: string }> = [];
+    let match;
+    while ((match = mentionRegex.exec(text)) !== null) {
+      const displayName = match[1];
+      const memberId = match[2];
+      const member = activeMembers.find((m) => m.id === memberId);
+      if (member) {
+        mentions.push({
+          memberId,
+          displayName,
+          email: member.email,
+        });
+      }
+    }
+    return mentions;
+  }, [activeMembers]);
 
   // Get author name: profile > email-derived
   const getAuthorName = () => {
@@ -98,6 +124,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
       }
 
       const authorName = getAuthorName();
+      const mentions = parseMentions(finalBody);
       await createComment.mutateAsync({
         body: finalBody,
         authorType: 'AGENT',
@@ -105,6 +132,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
         metadata: {
           ...(isInternal && { isInternal: true }),
           ...(authorName && { authorName }),
+          ...(mentions.length > 0 && { mentions }),
         },
         ...(action !== 'comment' && { setStatus: action }),
         ...(selectedConnection && !isInternal && { connectionId: selectedConnection.id }),
@@ -126,7 +154,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
     } catch {
       toast.error('Failed to add comment');
     }
-  }, [body, isInternal, createComment, profile?.displayName, session?.email, selectedConnection, ccRecipients, uploadedFiles]);
+  }, [body, isInternal, createComment, profile?.displayName, session?.email, selectedConnection, ccRecipients, uploadedFiles, parseMentions]);
 
   // Handle adding a CC recipient
   const handleAddCc = useCallback(() => {
@@ -257,12 +285,12 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   return (
     <div className="space-y-3">
       <div className="relative">
-        <textarea
+        <MentionAutocomplete
           ref={textareaRef}
-          className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder="Add a comment... (paste images directly)"
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={setBody}
+          members={activeMembers}
+          placeholder="Add a comment... (paste images directly, type @ to mention)"
           onPaste={handlePaste}
           disabled={createComment.isPending || isUploading}
         />
