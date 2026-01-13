@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useDashboardTickets, useDashboardStats, useBrands } from '@/lib/hooks';
+import { useDashboardTickets, useDashboardStats, useBrands, useTeamMembers } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { DashboardTicketFilters, TicketFilters as TicketFiltersType } from '@/types';
 import { cn } from '@/lib/utils';
@@ -85,6 +85,8 @@ export default function DashboardPage() {
   const searchParams = useSearchParams();
   const { session } = useAuth();
   const { data: brands } = useBrands();
+  const { data: teamMembersData } = useTeamMembers();
+  const teamMembers = teamMembersData?.members;
 
   // Parse URL params
   const view = (searchParams.get('view') || 'all') as ViewType;
@@ -270,6 +272,7 @@ export default function DashboardPage() {
           selectedBrandIds={selectedBrands}
           onBrandFilterChange={handleBrandFilterChange}
           showBrandFilter
+          teamMembers={teamMembers}
         />
       </div>
 

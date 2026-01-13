@@ -13,9 +13,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
-import { TicketFilters as TicketFiltersType, Category, Tag } from '@/types';
+import { TicketFilters as TicketFiltersType, Category, Tag, TeamMember } from '@/types';
 import { cn } from '@/lib/utils';
-import { X, ChevronDown, FolderOpen, Tag as TagIcon } from 'lucide-react';
+import { X, ChevronDown, FolderOpen, Tag as TagIcon, User } from 'lucide-react';
 
 interface Brand {
   id: string;
@@ -33,6 +33,7 @@ interface TicketFiltersProps {
   showBrandFilter?: boolean;
   categories?: Category[];
   tags?: Tag[];
+  teamMembers?: TeamMember[];
 }
 
 const statusOptions = [
@@ -53,6 +54,7 @@ export function TicketFilters({
   showBrandFilter = false,
   categories,
   tags,
+  teamMembers,
 }: TicketFiltersProps) {
   const updateFilter = <K extends keyof TicketFiltersType>(
     key: K,
@@ -233,6 +235,49 @@ export function TicketFilters({
                 </span>
               </DropdownMenuCheckboxItem>
             ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {/* Assignee Filter */}
+      {teamMembers && teamMembers.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <User className="mr-1 h-3.5 w-3.5" />
+              Assignee
+              {filters.assigneeId && (
+                <span className="ml-1 rounded bg-primary/10 px-1.5 text-xs">
+                  {filters.assigneeId === 'unassigned'
+                    ? 'None'
+                    : teamMembers.find((m) => m.id === filters.assigneeId)?.firstName ||
+                      teamMembers.find((m) => m.id === filters.assigneeId)?.email?.split('@')[0] ||
+                      '1'}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Filter by assignee</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup
+              value={filters.assigneeId || ''}
+              onValueChange={(value) =>
+                updateFilter('assigneeId', value || undefined)
+              }
+            >
+              <DropdownMenuRadioItem value="">All</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="unassigned">Unassigned</DropdownMenuRadioItem>
+              {teamMembers
+                .filter((m) => m.status === 'active')
+                .map((member) => (
+                  <DropdownMenuRadioItem key={member.id} value={member.id}>
+                    {member.firstName || member.lastName
+                      ? `${member.firstName || ''} ${member.lastName || ''}`.trim()
+                      : member.email}
+                  </DropdownMenuRadioItem>
+                ))}
+            </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
