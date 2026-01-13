@@ -652,7 +652,8 @@ export function TicketTable({
         return (
           <Link
             href={`/brands/${brandId}/tickets/${ticket.id}`}
-            className="block font-medium hover:underline"
+            className="block font-medium hover:underline truncate max-w-[400px]"
+            title={ticket.title}
           >
             {ticket.title}
           </Link>
