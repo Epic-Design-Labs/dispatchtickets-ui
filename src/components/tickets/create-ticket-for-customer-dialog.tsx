@@ -82,7 +82,7 @@ export function CreateTicketForCustomerDialog({
       title: '',
       body: '',
       priority: 'normal',
-      assigneeId: '',
+      assigneeId: 'unassigned',
       notifyCustomer: false,
     },
   });
@@ -110,7 +110,7 @@ export function CreateTicketForCustomerDialog({
         title: data.title,
         body: data.body,
         priority: data.priority,
-        assigneeId: data.assigneeId || undefined,
+        assigneeId: data.assigneeId === 'unassigned' ? undefined : data.assigneeId,
         source: 'web' as const,
         customFields: {
           requesterName: customer.name,
@@ -232,7 +232,7 @@ export function CreateTicketForCustomerDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
                         {teamMembers.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.firstName || member.lastName

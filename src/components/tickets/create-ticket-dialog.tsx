@@ -83,7 +83,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
       title: '',
       body: '',
       priority: 'normal',
-      assigneeId: '',
+      assigneeId: 'unassigned',
       requesterEmail: '',
       requesterName: '',
       notifyCustomer: false,
@@ -126,7 +126,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
         title: data.title,
         body: data.body,
         priority: data.priority,
-        assigneeId: data.assigneeId || undefined,
+        assigneeId: data.assigneeId === 'unassigned' ? undefined : data.assigneeId,
         source: 'web' as const,
         customFields: {
           ...(data.requesterName && { requesterName: data.requesterName }),
@@ -278,7 +278,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
                         {teamMembers.map((member) => (
                           <SelectItem key={member.id} value={member.id}>
                             {member.firstName || member.lastName
