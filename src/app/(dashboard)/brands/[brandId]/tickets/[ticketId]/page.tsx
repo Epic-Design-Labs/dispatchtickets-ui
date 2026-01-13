@@ -11,6 +11,7 @@ import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MarkdownContent } from '@/components/ui/markdown-content';
@@ -37,7 +38,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS } from '@/types';
-import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers } from 'lucide-react';
+import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check } from 'lucide-react';
 import { CustomFieldInput } from '@/components/fields';
 
 export default function TicketDetailPage() {
@@ -52,6 +53,8 @@ export default function TicketDetailPage() {
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [tagInputValue, setTagInputValue] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState('');
 
   const { data: brand } = useBrand(brandId);
   const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId, { polling: true });
@@ -257,6 +260,30 @@ export default function TicketDetailPage() {
     }
   };
 
+  const handleStartEditTitle = () => {
+    setEditTitleValue(ticket?.title || '');
+    setIsEditingTitle(true);
+  };
+
+  const handleSaveTitle = async () => {
+    if (!editTitleValue.trim()) {
+      toast.error('Title cannot be empty');
+      return;
+    }
+    try {
+      await updateTicket.mutateAsync({ title: editTitleValue.trim() });
+      toast.success('Title updated');
+      setIsEditingTitle(false);
+    } catch {
+      toast.error('Failed to update title');
+    }
+  };
+
+  const handleCancelEditTitle = () => {
+    setIsEditingTitle(false);
+    setEditTitleValue('');
+  };
+
   const handleCompanyChange = async (companyId: string | undefined) => {
     if (!ticket?.customerId) return;
     try {
@@ -387,7 +414,44 @@ export default function TicketDetailPage() {
             <span>{ticket.id.slice(0, 12)}</span>
           </div>
           <div className="mt-2 flex items-center justify-between">
-            <h2 className="text-2xl font-bold tracking-tight">{ticket.title}</h2>
+            {isEditingTitle ? (
+              <div className="flex items-center gap-2 flex-1 mr-4">
+                <Input
+                  value={editTitleValue}
+                  onChange={(e) => setEditTitleValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveTitle();
+                    if (e.key === 'Escape') handleCancelEditTitle();
+                  }}
+                  className="text-2xl font-bold h-auto py-1"
+                  autoFocus
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSaveTitle}
+                  disabled={updateTicket.isPending}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelEditTitle}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <h2
+                className="text-2xl font-bold tracking-tight cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded group flex items-center gap-2"
+                onClick={handleStartEditTitle}
+                title="Click to edit title"
+              >
+                {ticket.title}
+                <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50" />
+              </h2>
+            )}
             <div className="flex items-center gap-2">
               {/* Prev/Next navigation */}
               {totalCount > 0 && (
