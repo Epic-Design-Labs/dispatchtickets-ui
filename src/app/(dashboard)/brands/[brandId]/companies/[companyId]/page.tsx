@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useCompany,
   useUpdateCompany,
   useDeleteCompany,
   useCustomers,
+  customerKeys,
 } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { Button } from '@/components/ui/button';
@@ -27,11 +29,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { ArrowLeft, Building2, Globe, Trash2, Users, Mail } from 'lucide-react';
+import { ArrowLeft, Building2, Globe, Trash2, Users, Mail, Plus, Link as LinkIcon } from 'lucide-react';
+import { CreateCustomerDialog } from '@/components/customers/create-customer-dialog';
+import { LinkCustomerDialog } from '@/components/customers/link-customer-dialog';
 
 export default function CompanyDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const brandId = params.brandId as string;
   const companyId = params.companyId as string;
 
@@ -232,13 +237,35 @@ export default function CompanyDetailPage() {
           {/* Customers */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Customers
-              </CardTitle>
-              <CardDescription>
-                All customers in this company
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Customers
+                  </CardTitle>
+                  <CardDescription>
+                    All customers in this company
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <LinkCustomerDialog
+                    brandId={brandId}
+                    companyId={companyId}
+                    companyName={company.name}
+                    onSuccess={() => queryClient.invalidateQueries({ queryKey: customerKeys.all(brandId) })}
+                  />
+                  <CreateCustomerDialog
+                    brandId={brandId}
+                    defaultCompany={{ id: companyId, name: company.name }}
+                    onSuccess={() => queryClient.invalidateQueries({ queryKey: customerKeys.all(brandId) })}
+                  >
+                    <Button size="sm">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Customer
+                    </Button>
+                  </CreateCustomerDialog>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {customersLoading ? (

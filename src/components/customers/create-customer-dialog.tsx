@@ -40,11 +40,15 @@ interface CreateCustomerDialogProps {
   brandId: string;
   children?: React.ReactNode;
   onSuccess?: (customer: { id: string; email: string; name?: string }) => void;
+  defaultCompany?: {
+    id: string;
+    name: string;
+  };
 }
 
-export function CreateCustomerDialog({ brandId, children, onSuccess }: CreateCustomerDialogProps) {
+export function CreateCustomerDialog({ brandId, children, onSuccess, defaultCompany }: CreateCustomerDialogProps) {
   const [open, setOpen] = useState(false);
-  const [companyName, setCompanyName] = useState<string | undefined>();
+  const [companyName, setCompanyName] = useState<string | undefined>(defaultCompany?.name);
   const createCustomer = useCreateCustomer(brandId);
 
   const form = useForm<CreateCustomerForm>({
@@ -52,7 +56,7 @@ export function CreateCustomerDialog({ brandId, children, onSuccess }: CreateCus
     defaultValues: {
       email: '',
       name: '',
-      companyId: '',
+      companyId: defaultCompany?.id || '',
     },
   });
 
@@ -65,8 +69,12 @@ export function CreateCustomerDialog({ brandId, children, onSuccess }: CreateCus
       });
       toast.success('Customer created successfully');
       setOpen(false);
-      form.reset();
-      setCompanyName(undefined);
+      form.reset({
+        email: '',
+        name: '',
+        companyId: defaultCompany?.id || '',
+      });
+      setCompanyName(defaultCompany?.name);
       onSuccess?.(customer);
     } catch {
       toast.error('Failed to create customer');
