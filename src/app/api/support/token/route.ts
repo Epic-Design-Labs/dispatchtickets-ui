@@ -7,12 +7,18 @@ const DISPATCH_SUPPORT_BRAND_ID = process.env.DISPATCH_SUPPORT_BRAND_ID;
 export async function GET(request: NextRequest) {
   // Check configuration
   if (!DISPATCH_API_KEY || !DISPATCH_SUPPORT_BRAND_ID) {
-    console.error('Support portal not configured: missing DISPATCH_API_KEY or DISPATCH_SUPPORT_BRAND_ID');
+    console.error('Support portal not configured:', {
+      hasApiKey: !!DISPATCH_API_KEY,
+      hasBrandId: !!DISPATCH_SUPPORT_BRAND_ID,
+      brandId: DISPATCH_SUPPORT_BRAND_ID || 'not set',
+    });
     return NextResponse.json(
       { error: 'Support portal not configured' },
       { status: 500 }
     );
   }
+
+  console.log('Support portal request - brand:', DISPATCH_SUPPORT_BRAND_ID);
 
   // Get session token from Authorization header
   const authHeader = request.headers.get('Authorization');
@@ -69,7 +75,11 @@ export async function GET(request: NextRequest) {
 
     if (!portalResponse.ok) {
       const error = await portalResponse.text();
-      console.error('Portal token generation failed:', error);
+      console.error('Portal token generation failed:', {
+        status: portalResponse.status,
+        brandId: DISPATCH_SUPPORT_BRAND_ID,
+        error,
+      });
       return NextResponse.json(
         { error: 'Failed to generate support token' },
         { status: 500 }
@@ -77,6 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     const portalData = await portalResponse.json();
+    console.log('Support portal token generated for:', portalData.email);
 
     // Return: { token, expiresAt, customerId, email, name }
     return NextResponse.json(portalData);
