@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Check, ChevronsUpDown, User } from 'lucide-react';
+import { Check, ChevronsUpDown, User, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -56,21 +56,22 @@ export function CustomerCombobox({
     setOpen(false);
   }, [onChange]);
 
+  const handleCreateNew = useCallback(() => {
+    // Set the name and signal that email needs to be filled in
+    if (search.trim()) {
+      onChange({ name: search.trim(), email: '' });
+      setOpen(false);
+    }
+  }, [search, onChange]);
+
   const handleInputChange = useCallback((newValue: string) => {
     setSearch(newValue);
-    // When user types, clear the selection (they're entering a new name)
-    if (newValue !== value) {
-      // Don't call onChange here - let them finish typing
-    }
-  }, [value]);
+  }, []);
 
-  const handleBlur = useCallback(() => {
-    // When user finishes typing without selecting, use what they typed
-    // But only if they've typed something and not selected from list
-    if (search && search !== value) {
-      onChange({ name: search, email: '' });
-    }
-  }, [search, value, onChange]);
+  // Check if the search matches any existing customer exactly
+  const exactMatch = customers.some(
+    (c) => c.name?.toLowerCase() === search.toLowerCase() || c.email.toLowerCase() === search.toLowerCase()
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -92,21 +93,12 @@ export function CustomerCombobox({
             placeholder="Search customers by name or email..."
             value={search}
             onValueChange={handleInputChange}
-            onBlur={handleBlur}
           />
           <CommandList>
             {isLoading && debouncedSearch.length >= 2 && (
               <div className="py-6 text-center text-sm text-muted-foreground">
                 Searching...
               </div>
-            )}
-            {!isLoading && debouncedSearch.length >= 2 && customers.length === 0 && (
-              <CommandEmpty className="py-6 text-center text-sm">
-                <p className="text-muted-foreground">No customers found.</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Type a name and email below.
-                </p>
-              </CommandEmpty>
             )}
             {!isLoading && debouncedSearch.length < 2 && (
               <div className="py-6 text-center text-sm text-muted-foreground">
@@ -136,6 +128,33 @@ export function CustomerCombobox({
                   </CommandItem>
                 ))}
               </CommandGroup>
+            )}
+            {/* Show "Create new" option when search has content and doesn't exactly match */}
+            {!isLoading && debouncedSearch.length >= 2 && search.trim() && !exactMatch && (
+              <>
+                {customers.length > 0 && <CommandSeparator />}
+                <CommandGroup heading="New Customer">
+                  <CommandItem
+                    value={`create-${search}`}
+                    onSelect={handleCreateNew}
+                    className="cursor-pointer"
+                  >
+                    <Plus className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">Create &quot;{search.trim()}&quot;</p>
+                      <p className="text-xs text-muted-foreground">
+                        Enter email in the field below
+                      </p>
+                    </div>
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+            {/* Message when no results and no search */}
+            {!isLoading && debouncedSearch.length >= 2 && customers.length === 0 && !search.trim() && (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                No customers found.
+              </div>
             )}
           </CommandList>
         </Command>
