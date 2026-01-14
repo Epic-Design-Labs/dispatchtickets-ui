@@ -28,8 +28,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { ArrowLeft, Building2, Globe, Trash2, Users, Mail, Plus } from 'lucide-react';
+import { ArrowLeft, Building2, Globe, Trash2, Users, Mail, Plus, FileText, Pencil, Check, X } from 'lucide-react';
 import { CreateCustomerDialog } from '@/components/customers/create-customer-dialog';
 import { LinkCustomerDialog } from '@/components/customers/link-customer-dialog';
 
@@ -44,6 +45,8 @@ export default function CompanyDetailPage() {
   const [editName, setEditName] = useState('');
   const [editDomain, setEditDomain] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editNotes, setEditNotes] = useState('');
 
   const { data: company, isLoading } = useCompany(brandId, companyId);
   const { data: customersData, isLoading: customersLoading } = useCustomers(brandId);
@@ -82,6 +85,32 @@ export default function CompanyDetailPage() {
     } catch {
       toast.error('Failed to delete company');
     }
+  };
+
+  const startEditingNotes = () => {
+    const currentNotes = (company?.metadata as Record<string, unknown>)?.notes as string || '';
+    setEditNotes(currentNotes);
+    setIsEditingNotes(true);
+  };
+
+  const handleSaveNotes = async () => {
+    try {
+      await updateCompany.mutateAsync({
+        metadata: {
+          ...(company?.metadata as Record<string, unknown> || {}),
+          notes: editNotes,
+        },
+      });
+      toast.success('Notes saved');
+      setIsEditingNotes(false);
+    } catch {
+      toast.error('Failed to save notes');
+    }
+  };
+
+  const handleCancelNotes = () => {
+    setIsEditingNotes(false);
+    setEditNotes('');
   };
 
   if (isLoading) {
@@ -135,6 +164,64 @@ export default function CompanyDetailPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
+          {/* Notes Section */}
+          <Card className="lg:col-span-3">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-4 w-4" />
+                  Notes
+                </CardTitle>
+                {!isEditingNotes ? (
+                  <Button variant="ghost" size="sm" onClick={startEditingNotes}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelNotes}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSaveNotes}
+                      disabled={updateCompany.isPending}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isEditingNotes ? (
+                <Textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Add notes about this company..."
+                  className="min-h-[100px] resize-none"
+                  autoFocus
+                />
+              ) : (
+                <div className="min-h-[60px]">
+                  {(company?.metadata as Record<string, unknown>)?.notes ? (
+                    <p className="text-sm whitespace-pre-wrap">
+                      {(company?.metadata as Record<string, unknown>)?.notes as string}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      No notes yet. Click the pencil icon to add notes.
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Company Info */}
           <Card>
             <CardHeader>

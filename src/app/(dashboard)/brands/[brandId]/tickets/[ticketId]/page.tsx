@@ -55,6 +55,8 @@ export default function TicketDetailPage() {
   const [tagInputValue, setTagInputValue] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editDescriptionValue, setEditDescriptionValue] = useState('');
 
   const { data: brand } = useBrand(brandId);
   const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId, { polling: true });
@@ -281,7 +283,26 @@ export default function TicketDetailPage() {
 
   const handleCancelEditTitle = () => {
     setIsEditingTitle(false);
-    setEditTitleValue('');
+  };
+
+  const handleStartEditDescription = () => {
+    setEditDescriptionValue(ticket?.body || '');
+    setIsEditingDescription(true);
+  };
+
+  const handleSaveDescription = async () => {
+    try {
+      await updateTicket.mutateAsync({ body: editDescriptionValue });
+      toast.success('Description updated');
+      setIsEditingDescription(false);
+    } catch {
+      toast.error('Failed to update description');
+    }
+  };
+
+  const handleCancelEditDescription = () => {
+    setIsEditingDescription(false);
+    setEditDescriptionValue('');
   };
 
   const handleCompanyChange = async (companyId: string | undefined) => {
@@ -633,11 +654,44 @@ export default function TicketDetailPage() {
           <div className="space-y-6 lg:col-span-2">
             {/* Description */}
             <Card>
-              <CardHeader>
-                <CardTitle>Description</CardTitle>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Description</CardTitle>
+                  {!isEditingDescription ? (
+                    <Button variant="ghost" size="sm" onClick={handleStartEditDescription}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelEditDescription}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSaveDescription}
+                        disabled={updateTicket.isPending}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                {ticket.body ? (
+                {isEditingDescription ? (
+                  <textarea
+                    value={editDescriptionValue}
+                    onChange={(e) => setEditDescriptionValue(e.target.value)}
+                    placeholder="Enter description..."
+                    className="flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                    autoFocus
+                  />
+                ) : ticket.body ? (
                   <MarkdownContent content={ticket.body} showSourceToggle />
                 ) : (
                   <p className="text-muted-foreground">No description provided</p>
