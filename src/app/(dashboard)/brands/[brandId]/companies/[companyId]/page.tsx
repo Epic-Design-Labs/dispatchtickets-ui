@@ -164,64 +164,8 @@ export default function CompanyDetailPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Notes Section */}
-          <Card className="lg:col-span-3">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="h-4 w-4" />
-                  Notes
-                </CardTitle>
-                {!isEditingNotes ? (
-                  <Button variant="ghost" size="sm" onClick={startEditingNotes}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCancelNotes}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleSaveNotes}
-                      disabled={updateCompany.isPending}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isEditingNotes ? (
-                <Textarea
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
-                  placeholder="Add notes about this company..."
-                  className="min-h-[100px] resize-none"
-                  autoFocus
-                />
-              ) : (
-                <div className="min-h-[60px]">
-                  {(company?.metadata as Record<string, unknown>)?.notes ? (
-                    <p className="text-sm whitespace-pre-wrap">
-                      {(company?.metadata as Record<string, unknown>)?.notes as string}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                      No notes yet. Click the pencil icon to add notes.
-                    </p>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
+          {/* Left Column: Company Info + Notes */}
+          <div className="space-y-6">
           {/* Company Info */}
           <Card>
             <CardHeader>
@@ -320,6 +264,65 @@ export default function CompanyDetailPage() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Notes Section */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-4 w-4" />
+                  Notes
+                </CardTitle>
+                {!isEditingNotes ? (
+                  <Button variant="ghost" size="sm" onClick={startEditingNotes}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelNotes}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSaveNotes}
+                      disabled={updateCompany.isPending}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isEditingNotes ? (
+                <Textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Add notes about this company..."
+                  className="min-h-[100px] resize-none"
+                  autoFocus
+                />
+              ) : (
+                <div className="min-h-[60px]">
+                  {(company?.metadata as Record<string, unknown>)?.notes ? (
+                    <p className="text-sm whitespace-pre-wrap">
+                      {(company?.metadata as Record<string, unknown>)?.notes as string}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      No notes yet. Click the pencil icon to add notes.
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          </div>
 
           {/* Customers */}
           <Card className="lg:col-span-2">
