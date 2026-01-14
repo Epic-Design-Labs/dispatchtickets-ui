@@ -6,15 +6,21 @@ import { InviteMemberInput, UpdateMemberInput, UpdateBrandAssignmentsInput } fro
 
 export const teamKeys = {
   all: ['team'] as const,
-  members: () => [...teamKeys.all, 'members'] as const,
+  members: (brandId?: string) => brandId
+    ? [...teamKeys.all, 'members', brandId] as const
+    : [...teamKeys.all, 'members'] as const,
   organization: () => [...teamKeys.all, 'organization'] as const,
   brandAssignments: (memberId: string) => [...teamKeys.all, 'brandAssignments', memberId] as const,
 };
 
-export function useTeamMembers() {
+/**
+ * Fetch team members, optionally filtered by brand access.
+ * @param options.brandId - If provided, only returns members who have access to this brand
+ */
+export function useTeamMembers(options?: { brandId?: string }) {
   return useQuery({
-    queryKey: teamKeys.members(),
-    queryFn: teamApi.getMembers,
+    queryKey: teamKeys.members(options?.brandId),
+    queryFn: () => teamApi.getMembers(options),
   });
 }
 

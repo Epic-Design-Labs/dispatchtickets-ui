@@ -67,8 +67,6 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
   const { data: brands } = useBrands();
-  const { data: teamData } = useTeamMembers();
-  const teamMembers = teamData?.members?.filter(m => m.status === 'active') || [];
 
   // Use fixed brand mutation if brandId is provided, otherwise use dynamic
   const createTicketFixed = useCreateTicket(fixedBrandId || '');
@@ -101,10 +99,14 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
   const requesterEmail = form.watch('requesterEmail');
   const hasRequesterEmail = requesterEmail && requesterEmail.length > 0;
 
-  // Watch brandId for custom fields
+  // Watch brandId for custom fields and team members
   const selectedBrandId = form.watch('brandId');
   const currentBrandId = fixedBrandId || selectedBrandId;
   const { data: ticketFields } = useFieldsByEntity(currentBrandId, 'ticket');
+
+  // Team members filtered by the selected brand
+  const { data: teamData } = useTeamMembers({ brandId: currentBrandId || undefined });
+  const teamMembers = teamData?.members?.filter(m => m.status === 'active') || [];
 
   // Reset custom field values when brand changes
   useEffect(() => {

@@ -70,7 +70,7 @@ export function CreateTicketForCustomerDialog({
   const [open, setOpen] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
-  const { data: teamData } = useTeamMembers();
+  const { data: teamData } = useTeamMembers({ brandId });
   const teamMembers = teamData?.members?.filter(m => m.status === 'active') || [];
 
   const createTicket = useCreateTicket(brandId);

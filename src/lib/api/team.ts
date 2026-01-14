@@ -13,8 +13,9 @@ export interface Organization {
 }
 
 export const teamApi = {
-  getMembers: async (): Promise<TeamMembersResponse> => {
-    const response = await apiClient.get<TeamMembersResponse>('/auth/members');
+  getMembers: async (options?: { brandId?: string }): Promise<TeamMembersResponse> => {
+    const params = options?.brandId ? { brandId: options.brandId } : undefined;
+    const response = await apiClient.get<TeamMembersResponse>('/auth/members', { params });
     return response.data;
   },
 

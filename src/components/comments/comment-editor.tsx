@@ -46,7 +46,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
   const { session } = useAuth();
   const { data: profile } = useProfile();
   const { data: emailConnections } = useEmailConnections(brandId);
-  const { data: teamData } = useTeamMembers();
+  const { data: teamData } = useTeamMembers({ brandId });
   const activeMembers = useMemo(
     () => teamData?.members?.filter((m) => m.status === 'active') || [],
     [teamData?.members]

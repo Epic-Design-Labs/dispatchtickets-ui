@@ -40,8 +40,8 @@ export default function BrandDashboardPage() {
   const { data: tags } = useTags(brandId);
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
 
-  // Team members for assignee selection (only active members, not pending invites)
-  const { data: teamMembersData } = useTeamMembers();
+  // Team members for assignee selection - filtered to only those with access to this brand
+  const { data: teamMembersData } = useTeamMembers({ brandId });
   const teamMembers = teamMembersData?.members;
 
   // Bulk actions

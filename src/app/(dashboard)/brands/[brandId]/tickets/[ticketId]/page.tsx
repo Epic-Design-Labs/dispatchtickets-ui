@@ -60,7 +60,7 @@ export default function TicketDetailPage() {
   const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId, { polling: true });
   const { data: comments, isLoading: commentsLoading } = useComments(brandId, ticketId, { polling: true });
   const { data: ticketsData } = useTickets(brandId, { status: 'open', limit: 100 });
-  const { data: teamData } = useTeamMembers();
+  const { data: teamData } = useTeamMembers({ brandId });
   const updateTicket = useUpdateTicket(brandId, ticketId);
   const deleteTicket = useDeleteTicket(brandId);
   const markAsSpam = useMarkAsSpam(brandId);
