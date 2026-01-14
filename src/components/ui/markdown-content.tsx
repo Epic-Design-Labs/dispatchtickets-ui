@@ -521,20 +521,12 @@ function processTextWithLinks(
           lastIndex = match.index + match[0].length;
         }
 
-        // Add remaining text
+        // Add remaining text after last URL match
+        // When lastIndex is 0, slice(0) returns the full text, so no separate case needed
         if (lastIndex < textContent.length) {
           elements.push(
             <span key={`${keyPrefix}-text-${keyIndex.current++}`}>
               {textContent.slice(lastIndex)}
-            </span>
-          );
-        }
-
-        // If no URLs were found, add the whole text
-        if (lastIndex === 0) {
-          elements.push(
-            <span key={`${keyPrefix}-text-${keyIndex.current++}`}>
-              {textContent}
             </span>
           );
         }
