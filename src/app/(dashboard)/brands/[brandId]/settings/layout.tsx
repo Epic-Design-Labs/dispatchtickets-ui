@@ -10,6 +10,7 @@ const settingsNav = [
   { title: 'Email', href: '/email' },
   { title: 'Satisfaction', href: '/satisfaction' },
   { title: 'Channels', href: '/channels' },
+  { title: 'Portal', href: '/portal' },
   { title: 'Integrations', href: '/integrations' },
   { title: 'Webhooks', href: '/webhooks' },
   { title: 'Activity Log', href: '/log' },

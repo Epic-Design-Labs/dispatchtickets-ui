@@ -28,6 +28,8 @@ export interface Brand {
   csatDelayMinutes?: number;
   csatEmailSubject?: string | null;
   csatEmailBody?: string | null;
+  // Portal settings
+  portalOrigins?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -61,5 +63,7 @@ export interface UpdateBrandInput {
   csatDelayMinutes?: number;
   csatEmailSubject?: string | null;
   csatEmailBody?: string | null;
+  // Portal settings
+  portalOrigins?: string[];
 }
 
