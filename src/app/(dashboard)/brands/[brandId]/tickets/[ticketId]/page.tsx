@@ -366,7 +366,9 @@ export default function TicketDetailPage() {
   if (ticketLoading) {
     return (
       <div className="flex flex-col">
-        <Header title="Ticket" />
+        <header className="flex h-14 items-center justify-between border-b bg-gray-100 px-6">
+          <Skeleton className="h-4 w-48" />
+        </header>
         <div className="flex-1 p-6">
           <div className="mb-6">
             <Skeleton className="h-8 w-64" />
