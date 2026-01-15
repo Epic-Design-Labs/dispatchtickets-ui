@@ -108,7 +108,11 @@ export function CommentThread({ comments, isLoading }: CommentThreadProps) {
                 {new Date(comment.createdAt).toLocaleString()}
               </span>
             </div>
-            <MarkdownContent content={comment.body} className="mt-1 text-sm" />
+            <MarkdownContent
+              content={comment.body}
+              className="mt-1 text-sm"
+              skipSignatureDetection={comment.authorType === 'SYSTEM'}
+            />
           </div>
         </div>
       ))}

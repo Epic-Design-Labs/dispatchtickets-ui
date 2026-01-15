@@ -7,6 +7,7 @@ interface MarkdownContentProps {
   content: string;
   className?: string;
   showSourceToggle?: boolean;
+  skipSignatureDetection?: boolean;
 }
 
 interface ForwardedContent {
@@ -640,7 +641,7 @@ function RenderContent({ content, className = '', isSignature = false }: { conte
   );
 }
 
-export function MarkdownContent({ content, className = '', showSourceToggle = false }: MarkdownContentProps) {
+export function MarkdownContent({ content, className = '', showSourceToggle = false, skipSignatureDetection = false }: MarkdownContentProps) {
   const [showSource, setShowSource] = useState(false);
   const [showForwarded, setShowForwarded] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
@@ -657,11 +658,11 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
     return parseForwardedEmail(content);
   }, [content]);
 
-  // Separate main body from signature
+  // Separate main body from signature (skip for system comments, etc.)
   const parsedContent = useMemo(() => {
-    if (!content || forwardedContent) return null;
+    if (!content || forwardedContent || skipSignatureDetection) return null;
     return separateSignature(content);
-  }, [content, forwardedContent]);
+  }, [content, forwardedContent, skipSignatureDetection]);
 
   // If this is a forwarded email, render with collapsible section
   if (forwardedContent) {
