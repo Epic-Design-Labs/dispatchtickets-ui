@@ -71,47 +71,54 @@ export default function StatsPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Open</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {statsLoading ? '...' : stats?.open || 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Pending</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {statsLoading ? '...' : stats?.pending || 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Resolved</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {statsLoading ? '...' : stats?.resolved || 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Closed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {statsLoading ? '...' : stats?.closed || 0}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap gap-3 mb-6">
+        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-violet-500 text-white">
+          <span className="h-2 w-2 rounded-full bg-blue-300" />
+          <span>Active</span>
+          <span className="font-bold text-lg ml-2">
+            {statsLoading ? '...' : (stats?.open || 0) + (stats?.pending || 0)}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          <span>All</span>
+          <span className="font-bold text-lg ml-2">
+            {statsLoading ? '...' : (stats?.open || 0) + (stats?.pending || 0) + (stats?.resolved || 0) + (stats?.closed || 0)}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span>Open</span>
+          <span className="font-bold text-lg ml-2">
+            {statsLoading ? '...' : stats?.open || 0}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+          <span className="h-2 w-2 rounded-full bg-amber-500" />
+          <span>Pending</span>
+          <span className="font-bold text-lg ml-2">
+            {statsLoading ? '...' : stats?.pending || 0}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+          <span className="h-2 w-2 rounded-full bg-green-500" />
+          <span>Resolved</span>
+          <span className="font-bold text-lg ml-2">
+            {statsLoading ? '...' : stats?.resolved || 0}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+          <span className="h-2 w-2 rounded-full bg-gray-400" />
+          <span>Closed</span>
+          <span className="font-bold text-lg ml-2">
+            {statsLoading ? '...' : stats?.closed || 0}
+          </span>
+        </div>
       </div>
 
       {/* Trends Chart */}

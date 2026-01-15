@@ -152,111 +152,90 @@ export default function BrandDashboardPage() {
       <div className="flex-1 p-6">
         {/* Stats Cards */}
         {isLoading ? (
-          <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <div className="mb-6 flex flex-wrap gap-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i}>
-                <CardHeader className="pb-2">
-                  <Skeleton className="h-4 w-20" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-12" />
-                </CardContent>
-              </Card>
+              <Skeleton key={i} className="h-12 w-32 rounded-lg" />
             ))}
           </div>
         ) : (
-          <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-            <Card
-              className={`cursor-pointer transition-colors ${
+          <div className="mb-6 flex flex-wrap gap-3">
+            <button
+              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'active'
-                  ? 'bg-rose-500 text-white hover:bg-rose-600'
-                  : 'hover:bg-accent'
+                  ? 'bg-violet-500 text-white'
+                  : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('active')}
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className={`text-sm font-medium ${filters.status === 'active' ? 'text-white' : ''}`}>Active</CardTitle>
-                <div className={`h-2 w-2 rounded-full ${filters.status === 'active' ? 'bg-white' : 'bg-rose-500'}`} />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${filters.status === 'active' ? 'text-white' : ''}`}>{stats.active}</div>
-              </CardContent>
-            </Card>
+              <span className={`h-2 w-2 rounded-full ${filters.status === 'active' ? 'bg-blue-300' : 'bg-blue-500'}`} />
+              <span>Active</span>
+              <span className="font-bold text-lg ml-2">{stats.active}</span>
+            </button>
 
-            <Card
-              className={`cursor-pointer transition-colors ${
-                !filters.status ? 'ring-2 ring-blue-500' : 'hover:bg-accent'
+            <button
+              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                !filters.status
+                  ? 'bg-white border-2 border-blue-500'
+                  : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick(undefined)}
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">All</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total}</div>
-              </CardContent>
-            </Card>
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              <span>All</span>
+              <span className="font-bold text-lg ml-2">{stats.total}</span>
+            </button>
 
-            <Card
-              className={`cursor-pointer transition-colors ${
-                filters.status === 'open' ? 'ring-2 ring-emerald-500' : 'hover:bg-accent'
+            <button
+              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                filters.status === 'open'
+                  ? 'bg-emerald-50 border-2 border-emerald-400 text-emerald-700'
+                  : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('open')}
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Open</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-emerald-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.open}</div>
-              </CardContent>
-            </Card>
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span>Open</span>
+              <span className="font-bold text-lg ml-2">{stats.open}</span>
+            </button>
 
-            <Card
-              className={`cursor-pointer transition-colors ${
-                filters.status === 'pending' ? 'ring-2 ring-amber-500' : 'hover:bg-accent'
+            <button
+              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                filters.status === 'pending'
+                  ? 'bg-amber-50 border-2 border-amber-400 text-amber-700'
+                  : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('pending')}
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-amber-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.pending}</div>
-              </CardContent>
-            </Card>
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <span>Pending</span>
+              <span className="font-bold text-lg ml-2">{stats.pending}</span>
+            </button>
 
-            <Card
-              className={`cursor-pointer transition-colors ${
-                filters.status === 'resolved' ? 'ring-2 ring-green-500' : 'hover:bg-accent'
+            <button
+              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                filters.status === 'resolved'
+                  ? 'bg-green-50 border-2 border-green-400 text-green-700'
+                  : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('resolved')}
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Resolved</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.resolved}</div>
-              </CardContent>
-            </Card>
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span>Resolved</span>
+              <span className="font-bold text-lg ml-2">{stats.resolved}</span>
+            </button>
 
-            <Card
-              className={`cursor-pointer transition-colors ${
-                filters.status === 'closed' ? 'ring-2 ring-gray-500' : 'hover:bg-accent'
+            <button
+              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                filters.status === 'closed'
+                  ? 'bg-gray-100 border-2 border-gray-400 text-gray-700'
+                  : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('closed')}
             >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Closed</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-gray-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.closed}</div>
-              </CardContent>
-            </Card>
+              <span className="h-2 w-2 rounded-full bg-gray-400" />
+              <span>Closed</span>
+              <span className="font-bold text-lg ml-2">{stats.closed}</span>
+            </button>
           </div>
         )}
 

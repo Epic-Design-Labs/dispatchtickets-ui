@@ -68,7 +68,7 @@ export default function DashboardLayout({
       <Sidebar brandId={brandId} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <ConnectionWarningBanner />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
       </div>
       <KeyboardShortcutsModal />
     </div>
