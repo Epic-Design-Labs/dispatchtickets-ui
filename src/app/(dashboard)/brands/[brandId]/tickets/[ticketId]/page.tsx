@@ -37,7 +37,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS } from '@/types';
-import { Trash2, ShieldAlert, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check } from 'lucide-react';
+import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown } from 'lucide-react';
 import { CustomFieldInput } from '@/components/fields';
 
 export default function TicketDetailPage() {
@@ -231,7 +231,7 @@ export default function TicketDetailPage() {
     }
   };
 
-  // Get member display name
+  // Get member display name and initials
   const getMemberName = (memberId: string) => {
     const member = teamMembers.find(m => m.id === memberId);
     if (!member) return memberId;
@@ -239,6 +239,17 @@ export default function TicketDetailPage() {
       return [member.firstName, member.lastName].filter(Boolean).join(' ');
     }
     return member.email;
+  };
+
+  const getMemberInitials = (memberId: string) => {
+    const member = teamMembers.find(m => m.id === memberId);
+    if (!member) return '?';
+    if (member.firstName && member.lastName) {
+      return `${member.firstName[0]}${member.lastName[0]}`.toUpperCase();
+    }
+    if (member.firstName) return member.firstName[0].toUpperCase();
+    if (member.email) return member.email[0].toUpperCase();
+    return '?';
   };
 
   const handleMarkAsSpam = async () => {
@@ -363,40 +374,49 @@ export default function TicketDetailPage() {
     onPending: () => handleStatusChange('pending'),
   });
 
+  // Calculate ticket age
+  const getTicketAge = () => {
+    if (!ticket) return '-';
+    const created = new Date(ticket.createdAt);
+    const now = new Date();
+    const diffMs = now.getTime() - created.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays > 0) return `${diffDays}d ${diffHours % 24}h`;
+    const diffMins = Math.floor(diffMs / (1000 * 60)) % 60;
+    if (diffHours > 0) return `${diffHours}h ${diffMins}m`;
+    return `${diffMins}m`;
+  };
+
+  // Calculate last activity time
+  const getLastActivity = () => {
+    if (!ticket) return '-';
+    const updated = new Date(ticket.updatedAt);
+    const now = new Date();
+    const diffMs = now.getTime() - updated.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
+
   if (ticketLoading) {
     return (
-      <div className="flex flex-col">
-        <header className="flex h-14 items-center justify-between border-b bg-white px-6">
+      <div className="flex flex-col min-h-screen">
+        <header className="flex h-14 items-center justify-between border-b bg-gray-100 px-6">
           <Skeleton className="h-4 w-48" />
         </header>
-        <div className="flex-1 p-6">
-          <div className="mb-6">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="mt-2 h-4 w-48" />
+        <div className="flex flex-1">
+          <div className="flex-1 bg-white p-6">
+            <Skeleton className="h-8 w-64 mb-4" />
+            <Skeleton className="h-24 w-full" />
           </div>
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <Skeleton className="h-6 w-32" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-24 w-full" />
-                </CardContent>
-              </Card>
-            </div>
-            <div>
-              <Card>
-                <CardHeader>
-                  <Skeleton className="h-6 w-20" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                </CardContent>
-              </Card>
-            </div>
+          <div className="w-80 bg-gray-50 p-6">
+            <Skeleton className="h-4 w-full mb-4" />
+            <Skeleton className="h-4 w-full mb-4" />
+            <Skeleton className="h-4 w-full" />
           </div>
         </div>
       </div>
@@ -405,8 +425,8 @@ export default function TicketDetailPage() {
 
   if (!ticket) {
     return (
-      <div className="flex flex-col">
-        <header className="flex h-14 items-center border-b bg-white px-6">
+      <div className="flex flex-col min-h-screen">
+        <header className="flex h-14 items-center border-b bg-gray-100 px-6">
           <span className="text-sm text-muted-foreground">Ticket Not Found</span>
         </header>
         <div className="flex flex-1 flex-col items-center justify-center p-6">
@@ -419,13 +439,10 @@ export default function TicketDetailPage() {
     );
   }
 
-  const customerEmail = ticket.customFields?.requesterEmail as string | undefined;
-  const customerName = ticket.customFields?.requesterName as string | undefined;
-
   return (
-    <div className="flex flex-col">
-      {/* Top bar with breadcrumb and actions */}
-      <header className="flex h-14 items-center justify-between border-b bg-white px-6">
+    <div className="flex flex-col min-h-screen">
+      {/* Top bar - Grey background */}
+      <header className="flex h-14 items-center justify-between border-b bg-gray-100 px-6">
         <div className="flex items-center gap-2 text-sm">
           <Link
             href={`/brands/${brandId}`}
@@ -436,15 +453,13 @@ export default function TicketDetailPage() {
           <span className="text-muted-foreground">/</span>
           <span className="font-medium">#{ticket.id.slice(0, 12)}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleMarkAsSpam}
-            disabled={markAsSpam.isPending}
-            title="Mark as spam"
+            title="History"
           >
-            <ShieldAlert className="h-4 w-4" />
+            <Clock className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -454,132 +469,238 @@ export default function TicketDetailPage() {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup>
+                <DropdownMenuRadioItem value="spam" onClick={handleMarkAsSpam}>
+                  Mark as spam
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
-      <div className="flex-1 p-6">
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            {isEditingTitle ? (
-              <div className="flex items-center gap-2 flex-1 mr-4">
-                <Input
-                  value={editTitleValue}
-                  onChange={(e) => setEditTitleValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveTitle();
-                    if (e.key === 'Escape') handleCancelEditTitle();
-                  }}
-                  className="text-2xl font-bold h-auto py-1"
-                  autoFocus
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSaveTitle}
-                  disabled={updateTicket.isPending}
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCancelEditTitle}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <h1
-                  className="text-2xl font-bold tracking-tight cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded group flex items-center gap-2"
-                  onClick={handleStartEditTitle}
-                  title="Click to edit title"
-                >
-                  {ticket.title}
-                  <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50" />
-                </h1>
-                {/* Time in progress badge */}
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm w-fit">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v6l4 2" />
-                  </svg>
-                  <span>
-                    {(() => {
-                      const created = new Date(ticket.createdAt);
-                      const now = new Date();
-                      const diffMs = now.getTime() - created.getTime();
-                      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                      const diffDays = Math.floor(diffHours / 24);
-                      if (diffDays > 0) {
-                        return `${diffDays}d ${diffHours % 24}h`;
-                      }
-                      const diffMins = Math.floor(diffMs / (1000 * 60)) % 60;
-                      if (diffHours > 0) {
-                        return `${diffHours}h ${diffMins}m`;
-                      }
-                      return `${diffMins}m`;
-                    })()}
-                  </span>
+
+      {/* Title bar - White background */}
+      <div className="flex items-center justify-between border-b bg-white px-6 py-4">
+        <div className="flex-1">
+          {isEditingTitle ? (
+            <div className="flex items-center gap-2 max-w-2xl">
+              <Input
+                value={editTitleValue}
+                onChange={(e) => setEditTitleValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveTitle();
+                  if (e.key === 'Escape') handleCancelEditTitle();
+                }}
+                className="text-2xl font-bold h-auto py-1"
+                autoFocus
+              />
+              <Button variant="ghost" size="sm" onClick={handleSaveTitle} disabled={updateTicket.isPending}>
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleCancelEditTitle}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <h1
+                className="text-2xl font-bold tracking-tight cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded group flex items-center gap-2 inline-flex"
+                onClick={handleStartEditTitle}
+                title="Click to edit title"
+              >
+                {ticket.title}
+                <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50" />
+              </h1>
+              <div className="flex items-center gap-2 mt-2">
+                {/* Priority badge - clickable */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="hover:opacity-80 transition-opacity">
+                      <PriorityBadge priority={ticket.priority || 'normal'} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>Change priority</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={ticket.priority || 'normal'} onValueChange={handlePriorityChange}>
+                      <DropdownMenuRadioItem value="low">Low</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="normal">Normal</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Time badge */}
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>{getTicketAge()}</span>
                   <span>•</span>
                   <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
                 </div>
-              </div>
-            )}
-            {/* Prev/Next navigation */}
-            {totalCount > 0 && (
-              <div className="flex items-center border rounded-lg bg-white">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goToPrev}
-                  disabled={!prevTicketId}
-                  title="Previous ticket (K)"
-                  className="px-3 rounded-r-none border-r"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </Button>
-                <span className="text-sm text-muted-foreground px-4">
-                  {currentIndex} / {totalCount}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goToNext}
-                  disabled={!nextTicketId}
-                  title="Next ticket (J)"
-                  className="px-3 rounded-l-none border-l"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </Button>
-              </div>
-            )}
-          </div>
 
-          {/* Quick info bar */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm border-b pb-4 mt-3">
-            {/* Customer */}
-            {ticket.customer && (
-              <div className="flex items-center gap-1.5 text-muted-foreground">
+                {/* Source indicator */}
+                {ticket.source && ticket.source !== 'api' && (
+                  <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium capitalize">
+                    {ticket.source}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Right side: Navigation + Status dropdown */}
+        <div className="flex items-center gap-4">
+          {/* Prev/Next navigation */}
+          {totalCount > 0 && (
+            <div className="flex items-center border rounded-lg bg-white">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToPrev}
+                disabled={!prevTicketId}
+                title="Previous ticket (K)"
+                className="px-3 rounded-r-none border-r"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </Button>
+              <span className="text-sm text-muted-foreground px-4">
+                {currentIndex} / {totalCount}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToNext}
+                disabled={!nextTicketId}
+                title="Next ticket (J)"
+                className="px-3 rounded-l-none border-l"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Button>
+            </div>
+          )}
+
+          {/* Status dropdown - Green pill style */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-4"
+                size="sm"
+              >
+                <Check className="h-4 w-4 mr-1.5" />
+                {ticket.status ? ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1) : 'Open'}
+                <ChevronDown className="h-4 w-4 ml-1.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Change status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup value={ticket.status || 'open'} onValueChange={handleStatusChange}>
+                <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="resolved">Resolved</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="closed">Closed</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Main content area - Two columns */}
+      <div className="flex flex-1">
+        {/* Left column - White background */}
+        <div className="flex-1 bg-white p-6 space-y-6 overflow-auto">
+          {/* Description */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle>Description</CardTitle>
+                {!isEditingDescription ? (
+                  <Button variant="ghost" size="sm" onClick={handleStartEditDescription}>
+                    Edit
+                  </Button>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={handleCancelEditDescription}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleSaveDescription} disabled={updateTicket.isPending}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isEditingDescription ? (
+                <textarea
+                  value={editDescriptionValue}
+                  onChange={(e) => setEditDescriptionValue(e.target.value)}
+                  placeholder="Enter description..."
+                  className="flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  autoFocus
+                />
+              ) : ticket.body ? (
+                <MarkdownContent content={ticket.body} showSourceToggle />
+              ) : (
+                <p className="text-muted-foreground">No description provided</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Activity / Comments */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <CommentEditor brandId={brandId} ticketId={ticketId} />
+              <Separator />
+              <CommentThread comments={comments || []} isLoading={commentsLoading} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right sidebar - Grey background */}
+        <div className="w-80 bg-gray-50 border-l p-6 space-y-6 overflow-auto">
+          {/* Customer Section */}
+          {ticket.customer && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <User className="h-4 w-4" />
-                <Link
-                  href={`/brands/${brandId}/customers/${ticket.customer.id}`}
-                  className="hover:text-foreground hover:underline"
-                >
-                  {ticket.customer.name
-                    ? `${ticket.customer.name} (${ticket.customer.email})`
-                    : ticket.customer.email}
-                </Link>
+                Customer
               </div>
-            )}
-
-            {/* Company - clickable to set */}
-            {ticket.customer && (
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Building2 className="h-4 w-4" />
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-medium">
+                  {ticket.customer.name?.[0]?.toUpperCase() || ticket.customer.email[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Link
+                    href={`/brands/${brandId}/customers/${ticket.customer.id}`}
+                    className="font-medium hover:underline block truncate"
+                  >
+                    {ticket.customer.name || 'Unknown'}
+                  </Link>
+                  <p className="text-sm text-muted-foreground truncate">{ticket.customer.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Company:</span>
                 <CompanyCombobox
                   brandId={brandId}
                   value={ticket.customer.companyId}
@@ -590,32 +711,40 @@ export default function TicketDetailPage() {
                   variant="inline"
                 />
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Assignee - clickable */}
+          <Separator />
+
+          {/* Assignee Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <User className="h-4 w-4" />
+              Assignee
+            </div>
+            {ticket.assigneeId ? (
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+                  {getMemberInitials(ticket.assigneeId)}
+                </div>
+                <span className="text-sm">{getMemberName(ticket.assigneeId)}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <UserX className="h-5 w-5" />
+                <span className="text-sm">Unassigned</span>
+              </div>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                  {ticket.assigneeId ? (
-                    <>
-                      <User className="h-4 w-4" />
-                      <span>{getMemberName(ticket.assigneeId)}</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserX className="h-4 w-4" />
-                      <span>Unassigned</span>
-                    </>
-                  )}
-                </button>
+                <Button variant="link" size="sm" className="h-auto p-0 text-sm">
+                  Change assignee
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuLabel>Assign to</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup
-                  value={ticket.assigneeId || ''}
-                  onValueChange={handleAssigneeChange}
-                >
+                <DropdownMenuRadioGroup value={ticket.assigneeId || ''} onValueChange={handleAssigneeChange}>
                   <DropdownMenuRadioItem value="">
                     <span className="flex items-center gap-1.5">
                       <UserX className="h-3.5 w-3.5" />
@@ -635,309 +764,236 @@ export default function TicketDetailPage() {
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* Spacer to push status/priority to the right */}
-            <div className="flex-1" />
-
-            {/* Status - clickable (far right) */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
-                  <StatusBadge status={ticket.status || 'open'} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Change status</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup
-                  value={ticket.status || 'open'}
-                  onValueChange={handleStatusChange}
-                >
-                  <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="resolved">Resolved</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="closed">Closed</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Priority - clickable (far right) */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
-                  <PriorityBadge priority={ticket.priority || 'normal'} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Change priority</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup
-                  value={ticket.priority || 'normal'}
-                  onValueChange={handlePriorityChange}
-                >
-                  <DropdownMenuRadioItem value="low">Low</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="normal">Normal</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-3 mt-6">
-          {/* Main content */}
-          <div className="space-y-6 lg:col-span-2">
-            {/* Description */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle>Description</CardTitle>
-                  {!isEditingDescription ? (
-                    <Button variant="ghost" size="sm" onClick={handleStartEditDescription}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCancelEditDescription}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleSaveDescription}
-                        disabled={updateTicket.isPending}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isEditingDescription ? (
-                  <textarea
-                    value={editDescriptionValue}
-                    onChange={(e) => setEditDescriptionValue(e.target.value)}
-                    placeholder="Enter description..."
-                    className="flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                    autoFocus
-                  />
-                ) : ticket.body ? (
-                  <MarkdownContent content={ticket.body} showSourceToggle />
-                ) : (
-                  <p className="text-muted-foreground">No description provided</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Comments */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Activity</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <CommentEditor brandId={brandId} ticketId={ticketId} />
-                <Separator />
-                <CommentThread
-                  comments={comments || []}
-                  isLoading={commentsLoading}
-                />
-              </CardContent>
-            </Card>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {/* Category */}
-                {categories && categories.length > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground flex items-center gap-1">
-                      <FolderOpen className="h-3 w-3" />
-                      Category
-                    </span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-auto py-0.5 px-1.5">
-                          {ticket.category ? (
-                            <span className="flex items-center gap-1.5 text-sm">
-                              <span
-                                className="h-2 w-2 rounded-full"
-                                style={{ backgroundColor: ticket.category.color || '#6366f1' }}
-                              />
-                              {ticket.category.name}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">None</span>
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Set category</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuRadioGroup
-                          value={ticket.categoryId || ''}
-                          onValueChange={handleCategoryChange}
-                        >
-                          <DropdownMenuRadioItem value="">
-                            <span className="text-muted-foreground">No category</span>
-                          </DropdownMenuRadioItem>
-                          {categories.map((cat) => (
-                            <DropdownMenuRadioItem key={cat.id} value={cat.id}>
-                              <span className="flex items-center gap-1.5">
-                                <span
-                                  className="h-2.5 w-2.5 rounded-full"
-                                  style={{ backgroundColor: cat.color || '#6366f1' }}
-                                />
-                                {cat.name}
-                              </span>
-                            </DropdownMenuRadioItem>
-                          ))}
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )}
+          <Separator />
 
-                {/* Tags */}
-                {tags && (
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm text-muted-foreground flex items-center gap-1 pt-0.5">
-                      <Tag className="h-3 w-3" />
-                      Tags
-                    </span>
-                    <div className="flex flex-wrap gap-1 justify-end">
-                      {ticket.tags && ticket.tags.length > 0 ? (
-                        ticket.tags.map((tag) => (
+          {/* Activity Status */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              Activity Status
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-200">
+              <Clock className="h-4 w-4 text-amber-600" />
+              <span className="text-sm text-amber-700">Last update: {getLastActivity()}</span>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Time Tracking */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              Time Tracking
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <MessageSquare className="h-4 w-4" />
+                  First Response
+                </span>
+                <span className="text-emerald-600 font-medium">
+                  {ticket.firstResponseAt ? (
+                    (() => {
+                      const created = new Date(ticket.createdAt);
+                      const response = new Date(ticket.firstResponseAt);
+                      const diffMs = response.getTime() - created.getTime();
+                      const diffMins = Math.floor(diffMs / (1000 * 60));
+                      if (diffMins < 60) return `${diffMins}m`;
+                      const diffHours = Math.floor(diffMins / 60);
+                      if (diffHours < 24) return `${diffHours}h`;
+                      return `${Math.floor(diffHours / 24)}d`;
+                    })()
+                  ) : '-'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  Ticket Age
+                </span>
+                <span className="font-medium">{getTicketAge()}</span>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Details Section */}
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-muted-foreground">Details</div>
+
+            {/* Category */}
+            {categories && categories.length > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  Category
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-auto py-0.5 px-1.5">
+                      {ticket.category ? (
+                        <span className="flex items-center gap-1.5">
                           <span
-                            key={tag.id}
-                            className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium"
-                            style={{
-                              backgroundColor: tag.color ? `${tag.color}20` : '#6366f120',
-                              color: tag.color || '#6366f1',
-                            }}
-                          >
-                            {tag.name}
-                            <button
-                              onClick={() => handleRemoveTag(tag.name)}
-                              className="hover:opacity-70"
-                            >
-                              <X className="h-2.5 w-2.5" />
-                            </button>
-                          </span>
-                        ))
-                      ) : null}
-                      <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-0" align="end">
-                          <Command>
-                            <CommandInput
-                              placeholder="Search or create tag..."
-                              value={tagInputValue}
-                              onValueChange={setTagInputValue}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && tagInputValue.trim()) {
-                                  e.preventDefault();
-                                  handleCreateAndAddTag(tagInputValue);
-                                }
-                              }}
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: ticket.category.color || '#6366f1' }}
+                          />
+                          {ticket.category.name}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">None</span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Set category</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={ticket.categoryId || ''} onValueChange={handleCategoryChange}>
+                      <DropdownMenuRadioItem value="">
+                        <span className="text-muted-foreground">No category</span>
+                      </DropdownMenuRadioItem>
+                      {categories.map((cat) => (
+                        <DropdownMenuRadioItem key={cat.id} value={cat.id}>
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: cat.color || '#6366f1' }}
                             />
-                            <CommandList>
-                              <CommandEmpty>
-                                {tagInputValue.trim() ? (
-                                  <button
-                                    className="flex w-full items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent rounded cursor-pointer"
-                                    onClick={() => handleCreateAndAddTag(tagInputValue)}
-                                  >
-                                    <Plus className="h-3.5 w-3.5" />
-                                    Create &quot;{tagInputValue.trim()}&quot;
-                                  </button>
-                                ) : (
-                                  <span className="text-muted-foreground">No tags found</span>
-                                )}
-                              </CommandEmpty>
-                              <CommandGroup>
-                                {tags
-                                  .filter(t => !ticket.tags?.some(tt => tt.id === t.id))
-                                  .map((tag) => (
-                                    <CommandItem
-                                      key={tag.id}
-                                      value={tag.name}
-                                      onSelect={() => handleAddTag(tag.name)}
-                                    >
-                                      <span
-                                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                                        style={{ backgroundColor: tag.color || '#6366f1' }}
-                                      />
-                                      {tag.name}
-                                    </CommandItem>
-                                  ))}
-                                {tagInputValue.trim() &&
-                                  !tags.some(t => t.name.toLowerCase() === tagInputValue.trim().toLowerCase()) && (
-                                    <CommandItem
-                                      value={`create-${tagInputValue}`}
-                                      onSelect={() => handleCreateAndAddTag(tagInputValue)}
-                                    >
-                                      <Plus className="h-3.5 w-3.5" />
-                                      Create &quot;{tagInputValue.trim()}&quot;
-                                    </CommandItem>
-                                  )}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                )}
+                            {cat.name}
+                          </span>
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
 
+            {/* Tags */}
+            {tags && (
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm text-muted-foreground flex items-center gap-1 pt-0.5">
+                  <Tag className="h-3.5 w-3.5" />
+                  Tags
+                </span>
+                <div className="flex flex-wrap gap-1 justify-end">
+                  {ticket.tags && ticket.tags.length > 0 ? (
+                    ticket.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium"
+                        style={{
+                          backgroundColor: tag.color ? `${tag.color}20` : '#6366f120',
+                          color: tag.color || '#6366f1',
+                        }}
+                      >
+                        {tag.name}
+                        <button onClick={() => handleRemoveTag(tag.name)} className="hover:opacity-70">
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </span>
+                    ))
+                  ) : null}
+                  <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-0" align="end">
+                      <Command>
+                        <CommandInput
+                          placeholder="Search or create tag..."
+                          value={tagInputValue}
+                          onValueChange={setTagInputValue}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && tagInputValue.trim()) {
+                              e.preventDefault();
+                              handleCreateAndAddTag(tagInputValue);
+                            }
+                          }}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {tagInputValue.trim() ? (
+                              <button
+                                className="flex w-full items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent rounded cursor-pointer"
+                                onClick={() => handleCreateAndAddTag(tagInputValue)}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                Create &quot;{tagInputValue.trim()}&quot;
+                              </button>
+                            ) : (
+                              <span className="text-muted-foreground">No tags found</span>
+                            )}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {tags
+                              .filter(t => !ticket.tags?.some(tt => tt.id === t.id))
+                              .map((tag) => (
+                                <CommandItem key={tag.id} value={tag.name} onSelect={() => handleAddTag(tag.name)}>
+                                  <span
+                                    className="h-2.5 w-2.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: tag.color || '#6366f1' }}
+                                  />
+                                  {tag.name}
+                                </CommandItem>
+                              ))}
+                            {tagInputValue.trim() &&
+                              !tags.some(t => t.name.toLowerCase() === tagInputValue.trim().toLowerCase()) && (
+                                <CommandItem
+                                  value={`create-${tagInputValue}`}
+                                  onSelect={() => handleCreateAndAddTag(tagInputValue)}
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                  Create &quot;{tagInputValue.trim()}&quot;
+                                </CommandItem>
+                              )}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            )}
+
+            <Separator />
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Created</span>
+              <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Updated</span>
+              <span>{new Date(ticket.updatedAt).toLocaleDateString()}</span>
+            </div>
+
+            {ticket.status === 'closed' && ticket.closeReason && (
+              <>
                 <Separator />
-
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Created</span>
-                  <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                  <span className="text-muted-foreground">Close reason</span>
+                  <span>{CLOSE_REASONS.find(r => r.value === ticket.closeReason)?.label || ticket.closeReason}</span>
                 </div>
+              </>
+            )}
+          </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Updated</span>
-                  <span>{new Date(ticket.updatedAt).toLocaleDateString()}</span>
+          {/* Custom Fields */}
+          {ticketFields && ticketFields.filter(f => f.visible).length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Layers className="h-4 w-4" />
+                  Custom Fields
                 </div>
-
-                {ticket.status === 'closed' && ticket.closeReason && (
-                  <>
-                    <Separator />
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Close reason</span>
-                      <span>{CLOSE_REASONS.find(r => r.value === ticket.closeReason)?.label || ticket.closeReason}</span>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Custom Fields */}
-            {ticketFields && ticketFields.filter(f => f.visible).length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Layers className="h-4 w-4" />
-                    Custom Fields
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                <div className="space-y-4">
                   {ticketFields
                     .filter(f => f.visible)
                     .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -952,98 +1008,90 @@ export default function TicketDetailPage() {
                         />
                       );
                     })}
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              </div>
+            </>
+          )}
 
-            {/* Other tickets from this customer */}
-            {ticket.customer && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Ticket className="h-4 w-4" />
-                      Other Tickets from {ticket.customer.name || 'Customer'}
-                    </CardTitle>
-                    {selectedForMerge.length > 0 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setShowMergeDialog(true)}
-                        className="h-7 text-xs"
+          {/* Other tickets from this customer */}
+          {ticket.customer && otherTickets.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Ticket className="h-4 w-4" />
+                    Other Tickets
+                  </div>
+                  {selectedForMerge.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowMergeDialog(true)}
+                      className="h-7 text-xs"
+                    >
+                      <Merge className="h-3 w-3 mr-1" />
+                      Merge ({selectedForMerge.length})
+                    </Button>
+                  )}
+                </div>
+                {customerTicketsLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {otherTickets.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-start gap-2 p-2 -mx-2 rounded hover:bg-gray-100 transition-colors"
                       >
-                        <Merge className="h-3 w-3 mr-1" />
-                        Merge ({selectedForMerge.length})
-                      </Button>
+                        <Checkbox
+                          checked={selectedForMerge.includes(t.id)}
+                          onCheckedChange={() => toggleMergeSelection(t.id)}
+                          className="mt-1"
+                        />
+                        <Link href={`/brands/${brandId}/tickets/${t.id}`} className="flex-1 min-w-0">
+                          <div className="flex items-start gap-2">
+                            <StatusBadge status={t.status || 'open'} className="mt-0.5 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">{t.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(t.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+                      </div>
+                    ))}
+                    {customerTicketsData?.pagination?.hasMore && (
+                      <Link
+                        href={`/brands/${brandId}/customers/${ticket.customer.id}`}
+                        className="block text-xs text-primary hover:underline pt-1"
+                      >
+                        View all tickets →
+                      </Link>
                     )}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  {customerTicketsLoading ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-3/4" />
-                    </div>
-                  ) : otherTickets.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No other tickets</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {otherTickets.map((t) => (
-                        <div
-                          key={t.id}
-                          className="flex items-start gap-2 p-2 -mx-2 rounded hover:bg-muted transition-colors"
-                        >
-                          <Checkbox
-                            checked={selectedForMerge.includes(t.id)}
-                            onCheckedChange={() => toggleMergeSelection(t.id)}
-                            className="mt-1"
-                          />
-                          <Link
-                            href={`/brands/${brandId}/tickets/${t.id}`}
-                            className="flex-1 min-w-0"
-                          >
-                            <div className="flex items-start gap-2">
-                              <StatusBadge status={t.status || 'open'} className="mt-0.5 shrink-0" />
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium truncate">{t.title}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(t.createdAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                          </Link>
-                        </div>
-                      ))}
-                      {customerTicketsData?.pagination?.hasMore && (
-                        <Link
-                          href={`/brands/${brandId}/customers/${ticket.customer.id}`}
-                          className="block text-xs text-primary hover:underline pt-1"
-                        >
-                          View all tickets →
-                        </Link>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </div>
+            </>
+          )}
 
-            {/* Ticket History */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <History className="h-4 w-4" />
-                  History
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TicketHistory brandId={brandId} ticketId={ticketId} />
-              </CardContent>
-            </Card>
+          {/* Ticket History */}
+          <Separator />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <History className="h-4 w-4" />
+              History
+            </div>
+            <TicketHistory brandId={brandId} ticketId={ticketId} />
           </div>
         </div>
       </div>
 
+      {/* Dialogs */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1081,10 +1129,7 @@ export default function TicketDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleMerge}
-              disabled={mergeTickets.isPending}
-            >
+            <AlertDialogAction onClick={handleMerge} disabled={mergeTickets.isPending}>
               {mergeTickets.isPending ? 'Merging...' : 'Merge Tickets'}
             </AlertDialogAction>
           </AlertDialogFooter>
