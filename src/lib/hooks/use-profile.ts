@@ -37,23 +37,46 @@ export function useUploadAvatar() {
         contentType: file.type,
         size: file.size,
       };
-      const { uploadUrl } = await profileApi.initiateAvatarUpload(uploadData);
+
+      let uploadUrl: string;
+      try {
+        const response = await profileApi.initiateAvatarUpload(uploadData);
+        uploadUrl = response.uploadUrl;
+      } catch (err) {
+        console.error('Failed to get upload URL:', err);
+        throw new Error('Unable to initiate upload. Storage may not be configured.');
+      }
 
       // Step 2: Upload file directly to S3/R2
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
+      try {
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': file.type,
+          },
+        });
 
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file');
+        if (!uploadResponse.ok) {
+          console.error('Upload failed:', uploadResponse.status, uploadResponse.statusText);
+          throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+        }
+      } catch (err) {
+        // Check if it's a CORS error (network error with no status)
+        if (err instanceof TypeError && err.message === 'Failed to fetch') {
+          console.error('Possible CORS error during upload');
+          throw new Error('Upload blocked. Please contact support to configure storage CORS.');
+        }
+        throw err;
       }
 
       // Step 3: Confirm upload and get updated profile
-      return profileApi.confirmAvatarUpload();
+      try {
+        return await profileApi.confirmAvatarUpload();
+      } catch (err) {
+        console.error('Failed to confirm upload:', err);
+        throw new Error('Upload succeeded but confirmation failed. Please refresh and try again.');
+      }
     },
     onSuccess: (updatedProfile) => {
       queryClient.setQueryData<Profile>(profileKeys.profile, updatedProfile);

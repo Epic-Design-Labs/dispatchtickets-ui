@@ -1,7 +1,33 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, createContext, useContext } from 'react';
+import Link from 'next/link';
 import { ChevronDown, ChevronRight, Code, Forward, User } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+
+// Context for image modal - allows nested components to trigger the modal
+const ImageModalContext = createContext<{
+  openImage: (url: string, alt: string) => void;
+} | null>(null);
+
+function useImageModal() {
+  return useContext(ImageModalContext);
+}
+
+// Clickable image component that opens modal on click
+function ClickableImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const imageModal = useImageModal();
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={`${className || ''} cursor-pointer hover:opacity-90 transition-opacity`}
+      loading="lazy"
+      onClick={() => imageModal?.openImage(src, alt)}
+    />
+  );
+}
 
 interface MarkdownContentProps {
   content: string;
@@ -26,7 +52,7 @@ interface ParsedContent {
 // Types for mention parsing
 type MentionPart =
   | { type: 'text'; content: string }
-  | { type: 'mention'; displayName: string; key: string };
+  | { type: 'mention'; displayName: string; memberId: string; key: string };
 
 /**
  * Detect and extract forwarded email content
@@ -236,8 +262,18 @@ function isSignatureLine(line: string): boolean {
   }
 
   // Line is just an image (markdown image syntax alone on line)
-  if (/^!\[[^\]]*\]\([^)]+\)$/.test(trimmed)) {
-    return true;
+  // Only treat as signature if it's NOT from our storage (user-uploaded images should display)
+  const imageMatch = trimmed.match(/^!\[[^\]]*\]\(([^)]+)\)$/);
+  if (imageMatch) {
+    const imageUrl = imageMatch[1];
+    // If it's from our R2 storage or other known attachment domains, it's user content, not signature
+    const isUserAttachment =
+      imageUrl.includes('r2.cloudflarestorage.com') ||
+      imageUrl.includes('dispatchtickets') ||
+      imageUrl.includes('dispatch-tickets');
+    if (!isUserAttachment) {
+      return true;
+    }
   }
 
   // Line contains mostly URLs (signature with links)
@@ -345,10 +381,18 @@ function findSignatureStart(lines: string[]): number {
           continue;
         }
 
-        // Include standalone images (logos, icons)
-        if (/^!\[[^\]]*\]\([^)]+\)/.test(prevLine)) {
-          signatureStart = j;
-          continue;
+        // Include standalone images (logos, icons) - but not user-uploaded attachments
+        const imgMatch = prevLine.match(/^!\[[^\]]*\]\(([^)]+)\)/);
+        if (imgMatch) {
+          const imgUrl = imgMatch[1];
+          const isUserAttachment =
+            imgUrl.includes('r2.cloudflarestorage.com') ||
+            imgUrl.includes('dispatchtickets') ||
+            imgUrl.includes('dispatch-tickets');
+          if (!isUserAttachment) {
+            signatureStart = j;
+            continue;
+          }
         }
 
         // Check if this looks like a name or company
@@ -425,9 +469,11 @@ function processMentions(
     }
 
     const displayName = match[1];
+    const memberId = match[2];
     elements.push({
       type: 'mention',
       displayName,
+      memberId,
       key: `${keyPrefix}-mention-${keyIndex.current++}`,
     });
 
@@ -463,12 +509,13 @@ function processTextWithLinks(
   for (const part of mentionParts) {
     if (part.type === 'mention') {
       elements.push(
-        <span
+        <Link
           key={part.key}
-          className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded font-medium text-sm"
+          href={`/team/${part.memberId}`}
+          className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded font-medium text-sm hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
         >
           @{part.displayName}
-        </span>
+        </Link>
       );
     } else if (part.type === 'text' && part.content) {
       // Process text for URLs
@@ -496,12 +543,11 @@ function processTextWithLinks(
 
           if (isImage) {
             elements.push(
-              <img
+              <ClickableImage
                 key={`${keyPrefix}-img-${keyIndex.current++}`}
                 src={url}
                 alt="Image"
                 className="max-w-full max-h-96 rounded-md my-2 border"
-                loading="lazy"
               />
             );
           } else {
@@ -568,12 +614,11 @@ function RenderContent({ content, className = '', isSignature = false }: { conte
 
         const [, alt, url] = match;
         lineElements.push(
-          <img
+          <ClickableImage
             key={`${lineIndex}-mdimg-${keyIndex.current++}`}
             src={url}
             alt={alt || 'Image'}
             className="max-w-full max-h-96 rounded-md my-2 border"
-            loading="lazy"
           />
         );
 
@@ -645,6 +690,11 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
   const [showSource, setShowSource] = useState(false);
   const [showForwarded, setShowForwarded] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{ url: string; alt: string } | null>(null);
+
+  const openImage = (url: string, alt: string) => {
+    setSelectedImage({ url, alt });
+  };
 
   // Check if content was transformed (HTML or had headers stripped)
   const wasTransformed = useMemo(() => {
@@ -667,68 +717,144 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
   // If this is a forwarded email, render with collapsible section
   if (forwardedContent) {
     return (
-      <div className={className}>
-        {/* User's message (if any) */}
-        {forwardedContent.userMessage && (
-          <RenderContent content={forwardedContent.userMessage} />
-        )}
+      <ImageModalContext.Provider value={{ openImage }}>
+        <div className={className}>
+          {/* User's message (if any) */}
+          {forwardedContent.userMessage && (
+            <RenderContent content={forwardedContent.userMessage} />
+          )}
 
-        {/* Forwarded content section */}
-        <div className="mt-4 border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowForwarded(!showForwarded)}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted transition-colors text-left text-sm"
-          >
-            {showForwarded ? (
-              <ChevronDown className="h-4 w-4 shrink-0" />
-            ) : (
-              <ChevronRight className="h-4 w-4 shrink-0" />
-            )}
-            <Forward className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="font-medium">Forwarded message</span>
-            {forwardedContent.forwardedFrom && (
-              <span className="text-muted-foreground truncate">
-                from {forwardedContent.forwardedFrom}
-              </span>
-            )}
-          </button>
-
-          {showForwarded && (
-            <div className="px-3 py-2 border-t bg-background">
-              {/* Forwarded headers */}
-              {(forwardedContent.forwardedFrom || forwardedContent.forwardedSubject || forwardedContent.forwardedDate) && (
-                <div className="mb-3 pb-2 border-b text-sm space-y-1">
-                  {forwardedContent.forwardedFrom && (
-                    <div>
-                      <span className="text-muted-foreground">From: </span>
-                      <span>{forwardedContent.forwardedFrom}</span>
-                    </div>
-                  )}
-                  {forwardedContent.forwardedDate && (
-                    <div>
-                      <span className="text-muted-foreground">Date: </span>
-                      <span>{forwardedContent.forwardedDate}</span>
-                    </div>
-                  )}
-                  {forwardedContent.forwardedSubject && (
-                    <div>
-                      <span className="text-muted-foreground">Subject: </span>
-                      <span>{forwardedContent.forwardedSubject}</span>
-                    </div>
-                  )}
-                </div>
+          {/* Forwarded content section */}
+          <div className="mt-4 border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setShowForwarded(!showForwarded)}
+              className="w-full flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted transition-colors text-left text-sm"
+            >
+              {showForwarded ? (
+                <ChevronDown className="h-4 w-4 shrink-0" />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0" />
               )}
+              <Forward className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="font-medium">Forwarded message</span>
+              {forwardedContent.forwardedFrom && (
+                <span className="text-muted-foreground truncate">
+                  from {forwardedContent.forwardedFrom}
+                </span>
+              )}
+            </button>
 
-              {/* Forwarded body */}
-              <RenderContent
-                content={forwardedContent.forwardedMessage}
-                className="text-sm"
-              />
+            {showForwarded && (
+              <div className="px-3 py-2 border-t bg-background">
+                {/* Forwarded headers */}
+                {(forwardedContent.forwardedFrom || forwardedContent.forwardedSubject || forwardedContent.forwardedDate) && (
+                  <div className="mb-3 pb-2 border-b text-sm space-y-1">
+                    {forwardedContent.forwardedFrom && (
+                      <div>
+                        <span className="text-muted-foreground">From: </span>
+                        <span>{forwardedContent.forwardedFrom}</span>
+                      </div>
+                    )}
+                    {forwardedContent.forwardedDate && (
+                      <div>
+                        <span className="text-muted-foreground">Date: </span>
+                        <span>{forwardedContent.forwardedDate}</span>
+                      </div>
+                    )}
+                    {forwardedContent.forwardedSubject && (
+                      <div>
+                        <span className="text-muted-foreground">Subject: </span>
+                        <span>{forwardedContent.forwardedSubject}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Forwarded body */}
+                <RenderContent
+                  content={forwardedContent.forwardedMessage}
+                  className="text-sm"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* View source toggle */}
+          {showSourceToggle && wasTransformed && (
+            <div className="mt-4 border-t pt-3">
+              <button
+                onClick={() => setShowSource(!showSource)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showSource ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                <Code className="h-3 w-3" />
+                <span>View original</span>
+              </button>
+
+              {showSource && (
+                <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-x-auto max-h-96 overflow-y-auto">
+                  <code>{content}</code>
+                </pre>
+              )}
             </div>
           )}
         </div>
 
-        {/* View source toggle */}
+        {/* Image modal */}
+        <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+          <DialogContent className="max-w-[90vw] max-h-[90vh] p-2" showCloseButton>
+            {selectedImage && (
+              <img
+                src={selectedImage.url}
+                alt={selectedImage.alt}
+                className="max-w-full max-h-[85vh] object-contain mx-auto"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </ImageModalContext.Provider>
+    );
+  }
+
+  // Regular content (no forwarding detected)
+  // Use parsed content to separate main body from signature
+  const mainBody = parsedContent?.mainBody || cleanEmailBody(content);
+  const signature = parsedContent?.signature;
+
+  return (
+    <ImageModalContext.Provider value={{ openImage }}>
+      <div className={className}>
+        <RenderContent content={mainBody} />
+
+        {/* Signature section - collapsible */}
+        {signature && (
+          <div className="mt-4 border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setShowSignature(!showSignature)}
+              className="w-full flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted transition-colors text-left text-sm"
+            >
+              {showSignature ? (
+                <ChevronDown className="h-4 w-4 shrink-0" />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0" />
+              )}
+              <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="text-muted-foreground">Signature</span>
+            </button>
+
+            {showSignature && (
+              <div className="px-3 py-2 border-t bg-background">
+                <RenderContent content={signature} isSignature />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* View source toggle - only show if content was transformed */}
         {showSourceToggle && wasTransformed && (
           <div className="mt-4 border-t pt-3">
             <button
@@ -752,65 +878,19 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
           </div>
         )}
       </div>
-    );
-  }
 
-  // Regular content (no forwarding detected)
-  // Use parsed content to separate main body from signature
-  const mainBody = parsedContent?.mainBody || cleanEmailBody(content);
-  const signature = parsedContent?.signature;
-
-  return (
-    <div className={className}>
-      <RenderContent content={mainBody} />
-
-      {/* Signature section - collapsible */}
-      {signature && (
-        <div className="mt-4 border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowSignature(!showSignature)}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted transition-colors text-left text-sm"
-          >
-            {showSignature ? (
-              <ChevronDown className="h-4 w-4 shrink-0" />
-            ) : (
-              <ChevronRight className="h-4 w-4 shrink-0" />
-            )}
-            <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="text-muted-foreground">Signature</span>
-          </button>
-
-          {showSignature && (
-            <div className="px-3 py-2 border-t bg-background">
-              <RenderContent content={signature} isSignature />
-            </div>
+      {/* Image modal */}
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2" showCloseButton>
+          {selectedImage && (
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.alt}
+              className="max-w-full max-h-[85vh] object-contain mx-auto"
+            />
           )}
-        </div>
-      )}
-
-      {/* View source toggle - only show if content was transformed */}
-      {showSourceToggle && wasTransformed && (
-        <div className="mt-4 border-t pt-3">
-          <button
-            onClick={() => setShowSource(!showSource)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {showSource ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-            <Code className="h-3 w-3" />
-            <span>View original</span>
-          </button>
-
-          {showSource && (
-            <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-x-auto max-h-96 overflow-y-auto">
-              <code>{content}</code>
-            </pre>
-          )}
-        </div>
-      )}
-    </div>
+        </DialogContent>
+      </Dialog>
+    </ImageModalContext.Provider>
   );
 }

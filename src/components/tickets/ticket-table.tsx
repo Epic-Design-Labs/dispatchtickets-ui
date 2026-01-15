@@ -452,8 +452,8 @@ export function TicketTable({
             break;
           case 'priority':
             const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
-            aVal = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 99;
-            bVal = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 99;
+            aVal = priorityOrder[(a.priority || 'normal') as keyof typeof priorityOrder] ?? 2;
+            bVal = priorityOrder[(b.priority || 'normal') as keyof typeof priorityOrder] ?? 2;
             break;
           case 'customer':
             aVal = (a.customer?.name || a.customer?.email || '').toLowerCase();
@@ -661,7 +661,7 @@ export function TicketTable({
       case 'status':
         return ticket.status ? <StatusBadge status={ticket.status} /> : <span className="text-muted-foreground">-</span>;
       case 'priority':
-        return ticket.priority ? <PriorityBadge priority={ticket.priority} /> : <span className="text-muted-foreground">-</span>;
+        return <PriorityBadge priority={ticket.priority || 'normal'} />;
       case 'customer':
         return <span className="text-muted-foreground">{customerName || customerEmail || '-'}</span>;
       case 'company':

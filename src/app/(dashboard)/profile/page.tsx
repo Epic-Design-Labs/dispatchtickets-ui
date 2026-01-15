@@ -222,8 +222,9 @@ export default function ProfilePage() {
     try {
       await uploadAvatar.mutateAsync(file);
       toast.success('Avatar updated');
-    } catch {
-      toast.error('Failed to upload avatar');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to upload avatar';
+      toast.error(message);
     }
 
     // Clear the input

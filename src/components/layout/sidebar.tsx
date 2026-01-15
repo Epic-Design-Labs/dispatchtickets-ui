@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
 import { useProfile, useBrands, useDashboardStats, useDashboardTickets, useSetupStatus } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
+import { NotificationBell } from './notification-bell';
 import { Inbox, User, AlertCircle, Key, Rocket, Check, BarChart3 } from 'lucide-react';
 
 interface SidebarProps {
@@ -125,7 +126,7 @@ export function Sidebar({ brandId }: SidebarProps) {
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-background">
-      <div className="flex h-14 items-center border-b px-4">
+      <div className="flex h-14 items-center justify-between border-b px-4">
         <Link href="/dashboard" className="flex items-center">
           <Image
             src="/logo.svg"
@@ -135,6 +136,7 @@ export function Sidebar({ brandId }: SidebarProps) {
             priority
           />
         </Link>
+        <NotificationBell />
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">

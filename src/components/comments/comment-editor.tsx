@@ -231,15 +231,19 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
     }
   }, [uploadAttachment]);
 
-  // Handle image input change
+  // Handle image input change (supports multiple files)
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      // Validate all files are images
+      const nonImageFile = Array.from(files).find((f) => !f.type.startsWith('image/'));
+      if (nonImageFile) {
+        toast.error('Please select only image files');
+        e.target.value = '';
         return;
       }
-      handleFileUpload(file);
+      // Upload all selected images
+      Array.from(files).forEach((file) => handleFileUpload(file));
     }
     e.target.value = '';
   }, [handleFileUpload]);
@@ -341,6 +345,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
         ref={imageInputRef}
         type="file"
         accept="image/*"
+        multiple
         onChange={handleImageSelect}
         className="hidden"
       />

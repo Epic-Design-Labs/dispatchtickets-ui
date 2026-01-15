@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Dispatch Tickets UI",
-  description: "Open-source admin UI for Dispatch Tickets",
+  title: "Dispatch Tickets",
+  description: "The ticketing API for developers",
 };
 
 export default function RootLayout({
