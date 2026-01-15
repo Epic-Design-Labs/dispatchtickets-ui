@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView } from '@/lib/hooks';
-import { Header } from '@/components/layout';
 import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { CompanyCombobox } from '@/components/companies';
@@ -421,20 +420,41 @@ export default function TicketDetailPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title={ticket.title} />
+      {/* Top bar with breadcrumb and actions */}
+      <header className="flex h-14 items-center justify-between border-b bg-gray-100 px-6">
+        <div className="flex items-center gap-2 text-sm">
+          <Link
+            href={`/brands/${brandId}`}
+            className="text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {brand?.name || 'Brand'} Tickets
+          </Link>
+          <span className="text-muted-foreground">/</span>
+          <span className="font-medium">#{ticket.id.slice(0, 12)}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleMarkAsSpam}
+            disabled={markAsSpam.isPending}
+            title="Mark as spam"
+          >
+            <ShieldAlert className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            title="Delete ticket"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </header>
       <div className="flex-1 p-6">
         <div className="mb-6">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link
-              href={`/brands/${brandId}`}
-              className="hover:underline"
-            >
-              {brand?.name || 'Brand'} Tickets
-            </Link>
-            <span>/</span>
-            <span>{ticket.id.slice(0, 12)}</span>
-          </div>
-          <div className="mt-2 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             {isEditingTitle ? (
               <div className="flex items-center gap-2 flex-1 mr-4">
                 <Input
@@ -464,67 +484,47 @@ export default function TicketDetailPage() {
                 </Button>
               </div>
             ) : (
-              <h2
+              <h1
                 className="text-2xl font-bold tracking-tight cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded group flex items-center gap-2"
                 onClick={handleStartEditTitle}
                 title="Click to edit title"
               >
                 {ticket.title}
                 <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50" />
-              </h2>
+              </h1>
             )}
-            <div className="flex items-center gap-2">
-              {/* Prev/Next navigation */}
-              {totalCount > 0 && (
-                <div className="flex items-center border rounded-lg mr-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={goToPrev}
-                    disabled={!prevTicketId}
-                    title="Previous ticket (K)"
-                    className="px-3 rounded-r-none border-r"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </Button>
-                  <span className="text-sm text-muted-foreground px-4">
-                    {currentIndex} / {totalCount}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={goToNext}
-                    disabled={!nextTicketId}
-                    title="Next ticket (J)"
-                    className="px-3 rounded-l-none border-l"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Button>
-                </div>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleMarkAsSpam}
-                disabled={markAsSpam.isPending}
-              >
-                <ShieldAlert className="mr-2 h-4 w-4" />
-                Spam
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDeleteDialog(true)}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </Button>
-            </div>
+            {/* Prev/Next navigation */}
+            {totalCount > 0 && (
+              <div className="flex items-center border rounded-lg bg-white">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={goToPrev}
+                  disabled={!prevTicketId}
+                  title="Previous ticket (K)"
+                  className="px-3 rounded-r-none border-r"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </Button>
+                <span className="text-sm text-muted-foreground px-4">
+                  {currentIndex} / {totalCount}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={goToNext}
+                  disabled={!nextTicketId}
+                  title="Next ticket (J)"
+                  className="px-3 rounded-l-none border-l"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Quick info bar */}
