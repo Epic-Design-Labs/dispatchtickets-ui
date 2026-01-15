@@ -406,7 +406,9 @@ export default function TicketDetailPage() {
   if (!ticket) {
     return (
       <div className="flex flex-col">
-        <Header title="Ticket Not Found" />
+        <header className="flex h-14 items-center border-b bg-gray-100 px-6">
+          <span className="text-sm text-muted-foreground">Ticket Not Found</span>
+        </header>
         <div className="flex flex-1 flex-col items-center justify-center p-6">
           <p className="text-lg font-medium">Ticket not found</p>
           <Button className="mt-4" onClick={() => router.back()}>
