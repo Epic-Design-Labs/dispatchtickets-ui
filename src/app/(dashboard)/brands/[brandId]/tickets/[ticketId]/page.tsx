@@ -484,14 +484,42 @@ export default function TicketDetailPage() {
                 </Button>
               </div>
             ) : (
-              <h1
-                className="text-2xl font-bold tracking-tight cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded group flex items-center gap-2"
-                onClick={handleStartEditTitle}
-                title="Click to edit title"
-              >
-                {ticket.title}
-                <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50" />
-              </h1>
+              <div className="flex flex-col gap-2">
+                <h1
+                  className="text-2xl font-bold tracking-tight cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded group flex items-center gap-2"
+                  onClick={handleStartEditTitle}
+                  title="Click to edit title"
+                >
+                  {ticket.title}
+                  <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50" />
+                </h1>
+                {/* Time in progress badge */}
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm w-fit">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                  <span>
+                    {(() => {
+                      const created = new Date(ticket.createdAt);
+                      const now = new Date();
+                      const diffMs = now.getTime() - created.getTime();
+                      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                      const diffDays = Math.floor(diffHours / 24);
+                      if (diffDays > 0) {
+                        return `${diffDays}d ${diffHours % 24}h`;
+                      }
+                      const diffMins = Math.floor(diffMs / (1000 * 60)) % 60;
+                      if (diffHours > 0) {
+                        return `${diffHours}h ${diffMins}m`;
+                      }
+                      return `${diffMins}m`;
+                    })()}
+                  </span>
+                  <span>•</span>
+                  <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                </div>
+              </div>
             )}
             {/* Prev/Next navigation */}
             {totalCount > 0 && (
