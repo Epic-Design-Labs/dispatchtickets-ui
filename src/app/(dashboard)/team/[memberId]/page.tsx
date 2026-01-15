@@ -62,9 +62,13 @@ export default function MemberDetailPage() {
 
   const currentUserRole = (session?.orgRole as OrgRole) || 'member';
   const isCurrentUserOwner = currentUserRole === 'owner';
+  const isCurrentUserAdmin = currentUserRole === 'admin';
   const canManageMembers = currentUserRole === 'owner' || currentUserRole === 'admin';
   const isMemberOwner = member?.role === 'owner';
+  const isMemberAdmin = member?.role === 'admin';
   const isPending = member?.status === 'pending';
+  // Admins can only change member roles, not other admins (Stackbe restriction)
+  const canChangeRole = isCurrentUserOwner || (isCurrentUserAdmin && !isMemberAdmin);
 
   // Sync role state when member data loads (only on initial load)
   const [roleInitialized, setRoleInitialized] = useState(false);
@@ -275,7 +279,7 @@ export default function MemberDetailPage() {
                     </p>
                   )}
                 </div>
-              ) : canManageMembers ? (
+              ) : canChangeRole ? (
                 <div className="flex items-center gap-4">
                   <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as OrgRole)}>
                     <SelectTrigger className="w-48">
@@ -292,6 +296,13 @@ export default function MemberDetailPage() {
                   >
                     {updateMember.isPending ? 'Saving...' : 'Save'}
                   </Button>
+                </div>
+              ) : canManageMembers && isMemberAdmin ? (
+                <div className="space-y-2">
+                  <Badge variant="secondary">Admin</Badge>
+                  <p className="text-sm text-muted-foreground">
+                    Only the owner can change another admin&apos;s role.
+                  </p>
                 </div>
               ) : (
                 <Badge variant="secondary">{member.role}</Badge>
