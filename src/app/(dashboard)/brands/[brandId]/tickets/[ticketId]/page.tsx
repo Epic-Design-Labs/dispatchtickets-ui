@@ -476,18 +476,20 @@ export default function TicketDetailPage() {
             <div className="flex items-center gap-2">
               {/* Prev/Next navigation */}
               {totalCount > 0 && (
-                <div className="flex items-center gap-1 mr-2">
+                <div className="flex items-center border rounded-lg mr-2">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={goToPrev}
                     disabled={!prevTicketId}
                     title="Previous ticket (K)"
-                    className="px-2"
+                    className="px-3 rounded-r-none border-r"
                   >
-                    <kbd className="text-xs font-mono">K</kbd>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
                   </Button>
-                  <span className="text-sm text-muted-foreground min-w-[60px] text-center">
+                  <span className="text-sm text-muted-foreground px-4">
                     {currentIndex} / {totalCount}
                   </span>
                   <Button
@@ -496,9 +498,11 @@ export default function TicketDetailPage() {
                     onClick={goToNext}
                     disabled={!nextTicketId}
                     title="Next ticket (J)"
-                    className="px-2"
+                    className="px-3 rounded-l-none border-l"
                   >
-                    <kbd className="text-xs font-mono">J</kbd>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
                   </Button>
                 </div>
               )}
