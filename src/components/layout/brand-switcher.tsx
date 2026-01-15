@@ -137,7 +137,7 @@ export function BrandSwitcher() {
             </TooltipProvider>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {brands?.map((brand) => (
+          {brands?.slice().sort((a, b) => a.name.localeCompare(b.name)).map((brand) => (
             <DropdownMenuItem
               key={brand.id}
               className="cursor-pointer flex items-center justify-between"
