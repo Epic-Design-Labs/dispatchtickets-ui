@@ -39,15 +39,18 @@ import {
 
 type ViewType = 'all' | 'mine' | 'unassigned';
 
-// Column definitions for global dashboard
+// Column definitions for global dashboard (matching brand view + brand column)
 const DASHBOARD_COLUMNS = [
   { key: 'brand', label: 'Brand', defaultVisible: true },
   { key: 'subject', label: 'Subject', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
-  { key: 'customer', label: 'Customer', defaultVisible: true },
-  { key: 'created', label: 'Created', defaultVisible: true },
-  { key: 'assignee', label: 'Assignee', defaultVisible: true },
   { key: 'priority', label: 'Priority', defaultVisible: true },
+  { key: 'customer', label: 'Customer', defaultVisible: true },
+  { key: 'company', label: 'Company', defaultVisible: false },
+  { key: 'assignee', label: 'Assignee', defaultVisible: false },
+  { key: 'category', label: 'Category', defaultVisible: false },
+  { key: 'created', label: 'Created', defaultVisible: true },
+  { key: 'updated', label: 'Updated', defaultVisible: false },
 ] as const;
 
 const DASHBOARD_COLUMNS_STORAGE_KEY = 'dispatch-dashboard-columns';
@@ -407,10 +410,13 @@ export default function DashboardPage() {
               {visibleColumns.brand !== false && <TableHead className="w-[100px]">Brand</TableHead>}
               {visibleColumns.subject !== false && <TableHead>Subject</TableHead>}
               {visibleColumns.status !== false && <TableHead className="w-[100px]">Status</TableHead>}
-              {visibleColumns.customer !== false && <TableHead className="w-[150px]">Customer</TableHead>}
-              {visibleColumns.created !== false && <TableHead className="w-[120px]">Created</TableHead>}
-              {visibleColumns.assignee !== false && <TableHead className="w-[140px]">Assignee</TableHead>}
               {visibleColumns.priority !== false && <TableHead className="w-[100px]">Priority</TableHead>}
+              {visibleColumns.customer !== false && <TableHead className="w-[150px]">Customer</TableHead>}
+              {visibleColumns.company !== false && <TableHead className="w-[150px]">Company</TableHead>}
+              {visibleColumns.assignee !== false && <TableHead className="w-[140px]">Assignee</TableHead>}
+              {visibleColumns.category !== false && <TableHead className="w-[120px]">Category</TableHead>}
+              {visibleColumns.created !== false && <TableHead className="w-[120px]">Created</TableHead>}
+              {visibleColumns.updated !== false && <TableHead className="w-[120px]">Updated</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -476,21 +482,26 @@ export default function DashboardPage() {
                       )}
                     </TableCell>
                   )}
+                  {visibleColumns.priority !== false && (
+                    <TableCell>
+                      {ticket.priority ? (
+                        <PriorityBadge priority={ticket.priority as 'low' | 'normal' | 'medium' | 'high' | 'urgent'} />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  )}
                   {visibleColumns.customer !== false && (
                     <TableCell>
                       <div className="text-sm truncate">
-                        {String(
-                          (ticket.customFields as Record<string, unknown>)?.requesterName ||
-                          (ticket.customFields as Record<string, unknown>)?.requesterEmail ||
-                          'Unknown'
-                        )}
+                        {ticket.customer?.name || ticket.customer?.email || '-'}
                       </div>
                     </TableCell>
                   )}
-                  {visibleColumns.created !== false && (
+                  {visibleColumns.company !== false && (
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {formatTimeAgo(ticket.createdAt)}
+                      <span className="text-sm text-muted-foreground truncate">
+                        {ticket.customer?.company?.name || '-'}
                       </span>
                     </TableCell>
                   )}
@@ -503,13 +514,33 @@ export default function DashboardPage() {
                       </span>
                     </TableCell>
                   )}
-                  {visibleColumns.priority !== false && (
+                  {visibleColumns.category !== false && (
                     <TableCell>
-                      {ticket.priority ? (
-                        <PriorityBadge priority={ticket.priority as 'low' | 'normal' | 'medium' | 'high' | 'urgent'} />
+                      {ticket.category ? (
+                        <Badge variant="outline" className="text-xs">
+                          <span
+                            className="w-2 h-2 rounded-full mr-1.5"
+                            style={{ backgroundColor: ticket.category.color || '#6366f1' }}
+                          />
+                          {ticket.category.name}
+                        </Badge>
                       ) : (
                         <span className="text-sm text-muted-foreground">-</span>
                       )}
+                    </TableCell>
+                  )}
+                  {visibleColumns.created !== false && (
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {formatTimeAgo(ticket.createdAt)}
+                      </span>
+                    </TableCell>
+                  )}
+                  {visibleColumns.updated !== false && (
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {formatTimeAgo(ticket.updatedAt)}
+                      </span>
                     </TableCell>
                   )}
                 </TableRow>
