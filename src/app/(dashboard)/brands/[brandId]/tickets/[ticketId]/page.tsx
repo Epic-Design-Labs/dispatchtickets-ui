@@ -366,7 +366,7 @@ export default function TicketDetailPage() {
   if (ticketLoading) {
     return (
       <div className="flex flex-col">
-        <header className="flex h-14 items-center justify-between border-b bg-gray-100 px-6">
+        <header className="flex h-14 items-center justify-between border-b bg-white px-6">
           <Skeleton className="h-4 w-48" />
         </header>
         <div className="flex-1 p-6">
@@ -406,7 +406,7 @@ export default function TicketDetailPage() {
   if (!ticket) {
     return (
       <div className="flex flex-col">
-        <header className="flex h-14 items-center border-b bg-gray-100 px-6">
+        <header className="flex h-14 items-center border-b bg-white px-6">
           <span className="text-sm text-muted-foreground">Ticket Not Found</span>
         </header>
         <div className="flex flex-1 flex-col items-center justify-center p-6">
@@ -425,7 +425,7 @@ export default function TicketDetailPage() {
   return (
     <div className="flex flex-col">
       {/* Top bar with breadcrumb and actions */}
-      <header className="flex h-14 items-center justify-between border-b bg-gray-100 px-6">
+      <header className="flex h-14 items-center justify-between border-b bg-white px-6">
         <div className="flex items-center gap-2 text-sm">
           <Link
             href={`/brands/${brandId}`}
