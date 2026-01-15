@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Key, Plus, Trash2, Copy, Check, Shield, Globe } from 'lucide-react';
+import { Key, Plus, Trash2, Copy, Check, Shield, Globe, ShieldX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '@/lib/hooks/use-api-keys';
 import { useBrands } from '@/lib/hooks';
+import { useAuth } from '@/providers';
 import { ApiKey } from '@/types/api-key';
 
 function formatDate(date: string | null) {
@@ -317,9 +318,28 @@ function ApiKeyRow({ apiKey, brands }: { apiKey: ApiKey; brands: { id: string; n
 }
 
 export default function ApiKeysPage() {
+  const { session } = useAuth();
   const { data: apiKeys, isLoading } = useApiKeys();
   const { data: brands } = useBrands();
   const [newKey, setNewKey] = useState<ApiKey | null>(null);
+
+  const canManageApiKeys = session?.orgRole === 'owner' || session?.orgRole === 'admin';
+
+  if (!canManageApiKeys) {
+    return (
+      <div className="container max-w-4xl py-8">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <ShieldX className="h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground text-center">
+              Only owners and admins can manage API keys.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-4xl py-8">

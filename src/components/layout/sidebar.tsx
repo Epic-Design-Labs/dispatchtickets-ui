@@ -267,19 +267,21 @@ export function Sidebar({ brandId }: SidebarProps) {
               Team
             </Link>
           </Button>
-          <Button
-            variant={pathname === '/api-keys' ? 'secondary' : 'ghost'}
-            className={cn(
-              'w-full justify-start gap-2',
-              pathname === '/api-keys' && 'bg-secondary'
-            )}
-            asChild
-          >
-            <Link href="/api-keys">
-              <Key className="h-4 w-4" />
-              API Keys
-            </Link>
-          </Button>
+          {(session?.orgRole === 'owner' || session?.orgRole === 'admin') && (
+            <Button
+              variant={pathname === '/api-keys' ? 'secondary' : 'ghost'}
+              className={cn(
+                'w-full justify-start gap-2',
+                pathname === '/api-keys' && 'bg-secondary'
+              )}
+              asChild
+            >
+              <Link href="/api-keys">
+                <Key className="h-4 w-4" />
+                API Keys
+              </Link>
+            </Button>
+          )}
           {session?.orgRole === 'owner' && (
             <Button
               variant={pathname === '/billing' ? 'secondary' : 'ghost'}
