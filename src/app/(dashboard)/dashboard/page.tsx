@@ -26,9 +26,31 @@ import {
   RefreshCw,
   MessageSquare,
   Timer,
+  Settings2,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+} from '@/components/ui/dropdown-menu';
 
 type ViewType = 'all' | 'mine' | 'unassigned';
+
+// Column definitions for global dashboard
+const DASHBOARD_COLUMNS = [
+  { key: 'brand', label: 'Brand', defaultVisible: true },
+  { key: 'subject', label: 'Subject', defaultVisible: true },
+  { key: 'status', label: 'Status', defaultVisible: true },
+  { key: 'customer', label: 'Customer', defaultVisible: true },
+  { key: 'created', label: 'Created', defaultVisible: true },
+  { key: 'assignee', label: 'Assignee', defaultVisible: true },
+  { key: 'priority', label: 'Priority', defaultVisible: true },
+] as const;
+
+const DASHBOARD_COLUMNS_STORAGE_KEY = 'dispatch-dashboard-columns';
 
 function formatTimeAgo(date: string) {
   const now = new Date();
@@ -59,6 +81,26 @@ export default function DashboardPage() {
   const { data: brands } = useBrands();
   const { data: teamMembersData } = useTeamMembers();
   const teamMembers = teamMembersData?.members;
+
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') {
+      return Object.fromEntries(DASHBOARD_COLUMNS.map(c => [c.key, c.defaultVisible]));
+    }
+    try {
+      const saved = localStorage.getItem(DASHBOARD_COLUMNS_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return Object.fromEntries(DASHBOARD_COLUMNS.map(c => [c.key, c.defaultVisible]));
+  });
+
+  const toggleColumn = (key: string) => {
+    const newVisible = { ...visibleColumns, [key]: !visibleColumns[key] };
+    setVisibleColumns(newVisible);
+    try {
+      localStorage.setItem(DASHBOARD_COLUMNS_STORAGE_KEY, JSON.stringify(newVisible));
+    } catch {}
+  };
 
   // Parse URL params
   const view = (searchParams.get('view') || 'all') as ViewType;
@@ -322,16 +364,39 @@ export default function DashboardPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-4">
-        <TicketFilters
-          filters={currentFilters}
-          onFiltersChange={handleFiltersChange}
-          brands={brands}
-          selectedBrandIds={selectedBrands}
-          onBrandFilterChange={handleBrandFilterChange}
-          showBrandFilter
-          teamMembers={teamMembers}
-        />
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <TicketFilters
+            filters={currentFilters}
+            onFiltersChange={handleFiltersChange}
+            brands={brands}
+            selectedBrandIds={selectedBrands}
+            onBrandFilterChange={handleBrandFilterChange}
+            showBrandFilter
+            teamMembers={teamMembers}
+          />
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Settings2 className="mr-2 h-4 w-4" />
+              Columns
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {DASHBOARD_COLUMNS.map(col => (
+              <DropdownMenuCheckboxItem
+                key={col.key}
+                checked={visibleColumns[col.key] !== false}
+                onCheckedChange={() => toggleColumn(col.key)}
+              >
+                {col.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Tickets Table */}
@@ -339,25 +404,25 @@ export default function DashboardPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Brand</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead className="w-[100px]">Status</TableHead>
-              <TableHead className="w-[150px]">Customer</TableHead>
-              <TableHead className="w-[120px]">Created</TableHead>
-              <TableHead className="w-[140px]">Assignee</TableHead>
-              <TableHead className="w-[100px]">Priority</TableHead>
+              {visibleColumns.brand !== false && <TableHead className="w-[100px]">Brand</TableHead>}
+              {visibleColumns.subject !== false && <TableHead>Subject</TableHead>}
+              {visibleColumns.status !== false && <TableHead className="w-[100px]">Status</TableHead>}
+              {visibleColumns.customer !== false && <TableHead className="w-[150px]">Customer</TableHead>}
+              {visibleColumns.created !== false && <TableHead className="w-[120px]">Created</TableHead>}
+              {visibleColumns.assignee !== false && <TableHead className="w-[140px]">Assignee</TableHead>}
+              {visibleColumns.priority !== false && <TableHead className="w-[100px]">Priority</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {ticketsLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={Object.values(visibleColumns).filter(v => v !== false).length || 7} className="text-center py-8">
                   <div className="text-muted-foreground">Loading tickets...</div>
                 </TableCell>
               </TableRow>
             ) : tickets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={Object.values(visibleColumns).filter(v => v !== false).length || 7} className="text-center py-8">
                   <div className="text-muted-foreground">No tickets found</div>
                 </TableCell>
               </TableRow>
@@ -374,65 +439,79 @@ export default function DashboardPage() {
                     router.push(`/brands/${ticket.brandId}/tickets/${ticket.id}`)
                   }
                 >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {ticket.brand.iconUrl ? (
-                        <img
-                          src={ticket.brand.iconUrl}
-                          alt={ticket.brand.name}
-                          className="w-5 h-5 rounded"
-                        />
+                  {visibleColumns.brand !== false && (
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {ticket.brand.iconUrl ? (
+                          <img
+                            src={ticket.brand.iconUrl}
+                            alt={ticket.brand.name}
+                            className="w-5 h-5 rounded"
+                          />
+                        ) : (
+                          <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground">
+                            {ticket.brand.ticketPrefix?.charAt(0) || 'B'}
+                          </div>
+                        )}
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-xs"
+                        >
+                          {ticket.brand.ticketPrefix}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                  )}
+                  {visibleColumns.subject !== false && (
+                    <TableCell>
+                      <div className="font-medium truncate max-w-[400px]">
+                        {ticket.title}
+                      </div>
+                    </TableCell>
+                  )}
+                  {visibleColumns.status !== false && (
+                    <TableCell>
+                      {ticket.status && (
+                        <StatusBadge status={ticket.status as 'open' | 'pending' | 'resolved' | 'closed'} />
+                      )}
+                    </TableCell>
+                  )}
+                  {visibleColumns.customer !== false && (
+                    <TableCell>
+                      <div className="text-sm truncate">
+                        {String(
+                          (ticket.customFields as Record<string, unknown>)?.requesterName ||
+                          (ticket.customFields as Record<string, unknown>)?.requesterEmail ||
+                          'Unknown'
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                  {visibleColumns.created !== false && (
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {formatTimeAgo(ticket.createdAt)}
+                      </span>
+                    </TableCell>
+                  )}
+                  {visibleColumns.assignee !== false && (
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground truncate">
+                        {assignee
+                          ? `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.email
+                          : '-'}
+                      </span>
+                    </TableCell>
+                  )}
+                  {visibleColumns.priority !== false && (
+                    <TableCell>
+                      {ticket.priority ? (
+                        <PriorityBadge priority={ticket.priority as 'low' | 'normal' | 'medium' | 'high' | 'urgent'} />
                       ) : (
-                        <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground">
-                          {ticket.brand.ticketPrefix?.charAt(0) || 'B'}
-                        </div>
+                        <span className="text-sm text-muted-foreground">-</span>
                       )}
-                      <Badge
-                        variant="outline"
-                        className="font-mono text-xs"
-                      >
-                        {ticket.brand.ticketPrefix}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium truncate max-w-[400px]">
-                      {ticket.title}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {ticket.status && (
-                      <StatusBadge status={ticket.status as 'open' | 'pending' | 'resolved' | 'closed'} />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm truncate">
-                      {String(
-                        (ticket.customFields as Record<string, unknown>)?.requesterName ||
-                        (ticket.customFields as Record<string, unknown>)?.requesterEmail ||
-                        'Unknown'
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {formatTimeAgo(ticket.createdAt)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground truncate">
-                      {assignee
-                        ? `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.email
-                        : '-'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {ticket.priority ? (
-                      <PriorityBadge priority={ticket.priority as 'low' | 'normal' | 'medium' | 'high' | 'urgent'} />
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
+                    </TableCell>
+                  )}
                 </TableRow>
                 );
               })

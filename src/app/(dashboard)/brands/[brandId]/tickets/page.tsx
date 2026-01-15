@@ -3,15 +3,22 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, BulkActionType, ticketKeys } from '@/lib/hooks';
+import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, BulkActionType, ticketKeys } from '@/lib/hooks';
 import { toast } from 'sonner';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, MessageSquare, Timer } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { TicketFilters, TicketTable, CreateTicketDialog } from '@/components/tickets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { TicketFilters as TicketFiltersType } from '@/types';
+
+function formatDuration(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined) return '-';
+  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
+  return `${Math.round(minutes / 1440)}d`;
+}
 
 export default function BrandDashboardPage() {
   const params = useParams();
@@ -43,6 +50,9 @@ export default function BrandDashboardPage() {
   // Team members for assignee selection - filtered to only those with access to this brand
   const { data: teamMembersData } = useTeamMembers({ brandId });
   const teamMembers = teamMembersData?.members;
+
+  // Brand-specific stats with response metrics
+  const { data: brandStats, isLoading: statsLoading } = useDashboardStats([brandId]);
 
   // Bulk actions
   const bulkAction = useBulkAction(brandId);
@@ -236,6 +246,19 @@ export default function BrandDashboardPage() {
               <span>Closed</span>
               <span className="font-bold text-lg ml-2">{stats.closed}</span>
             </button>
+
+            {/* Metrics pills */}
+            <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+              <MessageSquare className="h-4 w-4 text-purple-500" />
+              <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(brandStats?.responseMetrics?.avgFirstResponseMinutes)}</span>
+              <span className="text-muted-foreground">Avg Response</span>
+            </div>
+
+            <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+              <Timer className="h-4 w-4 text-indigo-500" />
+              <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(brandStats?.responseMetrics?.avgResolutionMinutes)}</span>
+              <span className="text-muted-foreground">Avg Resolution</span>
+            </div>
           </div>
         )}
 
