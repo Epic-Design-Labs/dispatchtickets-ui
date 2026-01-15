@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useDashboardStats, useDashboardTrends, useBrands } from '@/lib/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Clock, MessageCircle } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -24,6 +24,17 @@ import {
 function formatChartDate(date: string): string {
   const d = new Date(date);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatMinutes(minutes: number | null): string {
+  if (minutes === null) return '--';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours < 24) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
 }
 
 export default function StatsPage() {
@@ -119,6 +130,38 @@ export default function StatsPage() {
             {statsLoading ? '...' : stats?.closed || 0}
           </span>
         </div>
+      </div>
+
+      {/* Response Metrics */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Avg. First Response</CardTitle>
+            <MessageCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statsLoading ? '...' : formatMinutes(stats?.responseMetrics?.avgFirstResponseMinutes ?? null)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Based on {statsLoading ? '...' : stats?.responseMetrics?.ticketsWithResponse || 0} tickets
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Resolution Time</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statsLoading ? '...' : formatMinutes(stats?.responseMetrics?.avgResolutionMinutes ?? null)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Based on {statsLoading ? '...' : stats?.responseMetrics?.ticketsResolved || 0} resolved tickets
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Trends Chart */}
