@@ -794,20 +794,7 @@ export default function TicketDetailPage() {
                   <MessageSquare className="h-4 w-4" />
                   First Response
                 </span>
-                <span className="text-emerald-600 font-medium">
-                  {ticket.firstResponseAt ? (
-                    (() => {
-                      const created = new Date(ticket.createdAt);
-                      const response = new Date(ticket.firstResponseAt);
-                      const diffMs = response.getTime() - created.getTime();
-                      const diffMins = Math.floor(diffMs / (1000 * 60));
-                      if (diffMins < 60) return `${diffMins}m`;
-                      const diffHours = Math.floor(diffMins / 60);
-                      if (diffHours < 24) return `${diffHours}h`;
-                      return `${Math.floor(diffHours / 24)}d`;
-                    })()
-                  ) : '-'}
-                </span>
+                <span className="text-emerald-600 font-medium">-</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 text-muted-foreground">
