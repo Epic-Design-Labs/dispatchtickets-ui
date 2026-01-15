@@ -196,7 +196,9 @@ export default function DashboardPage() {
   }, [status, priority, search, selectedBrands, view, session?.memberId]);
 
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
-  const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBrands);
+  const { data: stats, isLoading: statsLoading } = useDashboardStats({
+    brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
+  });
 
   // Calculate totals for stats
   const statsTotal = (stats?.open || 0) + (stats?.pending || 0) + (stats?.resolved || 0) + (stats?.closed || 0);

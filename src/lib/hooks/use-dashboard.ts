@@ -8,8 +8,8 @@ export const dashboardKeys = {
   all: ['dashboard'] as const,
   tickets: (filters?: DashboardTicketFilters) =>
     ['dashboard', 'tickets', filters] as const,
-  stats: (brandIds?: string[]) =>
-    ['dashboard', 'stats', brandIds] as const,
+  stats: (options?: { brandIds?: string[]; days?: number }) =>
+    ['dashboard', 'stats', options] as const,
   trends: (options?: { brandIds?: string[]; days?: number }) =>
     ['dashboard', 'trends', options] as const,
   teamMetrics: (options?: { brandIds?: string[]; startDate?: string; endDate?: string }) =>
@@ -24,10 +24,10 @@ export function useDashboardTickets(filters?: DashboardTicketFilters) {
   });
 }
 
-export function useDashboardStats(brandIds?: string[]) {
+export function useDashboardStats(options?: { brandIds?: string[]; days?: number }) {
   return useQuery({
-    queryKey: dashboardKeys.stats(brandIds),
-    queryFn: () => dashboardApi.getStats(brandIds),
+    queryKey: dashboardKeys.stats(options),
+    queryFn: () => dashboardApi.getStats(options),
     staleTime: 60000, // Consider stats fresh for 1 minute
   });
 }

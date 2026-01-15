@@ -38,7 +38,7 @@ export function Sidebar({ brandId }: SidebarProps) {
   const view = searchParams.get('view') || 'all';
 
   // Only fetch stats when on dashboard (for queue counts)
-  const { data: stats } = useDashboardStats(isDashboard ? [] : undefined);
+  const { data: stats } = useDashboardStats(isDashboard ? {} : undefined);
 
   // Fetch my tickets count using memberId
   const { data: myTicketsData } = useDashboardTickets(

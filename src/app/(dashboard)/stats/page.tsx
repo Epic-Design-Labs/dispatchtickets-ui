@@ -41,7 +41,10 @@ export default function StatsPage() {
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [days, setDays] = useState<number>(30);
   const { data: brands } = useBrands();
-  const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBrands);
+  const { data: stats, isLoading: statsLoading } = useDashboardStats({
+    brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
+    days,
+  });
   const { data: trends, isLoading: trendsLoading } = useDashboardTrends({
     brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
     days,

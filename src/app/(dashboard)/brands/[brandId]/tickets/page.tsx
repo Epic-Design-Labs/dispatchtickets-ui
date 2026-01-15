@@ -52,7 +52,7 @@ export default function BrandDashboardPage() {
   const teamMembers = teamMembersData?.members;
 
   // Brand-specific stats with response metrics
-  const { data: brandStats, isLoading: statsLoading } = useDashboardStats([brandId]);
+  const { data: brandStats, isLoading: statsLoading } = useDashboardStats({ brandIds: [brandId] });
 
   // Bulk actions
   const bulkAction = useBulkAction(brandId);

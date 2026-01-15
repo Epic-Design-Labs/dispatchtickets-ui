@@ -38,10 +38,13 @@ export const dashboardApi = {
   /**
    * Get ticket statistics across all brands
    */
-  getStats: async (brandIds?: string[]): Promise<DashboardStats> => {
+  getStats: async (options?: { brandIds?: string[]; days?: number }): Promise<DashboardStats> => {
     const params = new URLSearchParams();
-    if (brandIds?.length) {
-      params.append('brandIds', brandIds.join(','));
+    if (options?.brandIds?.length) {
+      params.append('brandIds', options.brandIds.join(','));
+    }
+    if (options?.days) {
+      params.append('days', String(options.days));
     }
     const response = await apiClient.get<DashboardStats>('/tickets/stats', {
       params,
