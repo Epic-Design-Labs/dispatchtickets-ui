@@ -1,11 +1,11 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useDashboardTickets, useDashboardStats, useBrands, useTeamMembers } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { DashboardTicketFilters, TicketFilters as TicketFiltersType } from '@/types';
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,15 +16,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card } from '@/components/ui/card';
 import { TicketFilters } from '@/components/tickets/ticket-filters';
 import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog';
+import { StatusBadge } from '@/components/tickets/status-badge';
+import { PriorityBadge } from '@/components/tickets/priority-badge';
+import { toast } from 'sonner';
 import {
-  Ticket,
-  Clock,
   Plus,
-  CheckCircle,
-  XCircle,
+  RefreshCw,
   MessageSquare,
   Timer,
 } from 'lucide-react';
@@ -50,40 +49,13 @@ function formatDuration(minutes: number | null | undefined): string {
   return `${Math.round(minutes / 1440)}d`;
 }
 
-function getStatusColor(status: string | null) {
-  switch (status) {
-    case 'open':
-      return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
-    case 'pending':
-      return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
-    case 'resolved':
-      return 'bg-green-500/10 text-green-600 border-green-500/20';
-    case 'closed':
-      return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
-    default:
-      return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
-  }
-}
-
-function getPriorityColor(priority: string | null) {
-  switch (priority) {
-    case 'urgent':
-      return 'text-red-600';
-    case 'high':
-      return 'text-orange-600';
-    case 'medium':
-      return 'text-yellow-600';
-    case 'low':
-      return 'text-gray-500';
-    default:
-      return 'text-gray-400';
-  }
-}
 
 export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { session } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { data: brands } = useBrands();
   const { data: teamMembersData } = useTeamMembers();
   const teamMembers = teamMembersData?.members;
@@ -181,6 +153,33 @@ export default function DashboardPage() {
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
   const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBrands);
 
+  // Calculate totals for stats
+  const statsTotal = (stats?.open || 0) + (stats?.pending || 0) + (stats?.resolved || 0) + (stats?.closed || 0);
+  const statsActive = (stats?.open || 0) + (stats?.pending || 0);
+
+  // Handle clicking on a stat card to filter
+  const handleStatClick = (newStatus: string | undefined) => {
+    if (newStatus === status) {
+      // If already filtered by this status, clear it
+      updateUrlParams({ status: undefined });
+    } else {
+      updateUrlParams({ status: newStatus });
+    }
+  };
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success('Refreshed');
+    } catch {
+      toast.error('Failed to refresh');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Sort tickets: open first (by newest), then pending (by newest)
   const tickets = useMemo(() => {
     const rawTickets = ticketsData?.data || [];
@@ -199,50 +198,98 @@ export default function DashboardPage() {
 
   return (
     <div className="h-full overflow-auto p-6">
-      {/* Stats Cards - Compact */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <Card className="px-4 py-2">
-          <div className="flex items-center gap-2">
-            <Ticket className="h-4 w-4 text-blue-500" />
-            <span className="text-lg font-bold">{statsLoading ? '...' : stats?.open || 0}</span>
-            <span className="text-sm text-muted-foreground">Open</span>
-          </div>
-        </Card>
-        <Card className="px-4 py-2">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-yellow-500" />
-            <span className="text-lg font-bold">{statsLoading ? '...' : stats?.pending || 0}</span>
-            <span className="text-sm text-muted-foreground">Pending</span>
-          </div>
-        </Card>
-        <Card className="px-4 py-2">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <span className="text-lg font-bold">{statsLoading ? '...' : stats?.resolved || 0}</span>
-            <span className="text-sm text-muted-foreground">Resolved</span>
-          </div>
-        </Card>
-        <Card className="px-4 py-2">
-          <div className="flex items-center gap-2">
-            <XCircle className="h-4 w-4 text-gray-500" />
-            <span className="text-lg font-bold">{statsLoading ? '...' : stats?.closed || 0}</span>
-            <span className="text-sm text-muted-foreground">Closed</span>
-          </div>
-        </Card>
-        <Card className="px-4 py-2">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-purple-500" />
-            <span className="text-lg font-bold">{statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgFirstResponseMinutes)}</span>
-            <span className="text-sm text-muted-foreground">Avg Response</span>
-          </div>
-        </Card>
-        <Card className="px-4 py-2">
-          <div className="flex items-center gap-2">
-            <Timer className="h-4 w-4 text-indigo-500" />
-            <span className="text-lg font-bold">{statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgResolutionMinutes)}</span>
-            <span className="text-sm text-muted-foreground">Avg Resolution</span>
-          </div>
-        </Card>
+      {/* Stats Pills - Matching brand view style */}
+      <div className="mb-6 flex flex-wrap gap-3">
+        <button
+          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            status === 'active' || (!status && !priority && !search)
+              ? 'bg-violet-500 text-white'
+              : 'bg-white border border-gray-200 hover:bg-gray-50'
+          }`}
+          onClick={() => handleStatClick('active')}
+        >
+          <span className={`h-2 w-2 rounded-full ${status === 'active' || (!status && !priority && !search) ? 'bg-blue-300' : 'bg-blue-500'}`} />
+          <span>Active</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : statsActive}</span>
+        </button>
+
+        <button
+          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            status === undefined && (priority || search)
+              ? 'bg-white border-2 border-blue-500'
+              : 'bg-white border border-gray-200 hover:bg-gray-50'
+          }`}
+          onClick={() => handleStatClick(undefined)}
+        >
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          <span>All</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : statsTotal}</span>
+        </button>
+
+        <button
+          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            status === 'open'
+              ? 'bg-emerald-50 border-2 border-emerald-400 text-emerald-700'
+              : 'bg-white border border-gray-200 hover:bg-gray-50'
+          }`}
+          onClick={() => handleStatClick('open')}
+        >
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span>Open</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats?.open || 0}</span>
+        </button>
+
+        <button
+          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            status === 'pending'
+              ? 'bg-amber-50 border-2 border-amber-400 text-amber-700'
+              : 'bg-white border border-gray-200 hover:bg-gray-50'
+          }`}
+          onClick={() => handleStatClick('pending')}
+        >
+          <span className="h-2 w-2 rounded-full bg-amber-500" />
+          <span>Pending</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats?.pending || 0}</span>
+        </button>
+
+        <button
+          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            status === 'resolved'
+              ? 'bg-green-50 border-2 border-green-400 text-green-700'
+              : 'bg-white border border-gray-200 hover:bg-gray-50'
+          }`}
+          onClick={() => handleStatClick('resolved')}
+        >
+          <span className="h-2 w-2 rounded-full bg-green-500" />
+          <span>Resolved</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats?.resolved || 0}</span>
+        </button>
+
+        <button
+          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+            status === 'closed'
+              ? 'bg-gray-100 border-2 border-gray-400 text-gray-700'
+              : 'bg-white border border-gray-200 hover:bg-gray-50'
+          }`}
+          onClick={() => handleStatClick('closed')}
+        >
+          <span className="h-2 w-2 rounded-full bg-gray-400" />
+          <span>Closed</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats?.closed || 0}</span>
+        </button>
+
+        {/* Metrics pills */}
+        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+          <MessageSquare className="h-4 w-4 text-purple-500" />
+          <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgFirstResponseMinutes)}</span>
+          <span className="text-muted-foreground">Avg Response</span>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+          <Timer className="h-4 w-4 text-indigo-500" />
+          <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgResolutionMinutes)}</span>
+          <span className="text-muted-foreground">Avg Resolution</span>
+        </div>
       </div>
 
       {/* Tickets Section Header */}
@@ -255,12 +302,23 @@ export default function DashboardPage() {
             </span>
           )}
         </h3>
-        <CreateTicketDialog>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Ticket
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-        </CreateTicketDialog>
+          <CreateTicketDialog>
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Ticket
+            </Button>
+          </CreateTicketDialog>
+        </div>
       </div>
 
       {/* Filters */}
@@ -283,27 +341,32 @@ export default function DashboardPage() {
             <TableRow>
               <TableHead className="w-[100px]">Brand</TableHead>
               <TableHead>Subject</TableHead>
-              <TableHead className="w-[180px]">Customer</TableHead>
               <TableHead className="w-[100px]">Status</TableHead>
-              <TableHead className="w-[100px]">Priority</TableHead>
+              <TableHead className="w-[150px]">Customer</TableHead>
               <TableHead className="w-[120px]">Created</TableHead>
+              <TableHead className="w-[140px]">Assignee</TableHead>
+              <TableHead className="w-[100px]">Priority</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {ticketsLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <div className="text-muted-foreground">Loading tickets...</div>
                 </TableCell>
               </TableRow>
             ) : tickets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <div className="text-muted-foreground">No tickets found</div>
                 </TableCell>
               </TableRow>
             ) : (
-              tickets.map((ticket) => (
+              tickets.map((ticket) => {
+                const assignee = ticket.assigneeId
+                  ? teamMembers?.find((m) => m.id === ticket.assigneeId)
+                  : null;
+                return (
                 <TableRow
                   key={ticket.id}
                   className="cursor-pointer hover:bg-muted/50"
@@ -338,6 +401,11 @@ export default function DashboardPage() {
                     </div>
                   </TableCell>
                   <TableCell>
+                    {ticket.status && (
+                      <StatusBadge status={ticket.status as 'open' | 'pending' | 'resolved' | 'closed'} />
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="text-sm truncate">
                       {String(
                         (ticket.customFields as Record<string, unknown>)?.requesterName ||
@@ -347,33 +415,27 @@ export default function DashboardPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'capitalize text-xs',
-                        getStatusColor(ticket.status)
-                      )}
-                    >
-                      {ticket.status || 'open'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        'text-sm capitalize',
-                        getPriorityColor(ticket.priority)
-                      )}
-                    >
-                      {ticket.priority || '-'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
                     <span className="text-sm text-muted-foreground">
                       {formatTimeAgo(ticket.createdAt)}
                     </span>
                   </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground truncate">
+                      {assignee
+                        ? `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.email
+                        : '-'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {ticket.priority ? (
+                      <PriorityBadge priority={ticket.priority as 'low' | 'normal' | 'medium' | 'high' | 'urgent'} />
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
