@@ -167,41 +167,31 @@ export default function BrandDashboardPage() {
         ) : (
           <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
             <Card
-              className={`cursor-pointer transition-colors hover:bg-accent ${
-                filters.status === 'active' ? 'ring-2 ring-purple-500' : ''
+              className={`cursor-pointer transition-colors ${
+                filters.status === 'active'
+                  ? 'bg-rose-500 text-white hover:bg-rose-600'
+                  : 'hover:bg-accent'
               }`}
               onClick={() => handleStatClick('active')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-purple-500" />
+                <CardTitle className={`text-sm font-medium ${filters.status === 'active' ? 'text-white' : ''}`}>Active</CardTitle>
+                <div className={`h-2 w-2 rounded-full ${filters.status === 'active' ? 'bg-white' : 'bg-rose-500'}`} />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.active}</div>
+                <div className={`text-2xl font-bold ${filters.status === 'active' ? 'text-white' : ''}`}>{stats.active}</div>
               </CardContent>
             </Card>
 
             <Card
-              className={`cursor-pointer transition-colors hover:bg-accent ${
-                !filters.status ? 'ring-2 ring-primary' : ''
+              className={`cursor-pointer transition-colors ${
+                !filters.status ? 'ring-2 ring-blue-500' : 'hover:bg-accent'
               }`}
               onClick={() => handleStatClick(undefined)}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">All</CardTitle>
-                <svg
-                  className="h-4 w-4 text-muted-foreground"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  />
-                </svg>
+                <div className="h-2 w-2 rounded-full bg-blue-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.total}</div>
@@ -209,14 +199,14 @@ export default function BrandDashboardPage() {
             </Card>
 
             <Card
-              className={`cursor-pointer transition-colors hover:bg-accent ${
-                filters.status === 'open' ? 'ring-2 ring-blue-500' : ''
+              className={`cursor-pointer transition-colors ${
+                filters.status === 'open' ? 'ring-2 ring-emerald-500' : 'hover:bg-accent'
               }`}
               onClick={() => handleStatClick('open')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Open</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-blue-500" />
+                <div className="h-2 w-2 rounded-full bg-emerald-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.open}</div>
@@ -224,14 +214,14 @@ export default function BrandDashboardPage() {
             </Card>
 
             <Card
-              className={`cursor-pointer transition-colors hover:bg-accent ${
-                filters.status === 'pending' ? 'ring-2 ring-yellow-500' : ''
+              className={`cursor-pointer transition-colors ${
+                filters.status === 'pending' ? 'ring-2 ring-amber-500' : 'hover:bg-accent'
               }`}
               onClick={() => handleStatClick('pending')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                <div className="h-2 w-2 rounded-full bg-amber-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.pending}</div>
@@ -239,8 +229,8 @@ export default function BrandDashboardPage() {
             </Card>
 
             <Card
-              className={`cursor-pointer transition-colors hover:bg-accent ${
-                filters.status === 'resolved' ? 'ring-2 ring-green-500' : ''
+              className={`cursor-pointer transition-colors ${
+                filters.status === 'resolved' ? 'ring-2 ring-green-500' : 'hover:bg-accent'
               }`}
               onClick={() => handleStatClick('resolved')}
             >
@@ -254,14 +244,14 @@ export default function BrandDashboardPage() {
             </Card>
 
             <Card
-              className={`cursor-pointer transition-colors hover:bg-accent ${
-                filters.status === 'closed' ? 'ring-2 ring-gray-500' : ''
+              className={`cursor-pointer transition-colors ${
+                filters.status === 'closed' ? 'ring-2 ring-gray-500' : 'hover:bg-accent'
               }`}
               onClick={() => handleStatClick('closed')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Closed</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-gray-500" />
+                <div className="h-2 w-2 rounded-full bg-gray-400" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.closed}</div>
