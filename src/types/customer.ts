@@ -6,6 +6,7 @@ export interface Customer {
   avatarUrl?: string;
   companyId?: string;
   metadata?: Record<string, unknown>;
+  notifyEmail?: boolean;
   createdAt: string;
   updatedAt: string;
   company?: Company;
@@ -34,6 +35,7 @@ export interface CreateCustomerInput {
   avatarUrl?: string;
   companyId?: string;
   metadata?: Record<string, unknown>;
+  notifyEmail?: boolean;
 }
 
 export interface UpdateCustomerInput {
@@ -42,6 +44,7 @@ export interface UpdateCustomerInput {
   avatarUrl?: string;
   companyId?: string;
   metadata?: Record<string, unknown>;
+  notifyEmail?: boolean;
 }
 
 export interface CreateCompanyInput {

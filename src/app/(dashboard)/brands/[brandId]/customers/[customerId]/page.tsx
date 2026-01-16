@@ -30,7 +30,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { ArrowLeft, Building2, Mail, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Building2, Mail, Plus, Trash2, Bell } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { CreateTicketForCustomerDialog } from '@/components/tickets/create-ticket-for-customer-dialog';
 
 export default function CustomerDetailPage() {
@@ -235,6 +236,31 @@ export default function CustomerDetailPage() {
                 ) : (
                   <p className="text-muted-foreground">No company assigned</p>
                 )}
+              </div>
+
+              {/* Notifications */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-muted-foreground" />
+                  <Label>Email Notifications</Label>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Receive email updates for ticket activity
+                  </p>
+                  <Switch
+                    checked={customer.notifyEmail !== false}
+                    onCheckedChange={async (checked) => {
+                      try {
+                        await updateCustomer.mutateAsync({ notifyEmail: checked });
+                        toast.success(checked ? 'Notifications enabled' : 'Notifications disabled');
+                      } catch {
+                        toast.error('Failed to update notification setting');
+                      }
+                    }}
+                    disabled={updateCustomer.isPending}
+                  />
+                </div>
               </div>
 
               {/* Created */}
