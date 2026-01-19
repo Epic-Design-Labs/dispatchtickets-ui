@@ -1,4 +1,12 @@
-export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed' | 'spam' | null;
+import { Customer } from './customer';
+import { Category } from './category';
+import { Tag } from './tag';
+import { TicketStatusObject } from './status';
+
+// Legacy status key type (for backwards compatibility)
+export type TicketStatusKey = 'open' | 'pending' | 'resolved' | 'closed' | 'spam' | string | null;
+// Keep TicketStatus as an alias for backwards compatibility
+export type TicketStatus = TicketStatusKey;
 export type TicketPriority = 'low' | 'normal' | 'medium' | 'high' | 'urgent' | null;
 export type TicketSource = 'api' | 'email' | 'slack' | 'sms' | 'web' | 'other';
 export type CloseReason = 'no_response' | 'out_of_scope' | 'customer_left' | 'duplicate';
@@ -10,17 +18,15 @@ export const CLOSE_REASONS: { value: CloseReason; label: string }[] = [
   { value: 'duplicate', label: 'Duplicate' },
 ];
 
-import { Customer } from './customer';
-import { Category } from './category';
-import { Tag } from './tag';
-
 export interface Ticket {
   id: string;
   brandId: string;
   ticketNumber: number;  // Sequential number for public ID (e.g., 1001)
   title: string;
   body?: string;
-  status: TicketStatus;
+  status: TicketStatus;  // Status key (e.g., 'open', 'pending')
+  statusId?: string | null;  // Reference to TicketStatus
+  statusRef?: TicketStatusObject | null;  // Full status object
   closeReason?: CloseReason | null;  // Reason for closing (only when status=closed)
   priority: TicketPriority;
   source: TicketSource;

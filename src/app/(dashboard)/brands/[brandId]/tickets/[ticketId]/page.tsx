@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView } from '@/lib/hooks';
-import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog } from '@/components/tickets';
+import { useStatuses } from '@/lib/hooks/use-statuses';
+import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
@@ -74,10 +75,11 @@ export default function TicketDetailPage() {
   );
   const otherTickets = customerTicketsData?.data || [];
 
-  // Categories and tags
+  // Categories, tags, and statuses
   const { data: categories } = useCategories(brandId);
   const { data: tags } = useTags(brandId);
   const createTag = useCreateTag(brandId);
+  const { data: statuses } = useStatuses(brandId);
 
   // Custom fields
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
@@ -594,15 +596,18 @@ export default function TicketDetailPage() {
             </div>
           )}
 
-          {/* Status dropdown - Green pill style */}
+          {/* Status dropdown - Colored pill style */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-full px-4"
+                className="text-white rounded-full px-4 hover:opacity-90"
                 size="sm"
+                style={{
+                  backgroundColor: ticket.statusRef?.color || statuses?.find(s => s.key === ticket.status)?.color || '#10b981',
+                }}
               >
                 <Check className="h-4 w-4 mr-1.5" />
-                {ticket.status ? ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1) : 'Open'}
+                {ticket.statusRef?.name || (ticket.status ? ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1) : 'Open')}
                 <ChevronDown className="h-4 w-4 ml-1.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -610,10 +615,25 @@ export default function TicketDetailPage() {
               <DropdownMenuLabel>Change status</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuRadioGroup value={ticket.status || 'open'} onValueChange={handleStatusChange}>
-                <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="resolved">Resolved</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="closed">Closed</DropdownMenuRadioItem>
+                {statuses?.map((s) => (
+                  <DropdownMenuRadioItem key={s.id} value={s.key}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: s.color }}
+                      />
+                      {s.name}
+                    </span>
+                  </DropdownMenuRadioItem>
+                ))}
+                {!statuses?.length && (
+                  <>
+                    <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="resolved">Resolved</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="closed">Closed</DropdownMenuRadioItem>
+                  </>
+                )}
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -765,6 +785,11 @@ export default function TicketDetailPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
+          <Separator />
+
+          {/* Watchers Section */}
+          <TicketWatchers brandId={brandId} ticketId={ticketId} />
 
           <Separator />
 
@@ -1041,7 +1066,7 @@ export default function TicketDetailPage() {
                         />
                         <Link href={`/brands/${brandId}/tickets/${t.id}`} className="flex-1 min-w-0">
                           <div className="flex items-start gap-2">
-                            <StatusBadge status={t.status || 'open'} className="mt-0.5 shrink-0" />
+                            <StatusBadge status={t.status || 'open'} statusRef={t.statusRef} className="mt-0.5 shrink-0" />
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium truncate">{t.title}</p>
                               <p className="text-xs text-muted-foreground">

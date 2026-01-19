@@ -659,7 +659,7 @@ export function TicketTable({
           </Link>
         );
       case 'status':
-        return ticket.status ? <StatusBadge status={ticket.status} /> : <span className="text-muted-foreground">-</span>;
+        return ticket.status ? <StatusBadge status={ticket.status} statusRef={ticket.statusRef} /> : <span className="text-muted-foreground">-</span>;
       case 'priority':
         return <PriorityBadge priority={ticket.priority || 'normal'} />;
       case 'customer':

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 const settingsNav = [
   { title: 'General', href: '' },
   { title: 'Fields', href: '/fields' },
+  { title: 'Statuses', href: '/statuses' },
   { title: 'Email', href: '/email' },
   { title: 'Satisfaction', href: '/satisfaction' },
   { title: 'Channels', href: '/channels' },

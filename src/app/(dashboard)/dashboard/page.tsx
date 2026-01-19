@@ -480,7 +480,7 @@ export default function DashboardPage() {
                   {visibleColumns.status !== false && (
                     <TableCell>
                       {ticket.status && (
-                        <StatusBadge status={ticket.status as 'open' | 'pending' | 'resolved' | 'closed'} />
+                        <StatusBadge status={ticket.status} statusRef={ticket.statusRef} />
                       )}
                     </TableCell>
                   )}
