@@ -599,17 +599,31 @@ export default function TicketDetailPage() {
           {/* Status dropdown - Colored pill style */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                className="text-white rounded-full px-4 hover:opacity-90"
-                size="sm"
-                style={{
-                  backgroundColor: ticket.statusRef?.color || statuses?.find(s => s.key === ticket.status)?.color || '#10b981',
-                }}
-              >
-                <Check className="h-4 w-4 mr-1.5" />
-                {ticket.statusRef?.name || (ticket.status ? ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1) : 'Open')}
-                <ChevronDown className="h-4 w-4 ml-1.5" />
-              </Button>
+              {(() => {
+                // Get status info with proper fallbacks
+                const statusKey = ticket.status || 'open';
+                const statusFromList = statuses?.find(s => s.key === statusKey);
+                const defaultColors: Record<string, string> = {
+                  open: '#3b82f6',
+                  pending: '#f59e0b',
+                  resolved: '#22c55e',
+                  closed: '#22c55e',
+                };
+                const statusColor = ticket.statusRef?.color || statusFromList?.color || defaultColors[statusKey] || '#3b82f6';
+                const statusName = ticket.statusRef?.name || statusFromList?.name || (statusKey.charAt(0).toUpperCase() + statusKey.slice(1));
+
+                return (
+                  <Button
+                    className="text-white rounded-full px-4 hover:opacity-90"
+                    size="sm"
+                    style={{ backgroundColor: statusColor }}
+                  >
+                    <Check className="h-4 w-4 mr-1.5" />
+                    {statusName}
+                    <ChevronDown className="h-4 w-4 ml-1.5" />
+                  </Button>
+                );
+              })()}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Change status</DropdownMenuLabel>
