@@ -49,6 +49,12 @@ export interface Ticket {
   updatedAt: string;
 }
 
+export interface WatcherInput {
+  memberId: string;
+  memberEmail: string;
+  memberName?: string;
+}
+
 export interface CreateTicketInput {
   title: string;
   body?: string;
@@ -59,6 +65,7 @@ export interface CreateTicketInput {
   customFields?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   notifyCustomer?: boolean;
+  watchers?: WatcherInput[];
 }
 
 export interface UpdateTicketInput {

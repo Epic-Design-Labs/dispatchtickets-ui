@@ -33,9 +33,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
 import { CustomFieldsFormSection, validateCustomFields } from '@/components/fields';
 import { CustomerCombobox } from '@/components/customers/customer-combobox';
+import { Eye, Plus, X } from 'lucide-react';
 
 const createTicketSchema = z.object({
   brandId: z.string().min(1, 'Brand is required'),
@@ -57,6 +60,12 @@ const priorityColors: Record<string, string> = {
 
 type CreateTicketForm = z.infer<typeof createTicketSchema>;
 
+interface WatcherInput {
+  memberId: string;
+  memberEmail: string;
+  memberName?: string;
+}
+
 interface CreateTicketDialogProps {
   brandId?: string;  // Optional - if not provided, show brand selector
   children?: React.ReactNode;
@@ -66,6 +75,9 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
   const [open, setOpen] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
+  const [watchers, setWatchers] = useState<WatcherInput[]>([]);
+  const [watcherPopoverOpen, setWatcherPopoverOpen] = useState(false);
+  const [customWatcherEmail, setCustomWatcherEmail] = useState('');
   const { data: brands } = useBrands();
 
   // Use fixed brand mutation if brandId is provided, otherwise use dynamic
@@ -108,10 +120,11 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
   const { data: teamData } = useTeamMembers({ brandId: currentBrandId || undefined });
   const teamMembers = teamData?.members?.filter(m => m.status === 'active') || [];
 
-  // Reset custom field values when brand changes
+  // Reset custom field values and watchers when brand changes
   useEffect(() => {
     setCustomFieldValues({});
     setCustomFieldErrors({});
+    setWatchers([]);
   }, [currentBrandId]);
 
   const onSubmit = async (data: CreateTicketForm) => {
@@ -136,6 +149,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
           ...customFieldValues,
         },
         notifyCustomer: data.notifyCustomer,
+        watchers: watchers.length > 0 ? watchers : undefined,
       };
 
       if (fixedBrandId) {
@@ -150,9 +164,41 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
       setOpen(false);
       form.reset();
       setCustomFieldValues({});
+      setWatchers([]);
     } catch {
       toast.error('Failed to create ticket');
     }
+  };
+
+  const addWatcher = (memberId: string, memberEmail: string, memberName?: string) => {
+    if (!watchers.some((w) => w.memberEmail === memberEmail)) {
+      setWatchers([...watchers, { memberId, memberEmail, memberName }]);
+    }
+    setWatcherPopoverOpen(false);
+    setCustomWatcherEmail('');
+  };
+
+  const removeWatcher = (memberEmail: string) => {
+    setWatchers(watchers.filter((w) => w.memberEmail !== memberEmail));
+  };
+
+  const addCustomWatcher = () => {
+    const email = customWatcherEmail.trim().toLowerCase();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      addWatcher(`custom_${email}`, email);
+    }
+  };
+
+  // Filter out team members who are already watchers
+  const availableTeamMembers = teamMembers.filter(
+    (member) => !watchers.some((w) => w.memberId === member.id)
+  );
+
+  const getMemberName = (member: typeof teamMembers[0]) => {
+    if (member.firstName || member.lastName) {
+      return [member.firstName, member.lastName].filter(Boolean).join(' ');
+    }
+    return member.email;
   };
 
   const isPending = fixedBrandId ? createTicketFixed.isPending : createTicketDynamic.isPending;
@@ -367,6 +413,106 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                   </FormItem>
                 )}
               />
+            )}
+
+            {/* Watchers Section */}
+            {currentBrandId && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    Watchers
+                  </FormLabel>
+                  <Popover open={watcherPopoverOpen} onOpenChange={setWatcherPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2">
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Add
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-0" align="end">
+                      <Command>
+                        <CommandInput
+                          placeholder="Search or enter email..."
+                          value={customWatcherEmail}
+                          onValueChange={setCustomWatcherEmail}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && customWatcherEmail.includes('@')) {
+                              e.preventDefault();
+                              addCustomWatcher();
+                            }
+                          }}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            {customWatcherEmail.includes('@') ? (
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent rounded cursor-pointer"
+                                onClick={addCustomWatcher}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                Add &quot;{customWatcherEmail}&quot;
+                              </button>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">
+                                Enter email or search team members
+                              </span>
+                            )}
+                          </CommandEmpty>
+                          {availableTeamMembers.length > 0 && (
+                            <CommandGroup heading="Team Members">
+                              {availableTeamMembers.map((member) => (
+                                <CommandItem
+                                  key={member.id}
+                                  value={member.email}
+                                  onSelect={() => addWatcher(member.id, member.email, getMemberName(member))}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
+                                      {member.firstName?.[0] || member.email[0].toUpperCase()}
+                                    </div>
+                                    <span className="text-sm">{getMemberName(member)}</span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {watchers.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {watchers.map((watcher) => (
+                      <div
+                        key={watcher.memberEmail}
+                        className="inline-flex items-center gap-1 rounded-full bg-blue-100 pl-1.5 pr-1 py-0.5 text-sm group"
+                      >
+                        <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
+                          {(watcher.memberName || watcher.memberEmail)[0].toUpperCase()}
+                        </div>
+                        <span className="text-blue-700 text-xs">
+                          {watcher.memberName || watcher.memberEmail.split('@')[0]}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeWatcher(watcher.memberEmail)}
+                          className="hover:text-red-600 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No watchers added</p>
+                )}
+                <FormDescription className="text-xs">
+                  Watchers will be notified of ticket updates
+                </FormDescription>
+              </div>
             )}
 
             {currentBrandId && ticketFields && ticketFields.filter(f => f.visible).length > 0 && (
