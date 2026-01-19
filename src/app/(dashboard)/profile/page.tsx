@@ -111,13 +111,17 @@ export default function ProfilePage() {
   const [notifyToast, setNotifyToast] = useState(true);
   const [notifyDesktop, setNotifyDesktop] = useState(false);
 
-  // Initialize form with profile data
+  // Initialize form with profile data and sync localStorage
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.displayName || '');
       setNotifyEmail(profile.notifyEmail ?? true);
       setNotifyToast(profile.notifyToast ?? true);
       setNotifyDesktop(profile.notifyDesktop ?? false);
+      // Sync desktop notification setting to localStorage for the notification hook
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('desktop_notifications_enabled', String(profile.notifyDesktop ?? false));
+      }
     }
   }, [profile]);
 
@@ -178,10 +182,18 @@ export default function ProfilePage() {
 
     // Permission granted (or turning off), update the setting
     setNotifyDesktop(checked);
+    // Also sync to localStorage for the notification hook
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('desktop_notifications_enabled', String(checked));
+    }
     try {
       await updateProfile.mutateAsync({ notifyDesktop: checked });
     } catch {
       setNotifyDesktop(!checked);
+      // Revert localStorage on failure
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('desktop_notifications_enabled', String(!checked));
+      }
       toast.error('Failed to update notification preference');
     }
   };
