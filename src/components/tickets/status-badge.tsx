@@ -8,8 +8,8 @@ type StatusKey = 'open' | 'pending' | 'resolved' | 'closed' | 'spam' | string;
 const statusDefaults: Record<string, { label: string; color: string; className: string }> = {
   open: {
     label: 'Open',
-    color: '#10b981',
-    className: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100',
+    color: '#3b82f6',
+    className: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
   },
   pending: {
     label: 'Pending',
@@ -23,8 +23,8 @@ const statusDefaults: Record<string, { label: string; color: string; className: 
   },
   closed: {
     label: 'Closed',
-    color: '#6b7280',
-    className: 'bg-gray-100 text-gray-600 hover:bg-gray-100',
+    color: '#22c55e',
+    className: 'bg-green-100 text-green-700 hover:bg-green-100',
   },
   spam: {
     label: 'Spam',
