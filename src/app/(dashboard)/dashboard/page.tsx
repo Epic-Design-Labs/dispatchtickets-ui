@@ -196,13 +196,49 @@ export default function DashboardPage() {
   }, [status, priority, search, selectedBrands, view, session?.memberId]);
 
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
-  const { data: stats, isLoading: statsLoading } = useDashboardStats({
+  // For "all" view, use global stats; for "mine"/"unassigned", we need to fetch ALL tickets for that view
+  // to get accurate counts (not just the first page)
+  const allTicketsFilters: DashboardTicketFilters = useMemo(() => {
+    if (view === 'all') return { brandIds: selectedBrands.length > 0 ? selectedBrands : undefined };
+    // For mine/unassigned, fetch all statuses to calculate stats
+    return {
+      brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
+      assigneeId: view === 'mine' ? session?.memberId : (view === 'unassigned' ? 'null' : undefined),
+      limit: 200, // Get more tickets for stats calculation
+    };
+  }, [view, selectedBrands, session?.memberId]);
+
+  const { data: allTicketsData, isLoading: allTicketsLoading } = useDashboardTickets(
+    view !== 'all' ? allTicketsFilters : { limit: 0 } // Skip if "all" view
+  );
+  const { data: globalStats, isLoading: globalStatsLoading } = useDashboardStats({
     brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
   });
 
-  // Calculate totals for stats
-  const statsTotal = (stats?.open || 0) + (stats?.pending || 0) + (stats?.resolved || 0) + (stats?.closed || 0);
-  const statsActive = (stats?.open || 0) + (stats?.pending || 0);
+  // Calculate stats - use global for "all" view, compute from tickets for "mine"/"unassigned"
+  const displayStats = useMemo(() => {
+    if (view === 'all') {
+      return {
+        open: globalStats?.open || 0,
+        pending: globalStats?.pending || 0,
+        resolved: globalStats?.resolved || 0,
+        closed: globalStats?.closed || 0,
+      };
+    }
+    // Calculate from loaded tickets
+    const tickets = allTicketsData?.data || [];
+    return {
+      open: tickets.filter(t => t.status === 'open').length,
+      pending: tickets.filter(t => t.status === 'pending').length,
+      resolved: tickets.filter(t => t.status === 'resolved').length,
+      closed: tickets.filter(t => t.status === 'closed').length,
+    };
+  }, [view, globalStats, allTicketsData?.data]);
+
+  const stats = displayStats;
+  const statsLoading = view === 'all' ? globalStatsLoading : allTicketsLoading;
+  const statsTotal = stats.open + stats.pending + stats.resolved + stats.closed;
+  const statsActive = stats.open + stats.pending;
 
   // Handle clicking on a stat card to filter
   const handleStatClick = (newStatus: string | undefined) => {
@@ -276,14 +312,14 @@ export default function DashboardPage() {
         <button
           className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
             status === 'open'
-              ? 'bg-emerald-50 border-2 border-emerald-400 text-emerald-700'
+              ? 'bg-blue-50 border-2 border-blue-400 text-blue-700'
               : 'bg-white border border-gray-200 hover:bg-gray-50'
           }`}
           onClick={() => handleStatClick('open')}
         >
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
           <span>Open</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats?.open || 0}</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats.open}</span>
         </button>
 
         <button
@@ -296,7 +332,7 @@ export default function DashboardPage() {
         >
           <span className="h-2 w-2 rounded-full bg-amber-500" />
           <span>Pending</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats?.pending || 0}</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats.pending}</span>
         </button>
 
         <button
@@ -309,32 +345,32 @@ export default function DashboardPage() {
         >
           <span className="h-2 w-2 rounded-full bg-green-500" />
           <span>Resolved</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats?.resolved || 0}</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats.resolved}</span>
         </button>
 
         <button
           className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
             status === 'closed'
-              ? 'bg-gray-100 border-2 border-gray-400 text-gray-700'
+              ? 'bg-green-50 border-2 border-green-400 text-green-700'
               : 'bg-white border border-gray-200 hover:bg-gray-50'
           }`}
           onClick={() => handleStatClick('closed')}
         >
-          <span className="h-2 w-2 rounded-full bg-gray-400" />
+          <span className="h-2 w-2 rounded-full bg-green-500" />
           <span>Closed</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats?.closed || 0}</span>
+          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats.closed}</span>
         </button>
 
         {/* Metrics pills */}
         <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
           <MessageSquare className="h-4 w-4 text-purple-500" />
-          <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgFirstResponseMinutes)}</span>
+          <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(globalStats?.responseMetrics?.avgFirstResponseMinutes)}</span>
           <span className="text-muted-foreground">Avg Response</span>
         </div>
 
         <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
           <Timer className="h-4 w-4 text-indigo-500" />
-          <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(stats?.responseMetrics?.avgResolutionMinutes)}</span>
+          <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(globalStats?.responseMetrics?.avgResolutionMinutes)}</span>
           <span className="text-muted-foreground">Avg Resolution</span>
         </div>
       </div>

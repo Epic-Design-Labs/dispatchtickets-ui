@@ -198,12 +198,12 @@ export default function BrandDashboardPage() {
             <button
               className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'open'
-                  ? 'bg-emerald-50 border-2 border-emerald-400 text-emerald-700'
+                  ? 'bg-blue-50 border-2 border-blue-400 text-blue-700'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('open')}
             >
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
               <span>Open</span>
               <span className="font-bold text-lg ml-2">{stats.open}</span>
             </button>
@@ -237,12 +237,12 @@ export default function BrandDashboardPage() {
             <button
               className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'closed'
-                  ? 'bg-gray-100 border-2 border-gray-400 text-gray-700'
+                  ? 'bg-green-50 border-2 border-green-400 text-green-700'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('closed')}
             >
-              <span className="h-2 w-2 rounded-full bg-gray-400" />
+              <span className="h-2 w-2 rounded-full bg-green-500" />
               <span>Closed</span>
               <span className="font-bold text-lg ml-2">{stats.closed}</span>
             </button>
