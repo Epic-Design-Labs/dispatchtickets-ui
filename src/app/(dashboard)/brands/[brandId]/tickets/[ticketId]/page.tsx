@@ -600,7 +600,8 @@ export default function TicketDetailPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               {(() => {
-                // Get status info with proper fallbacks
+                // Get status info - prioritize lookup by key (ticket.status) over embedded statusRef
+                // because statusRef may be stale after status updates
                 const statusKey = ticket.status || 'open';
                 const statusFromList = statuses?.find(s => s.key === statusKey);
                 const defaultColors: Record<string, string> = {
@@ -609,8 +610,9 @@ export default function TicketDetailPage() {
                   resolved: '#22c55e',
                   closed: '#22c55e',
                 };
-                const statusColor = ticket.statusRef?.color || statusFromList?.color || defaultColors[statusKey] || '#3b82f6';
-                const statusName = ticket.statusRef?.name || statusFromList?.name || (statusKey.charAt(0).toUpperCase() + statusKey.slice(1));
+                // Prioritize statusFromList (based on current ticket.status) over potentially stale statusRef
+                const statusColor = statusFromList?.color || ticket.statusRef?.color || defaultColors[statusKey] || '#3b82f6';
+                const statusName = statusFromList?.name || ticket.statusRef?.name || (statusKey.charAt(0).toUpperCase() + statusKey.slice(1));
 
                 return (
                   <Button

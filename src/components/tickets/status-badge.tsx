@@ -75,8 +75,16 @@ function lightenColor(hexColor: string, amount: number = 0.85): string {
 }
 
 export function StatusBadge({ status, statusRef, className }: StatusBadgeProps) {
-  // If we have a statusRef with a custom color, use it
-  if (statusRef?.color) {
+  // Always use the status key as the source of truth
+  // Only use statusRef for color/name if it matches the current status key
+  // This prevents stale statusRef from showing wrong status after updates
+  const defaults = statusDefaults[status];
+
+  // Check if statusRef matches the status key (not stale)
+  const statusRefMatchesKey = statusRef?.key === status;
+
+  // If we have a matching statusRef with a custom color, use it
+  if (statusRefMatchesKey && statusRef?.color) {
     const bgColor = lightenColor(statusRef.color, 0.85);
     const textColor = statusRef.color;
 
@@ -95,9 +103,7 @@ export function StatusBadge({ status, statusRef, className }: StatusBadgeProps) 
     );
   }
 
-  // Fall back to default styling based on status key
-  const defaults = statusDefaults[status];
-
+  // Use default styling based on status key
   if (defaults) {
     return (
       <Badge
@@ -109,7 +115,27 @@ export function StatusBadge({ status, statusRef, className }: StatusBadgeProps) 
     );
   }
 
-  // Unknown status - show the key with default styling
+  // Unknown/custom status without matching statusRef - show the key with default styling
+  // Or use statusRef if available (even if key doesn't match, for custom statuses)
+  if (statusRef?.color) {
+    const bgColor = lightenColor(statusRef.color, 0.85);
+    const textColor = statusRef.color;
+
+    return (
+      <Badge
+        variant="secondary"
+        className={cn('hover:opacity-90', className)}
+        style={{
+          backgroundColor: bgColor,
+          color: textColor,
+          borderColor: 'transparent',
+        }}
+      >
+        {statusRef.name || status}
+      </Badge>
+    );
+  }
+
   return (
     <Badge
       variant="secondary"
