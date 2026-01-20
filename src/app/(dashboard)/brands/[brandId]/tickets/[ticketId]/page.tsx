@@ -600,8 +600,8 @@ export default function TicketDetailPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               {(() => {
-                // Get status info - prioritize lookup by key (ticket.status) over embedded statusRef
-                // because statusRef may be stale after status updates
+                // Get status info - always use ticket.status key as source of truth
+                // statusRef may be stale after status updates, so use defaults before statusRef
                 const statusKey = ticket.status || 'open';
                 const statusFromList = statuses?.find(s => s.key === statusKey);
                 const defaultColors: Record<string, string> = {
@@ -610,9 +610,15 @@ export default function TicketDetailPage() {
                   resolved: '#22c55e',
                   closed: '#22c55e',
                 };
-                // Prioritize statusFromList (based on current ticket.status) over potentially stale statusRef
-                const statusColor = statusFromList?.color || ticket.statusRef?.color || defaultColors[statusKey] || '#3b82f6';
-                const statusName = statusFromList?.name || ticket.statusRef?.name || (statusKey.charAt(0).toUpperCase() + statusKey.slice(1));
+                const defaultNames: Record<string, string> = {
+                  open: 'Open',
+                  pending: 'Pending',
+                  resolved: 'Resolved',
+                  closed: 'Closed',
+                };
+                // Priority: statusFromList > defaults by key > statusRef (for custom statuses only)
+                const statusColor = statusFromList?.color || defaultColors[statusKey] || ticket.statusRef?.color || '#3b82f6';
+                const statusName = statusFromList?.name || defaultNames[statusKey] || ticket.statusRef?.name || (statusKey.charAt(0).toUpperCase() + statusKey.slice(1));
 
                 return (
                   <Button
