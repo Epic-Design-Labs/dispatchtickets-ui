@@ -2,30 +2,146 @@
 
 import { useMemo, useState, createContext, useContext } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronRight, Code, Forward, User } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code, Forward, User, ImageOff } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useAttachmentUrls } from '@/lib/hooks';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Context for image modal - allows nested components to trigger the modal
 const ImageModalContext = createContext<{
   openImage: (url: string, alt: string) => void;
 } | null>(null);
 
+// Context for attachment URLs - provides resolved URLs for attachment:id references
+const AttachmentUrlsContext = createContext<{
+  getUrl: (attachmentId: string) => string | null | undefined;
+  isLoading: boolean;
+} | null>(null);
+
+function useAttachmentUrlsContext() {
+  return useContext(AttachmentUrlsContext);
+}
+
+/**
+ * Extract all attachment IDs from content (both images and links)
+ * Matches patterns like: ![alt](attachment:att_xxx) or [text](attachment:att_xxx)
+ */
+function extractAttachmentIds(content: string): string[] {
+  const regex = /\]\(attachment:([^)]+)\)/g;
+  const ids = new Set<string>();
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    ids.add(match[1]);
+  }
+  return Array.from(ids);
+}
+
 function useImageModal() {
   return useContext(ImageModalContext);
 }
 
 // Clickable image component that opens modal on click
+// Handles both direct URLs and attachment:id references
 function ClickableImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const imageModal = useImageModal();
+  const attachmentUrls = useAttachmentUrlsContext();
+  const [hasError, setHasError] = useState(false);
+
+  // Check if this is an attachment reference
+  const isAttachmentRef = src.startsWith('attachment:');
+  let resolvedUrl = src;
+
+  if (isAttachmentRef) {
+    const attachmentId = src.replace('attachment:', '');
+    const urlInfo = attachmentUrls?.getUrl(attachmentId);
+
+    // Show loading state
+    if (attachmentUrls?.isLoading) {
+      return (
+        <Skeleton className={`${className || ''} h-48 w-64 rounded-md my-2`} />
+      );
+    }
+
+    // Show error state if URL not found
+    if (urlInfo === null) {
+      return (
+        <div className={`${className || ''} flex items-center gap-2 p-3 bg-muted rounded-md my-2 text-muted-foreground text-sm`}>
+          <ImageOff className="h-4 w-4" />
+          <span>Image not available</span>
+        </div>
+      );
+    }
+
+    // Use resolved URL if available
+    if (urlInfo) {
+      resolvedUrl = urlInfo;
+    }
+  }
+
+  // Show error placeholder for failed images (e.g., expired presigned URLs from old comments)
+  if (hasError) {
+    return (
+      <div className={`${className || ''} flex items-center gap-2 p-3 bg-muted rounded-md my-2 text-muted-foreground text-sm`}>
+        <ImageOff className="h-4 w-4" />
+        <span>Image expired or unavailable</span>
+      </div>
+    );
+  }
 
   return (
     <img
-      src={src}
+      src={resolvedUrl}
       alt={alt}
       className={`${className || ''} cursor-pointer hover:opacity-90 transition-opacity`}
       loading="lazy"
-      onClick={() => imageModal?.openImage(src, alt)}
+      onClick={() => imageModal?.openImage(resolvedUrl, alt)}
+      onError={() => setHasError(true)}
     />
+  );
+}
+
+// Clickable link component that handles attachment:id references
+function ClickableLink({ href, text, className }: { href: string; text: string; className?: string }) {
+  const attachmentUrls = useAttachmentUrlsContext();
+
+  // Check if this is an attachment reference
+  const isAttachmentRef = href.startsWith('attachment:');
+  let resolvedUrl = href;
+
+  if (isAttachmentRef) {
+    const attachmentId = href.replace('attachment:', '');
+    const urlInfo = attachmentUrls?.getUrl(attachmentId);
+
+    // Show loading state
+    if (attachmentUrls?.isLoading) {
+      return (
+        <span className="text-muted-foreground">{text} (loading...)</span>
+      );
+    }
+
+    // Show error state if URL not found
+    if (urlInfo === null) {
+      return (
+        <span className="text-muted-foreground line-through">{text} (unavailable)</span>
+      );
+    }
+
+    // Use resolved URL if available
+    if (urlInfo) {
+      resolvedUrl = urlInfo;
+    }
+  }
+
+  return (
+    <a
+      href={resolvedUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={className || "text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300"}
+      title={text}
+    >
+      {text}
+    </a>
   );
 }
 
@@ -34,6 +150,8 @@ interface MarkdownContentProps {
   className?: string;
   showSourceToggle?: boolean;
   skipSignatureDetection?: boolean;
+  /** Brand ID for fetching fresh attachment URLs */
+  brandId?: string;
 }
 
 interface ForwardedContent {
@@ -642,16 +760,11 @@ function RenderContent({ content, className = '', isSignature = false }: { conte
 
           const [, text, url] = linkMatch;
           lineElements.push(
-            <a
+            <ClickableLink
               key={`${lineIndex}-mdlink-${keyIndex.current++}`}
               href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300"
-              title={url}
-            >
-              {text}
-            </a>
+              text={text}
+            />
           );
 
           linkLastIndex = linkMatch.index + linkMatch[0].length;
@@ -686,7 +799,7 @@ function RenderContent({ content, className = '', isSignature = false }: { conte
   );
 }
 
-export function MarkdownContent({ content, className = '', showSourceToggle = false, skipSignatureDetection = false }: MarkdownContentProps) {
+export function MarkdownContent({ content, className = '', showSourceToggle = false, skipSignatureDetection = false, brandId }: MarkdownContentProps) {
   const [showSource, setShowSource] = useState(false);
   const [showForwarded, setShowForwarded] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
@@ -695,6 +808,20 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
   const openImage = (url: string, alt: string) => {
     setSelectedImage({ url, alt });
   };
+
+  // Extract attachment IDs from content and fetch fresh URLs
+  const attachmentIds = useMemo(() => extractAttachmentIds(content || ''), [content]);
+  const { data: attachmentUrls, isLoading: attachmentUrlsLoading } = useAttachmentUrls(brandId, attachmentIds);
+
+  // Create context value for attachment URLs
+  const attachmentUrlsContextValue = useMemo(() => ({
+    getUrl: (attachmentId: string) => {
+      if (!attachmentUrls) return undefined;
+      const info = attachmentUrls[attachmentId];
+      return info ? info.url : null;
+    },
+    isLoading: attachmentUrlsLoading,
+  }), [attachmentUrls, attachmentUrlsLoading]);
 
   // Check if content was transformed (HTML or had headers stripped)
   const wasTransformed = useMemo(() => {
@@ -717,6 +844,7 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
   // If this is a forwarded email, render with collapsible section
   if (forwardedContent) {
     return (
+      <AttachmentUrlsContext.Provider value={attachmentUrlsContextValue}>
       <ImageModalContext.Provider value={{ openImage }}>
         <div className={className}>
           {/* User's message (if any) */}
@@ -817,6 +945,7 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
           </DialogContent>
         </Dialog>
       </ImageModalContext.Provider>
+      </AttachmentUrlsContext.Provider>
     );
   }
 
@@ -826,6 +955,7 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
   const signature = parsedContent?.signature;
 
   return (
+    <AttachmentUrlsContext.Provider value={attachmentUrlsContextValue}>
     <ImageModalContext.Provider value={{ openImage }}>
       <div className={className}>
         <RenderContent content={mainBody} />
@@ -892,5 +1022,6 @@ export function MarkdownContent({ content, className = '', showSourceToggle = fa
         </DialogContent>
       </Dialog>
     </ImageModalContext.Provider>
+    </AttachmentUrlsContext.Provider>
   );
 }

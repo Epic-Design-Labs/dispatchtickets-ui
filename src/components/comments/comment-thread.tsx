@@ -8,9 +8,10 @@ import { MarkdownContent } from '@/components/ui/markdown-content';
 interface CommentThreadProps {
   comments: Comment[];
   isLoading?: boolean;
+  brandId?: string;
 }
 
-export function CommentThread({ comments, isLoading }: CommentThreadProps) {
+export function CommentThread({ comments, isLoading, brandId }: CommentThreadProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -112,6 +113,7 @@ export function CommentThread({ comments, isLoading }: CommentThreadProps) {
               content={comment.body}
               className="mt-1 text-sm"
               skipSignatureDetection={comment.authorType === 'SYSTEM'}
+              brandId={brandId}
             />
           </div>
         </div>

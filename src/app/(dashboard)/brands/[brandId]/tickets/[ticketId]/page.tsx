@@ -697,7 +697,7 @@ export default function TicketDetailPage() {
                   autoFocus
                 />
               ) : ticket.body ? (
-                <MarkdownContent content={ticket.body} showSourceToggle />
+                <MarkdownContent content={ticket.body} showSourceToggle brandId={brandId} />
               ) : (
                 <p className="text-muted-foreground">No description provided</p>
               )}
@@ -712,7 +712,7 @@ export default function TicketDetailPage() {
             <CardContent className="space-y-4">
               <CommentEditor brandId={brandId} ticketId={ticketId} />
               <Separator />
-              <CommentThread comments={comments || []} isLoading={commentsLoading} />
+              <CommentThread comments={comments || []} isLoading={commentsLoading} brandId={brandId} />
             </CardContent>
           </Card>
         </div>

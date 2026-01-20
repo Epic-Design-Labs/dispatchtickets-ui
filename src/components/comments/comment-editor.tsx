@@ -109,13 +109,14 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
 
     try {
       // Build final body with attachments appended as markdown
+      // Use attachment:id format for images so URLs can be refreshed (presigned URLs expire)
       let finalBody = body.trim();
       if (uploadedFiles.length > 0) {
         const attachmentMarkdown = uploadedFiles
           .map((file) =>
             file.isImage
-              ? `![${file.name}](${file.url})`
-              : `[${file.name}](${file.url})`
+              ? `![${file.name}](attachment:${file.id})`
+              : `[${file.name}](attachment:${file.id})`
           )
           .join('\n');
         finalBody = finalBody

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { attachmentsApi, Attachment, AttachmentWithUrl } from '../api/attachments';
+import { attachmentsApi, Attachment, AttachmentWithUrl, AttachmentUrlsResponse } from '../api/attachments';
 
 export const attachmentKeys = {
   all: ['attachments'] as const,
@@ -7,6 +7,8 @@ export const attachmentKeys = {
     [...attachmentKeys.all, 'list', brandId, ticketId] as const,
   detail: (brandId: string, ticketId: string, attachmentId: string) =>
     [...attachmentKeys.all, 'detail', brandId, ticketId, attachmentId] as const,
+  urls: (brandId: string, attachmentIds: string[]) =>
+    [...attachmentKeys.all, 'urls', brandId, ...attachmentIds.sort()] as const,
 };
 
 /**
@@ -66,5 +68,22 @@ export function useDeleteAttachment(brandId: string, ticketId: string) {
         queryKey: attachmentKeys.list(brandId, ticketId),
       });
     },
+  });
+}
+
+/**
+ * Hook to fetch fresh download URLs for multiple attachments
+ * URLs are cached for 30 minutes (half of the 1-hour presigned URL validity)
+ */
+export function useAttachmentUrls(
+  brandId: string | undefined,
+  attachmentIds: string[]
+) {
+  return useQuery({
+    queryKey: attachmentKeys.urls(brandId || '', attachmentIds),
+    queryFn: () => attachmentsApi.getUrls(brandId!, attachmentIds),
+    enabled: !!brandId && attachmentIds.length > 0,
+    staleTime: 30 * 60 * 1000, // 30 minutes - URLs are valid for 1 hour
+    gcTime: 45 * 60 * 1000, // Keep in cache for 45 minutes
   });
 }

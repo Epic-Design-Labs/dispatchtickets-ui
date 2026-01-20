@@ -29,6 +29,14 @@ export interface CreateAttachmentDto {
   size: number;
 }
 
+export interface AttachmentUrlInfo {
+  url: string;
+  filename: string;
+  contentType: string;
+}
+
+export type AttachmentUrlsResponse = Record<string, AttachmentUrlInfo | null>;
+
 export const attachmentsApi = {
   /**
    * Initiate an upload - get presigned URL
@@ -94,6 +102,24 @@ export const attachmentsApi = {
     await apiClient.delete(
       `/brands/${brandId}/tickets/${ticketId}/attachments/${attachmentId}`
     );
+  },
+
+  /**
+   * Get fresh download URLs for multiple attachments
+   * Used to render images with non-expired presigned URLs
+   */
+  getUrls: async (
+    brandId: string,
+    attachmentIds: string[]
+  ): Promise<AttachmentUrlsResponse> => {
+    if (attachmentIds.length === 0) {
+      return {};
+    }
+    const response = await apiClient.post<AttachmentUrlsResponse>(
+      `/brands/${brandId}/attachments/urls`,
+      { ids: attachmentIds }
+    );
+    return response.data;
   },
 
   /**
