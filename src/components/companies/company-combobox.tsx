@@ -125,15 +125,19 @@ export function CompanyCombobox({
             <CommandEmpty className="py-2 px-4 text-sm text-muted-foreground">
               {search ? 'No companies found.' : 'Type to search...'}
             </CommandEmpty>
-            <CommandGroup>
-              {/* Clear option if value is set */}
-              {value && (
-                <CommandItem value="__clear__" onSelect={() => handleClear()} className="text-muted-foreground">
-                  <span className="mr-2">✕</span>
+            {/* Clear option if value is set - use button with onClick to bypass cmdk */}
+            {value && (
+              <div className="p-1 border-b">
+                <button
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent rounded-sm cursor-pointer"
+                  onClick={handleClear}
+                >
+                  <span>✕</span>
                   No company
-                </CommandItem>
-              )}
-
+                </button>
+              </div>
+            )}
+            <CommandGroup>
               {/* Existing companies */}
               {filteredCompanies.map((company) => (
                 <CommandItem
