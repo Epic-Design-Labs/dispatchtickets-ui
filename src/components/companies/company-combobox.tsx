@@ -123,18 +123,7 @@ export function CompanyCombobox({
           />
           <CommandList>
             <CommandEmpty className="py-2 px-4 text-sm text-muted-foreground">
-              {search ? (
-                <button
-                  className="flex w-full items-center gap-2 text-sm text-primary hover:underline cursor-pointer"
-                  onClick={handleCreateNew}
-                  disabled={createCompany.isPending}
-                >
-                  <Plus className="h-4 w-4" />
-                  Create &quot;{search.trim()}&quot;
-                </button>
-              ) : (
-                'Type to search...'
-              )}
+              {search ? 'No companies found.' : 'Type to search...'}
             </CommandEmpty>
             <CommandGroup>
               {/* Clear option if value is set */}
@@ -166,20 +155,20 @@ export function CompanyCombobox({
                   )}
                 </CommandItem>
               ))}
-
-              {/* Create new option - show when there's search text, no exact match, AND there are filtered results */}
-              {search.trim() && !exactMatch && filteredCompanies.length > 0 && (
-                <CommandItem
-                  value={`__create__${search.trim()}`}
-                  onSelect={() => handleCreateNew()}
-                  disabled={createCompany.isPending}
-                  className="text-primary"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create &quot;{search.trim()}&quot;
-                </CommandItem>
-              )}
             </CommandGroup>
+            {/* Create new option - always use a div with onClick to bypass cmdk selection issues */}
+            {search.trim() && !exactMatch && (
+              <div className="p-1 border-t">
+                <button
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-sm text-primary hover:bg-accent rounded-sm cursor-pointer disabled:opacity-50"
+                  onClick={handleCreateNew}
+                  disabled={createCompany.isPending}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create &quot;{search.trim()}&quot;
+                </button>
+              </div>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
