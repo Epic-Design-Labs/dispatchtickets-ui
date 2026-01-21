@@ -217,12 +217,14 @@ export default function BrandGettingStartedPage() {
           <div>
             <h3 className="font-medium">Need help?</h3>
             <p className="text-sm text-muted-foreground">
-              Check out our guides or contact support
+              Check out our documentation or contact support
             </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>
-              <Link href="/getting-started">View Guides</Link>
+              <a href="https://dispatchtickets.com/docs" target="_blank" rel="noopener noreferrer">
+                Documentation
+              </a>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/support">Contact Support</Link>

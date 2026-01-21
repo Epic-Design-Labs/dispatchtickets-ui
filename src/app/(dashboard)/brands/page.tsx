@@ -63,7 +63,8 @@ export default function BrandsPage() {
       toast.success('Brand created successfully');
       setCreateDialogOpen(false);
       setNewBrandName('');
-      router.push(`/brands/${brand.id}`);
+      // Redirect to getting started page for the new brand
+      router.push(`/brands/${brand.id}/getting-started`);
     } catch (error) {
       toast.error('Failed to create brand');
     }
