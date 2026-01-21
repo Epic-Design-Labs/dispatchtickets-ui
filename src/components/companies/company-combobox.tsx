@@ -128,7 +128,7 @@ export function CompanyCombobox({
             <CommandGroup>
               {/* Clear option if value is set */}
               {value && (
-                <CommandItem onSelect={handleClear} className="text-muted-foreground">
+                <CommandItem value="__clear__" onSelect={handleClear} className="text-muted-foreground">
                   <span className="mr-2">✕</span>
                   No company
                 </CommandItem>
@@ -159,6 +159,7 @@ export function CompanyCombobox({
               {/* Create new option - show when there's search text and no exact match */}
               {search.trim() && !exactMatch && (
                 <CommandItem
+                  value={`__create__${search.trim()}`}
                   onSelect={handleCreateNew}
                   disabled={createCompany.isPending}
                   className="text-primary"
