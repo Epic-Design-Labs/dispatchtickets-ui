@@ -9,6 +9,8 @@ import {
   useDeleteCustomer,
   useTickets,
   useFieldsByEntity,
+  useBulkAction,
+  BulkActionType,
 } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { TicketTable } from '@/components/tickets';
@@ -53,11 +55,39 @@ export default function CustomerDetailPage() {
   const updateCustomer = useUpdateCustomer(brandId, customerId);
   const deleteCustomer = useDeleteCustomer(brandId);
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
+  const bulkAction = useBulkAction(brandId);
 
   // Filter tickets for this customer
   const customerTickets = ticketsData?.data?.filter(
     (t) => (t.customFields?.requesterEmail as string)?.toLowerCase() === customer?.email?.toLowerCase()
   ) || [];
+
+  const handleBulkAction = async (
+    action: BulkActionType,
+    ticketIds: string[],
+    options?: { assigneeId?: string | null; categoryId?: string | null; tags?: string[]; closeReason?: string }
+  ) => {
+    try {
+      const result = await bulkAction.mutateAsync({ action, ticketIds, ...options });
+      const actionLabels: Record<BulkActionType, string> = {
+        spam: 'marked as spam',
+        resolve: 'resolved',
+        close: 'closed',
+        delete: 'deleted',
+        assign: options?.assigneeId ? 'assigned' : 'unassigned',
+        setCategory: options?.categoryId ? 'categorized' : 'uncategorized',
+        setTags: 'tagged',
+      };
+      if (result.success > 0) {
+        toast.success(`${result.success} ticket(s) ${actionLabels[action]}`);
+      }
+      if (result.failed > 0) {
+        toast.error(`${result.failed} ticket(s) failed`);
+      }
+    } catch {
+      toast.error('Bulk action failed');
+    }
+  };
 
   const startEditing = () => {
     setEditName(customer?.name || '');
@@ -316,6 +346,7 @@ export default function CustomerDetailPage() {
                   brandId={brandId}
                   isLoading={ticketsLoading}
                   customFields={ticketFields}
+                  onBulkAction={handleBulkAction}
                 />
               )}
             </CardContent>
