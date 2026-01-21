@@ -85,10 +85,14 @@ export const attachmentsApi = {
     ticketId: string,
     attachmentId: string
   ): Promise<AttachmentWithUrl> => {
-    const response = await apiClient.get<AttachmentWithUrl>(
+    const response = await apiClient.get<{ attachment: Attachment; downloadUrl: string }>(
       `/brands/${brandId}/tickets/${ticketId}/attachments/${attachmentId}`
     );
-    return response.data;
+    // Backend returns { attachment: {...}, downloadUrl }, flatten it
+    return {
+      ...response.data.attachment,
+      downloadUrl: response.data.downloadUrl,
+    };
   },
 
   /**
