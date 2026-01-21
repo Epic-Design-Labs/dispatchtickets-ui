@@ -42,6 +42,7 @@ import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '@/lib/hooks/use-ap
 import { useBrands } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { ApiKey } from '@/types/api-key';
+import { Header } from '@/components/layout';
 
 function formatDate(date: string | null) {
   if (!date) return 'Never';
@@ -327,98 +328,103 @@ export default function ApiKeysPage() {
 
   if (!canManageApiKeys) {
     return (
-      <div className="container max-w-4xl py-8">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ShieldX className="h-12 w-12 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground text-center">
-              Only owners and admins can manage API keys.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col">
+        <Header title="API Keys" />
+        <div className="flex-1 p-6">
+          <Card className="max-w-4xl">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <ShieldX className="h-12 w-12 text-muted-foreground mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+              <p className="text-muted-foreground text-center">
+                Only owners and admins can manage API keys.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container max-w-4xl py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">API Keys</h1>
-          <p className="text-muted-foreground">
-            Manage API keys for accessing the Dispatch Tickets API
-          </p>
-        </div>
-        <CreateKeyDialog onSuccess={setNewKey} />
-      </div>
+    <div className="flex flex-col">
+      <Header title="API Keys" />
+      <div className="flex-1 p-6">
+        <div className="max-w-4xl space-y-6">
+          <div className="flex items-center justify-between">
+            <p className="text-muted-foreground">
+              Manage API keys for accessing the Dispatch Tickets API
+            </p>
+            <CreateKeyDialog onSuccess={setNewKey} />
+          </div>
 
-      {newKey && <NewKeyDisplay apiKey={newKey} onClose={() => setNewKey(null)} />}
+        {newKey && <NewKeyDisplay apiKey={newKey} onClose={() => setNewKey(null)} />}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Active Keys</CardTitle>
-          <CardDescription>
-            API keys are used to authenticate requests to the Dispatch Tickets API.
-            Keys can be scoped to specific brands for security.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : apiKeys && apiKeys.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Scope</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Last Used</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {apiKeys.map((key) => (
-                    <ApiKeyRow key={key.id} apiKey={key} brands={brands || []} />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Key className="h-12 w-12 mx-auto mb-4 opacity-30" />
-              <p className="text-muted-foreground">No API keys created yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Create your first API key to start using the API
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Keys</CardTitle>
+              <CardDescription>
+                API keys are used to authenticate requests to the Dispatch Tickets API.
+                Keys can be scoped to specific brands for security.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : apiKeys && apiKeys.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Scope</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Last Used</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {apiKeys.map((key) => (
+                        <ApiKeyRow key={key.id} apiKey={key} brands={brands || []} />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Key className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p className="text-muted-foreground">No API keys created yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Create your first API key to start using the API
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Brand Scoping</CardTitle>
+              <CardDescription>
+                Limit API key access to specific brands for enhanced security
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-2">
+              <p>
+                <strong className="text-foreground">All brands:</strong> The key can access
+                all workspaces under your account, including any created in the future.
               </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Brand Scoping</CardTitle>
-          <CardDescription>
-            Limit API key access to specific brands for enhanced security
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>
-            <strong className="text-foreground">All brands:</strong> The key can access
-            all workspaces under your account, including any created in the future.
-          </p>
-          <p>
-            <strong className="text-foreground">Specific brands:</strong> The key can
-            only access the selected brands. Useful for partner integrations or
-            microservices that should only touch certain data.
-          </p>
-        </CardContent>
-      </Card>
+              <p>
+                <strong className="text-foreground">Specific brands:</strong> The key can
+                only access the selected brands. Useful for partner integrations or
+                microservices that should only touch certain data.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
