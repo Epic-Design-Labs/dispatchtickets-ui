@@ -123,12 +123,23 @@ export function CompanyCombobox({
           />
           <CommandList>
             <CommandEmpty className="py-2 px-4 text-sm text-muted-foreground">
-              {search ? 'No companies found.' : 'Type to search...'}
+              {search ? (
+                <button
+                  className="flex w-full items-center gap-2 text-sm text-primary hover:underline cursor-pointer"
+                  onClick={handleCreateNew}
+                  disabled={createCompany.isPending}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create &quot;{search.trim()}&quot;
+                </button>
+              ) : (
+                'Type to search...'
+              )}
             </CommandEmpty>
             <CommandGroup>
               {/* Clear option if value is set */}
               {value && (
-                <CommandItem value="__clear__" onSelect={handleClear} className="text-muted-foreground">
+                <CommandItem value="__clear__" onSelect={() => handleClear()} className="text-muted-foreground">
                   <span className="mr-2">✕</span>
                   No company
                 </CommandItem>
@@ -156,11 +167,11 @@ export function CompanyCombobox({
                 </CommandItem>
               ))}
 
-              {/* Create new option - show when there's search text and no exact match */}
-              {search.trim() && !exactMatch && (
+              {/* Create new option - show when there's search text, no exact match, AND there are filtered results */}
+              {search.trim() && !exactMatch && filteredCompanies.length > 0 && (
                 <CommandItem
                   value={`__create__${search.trim()}`}
-                  onSelect={handleCreateNew}
+                  onSelect={() => handleCreateNew()}
                   disabled={createCompany.isPending}
                   className="text-primary"
                 >
