@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useBrand, useTickets, useTicketNotifications, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, BulkActionType, ticketKeys } from '@/lib/hooks';
+import { useBrand, useTickets, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, BulkActionType, ticketKeys } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw, MessageSquare, Timer } from 'lucide-react';
 import { Header } from '@/components/layout';
@@ -31,9 +31,6 @@ export default function BrandDashboardPage() {
   const { data: allTicketsData, isLoading: allTicketsLoading } = useTickets(brandId, {});
   // Fetch filtered tickets for display
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, filters);
-
-  // Enable real-time notifications for ticket updates
-  useTicketNotifications(brandId);
 
   // Email sync and refresh
   const queryClient = useQueryClient();

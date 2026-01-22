@@ -41,6 +41,20 @@ export interface SupportComment {
   createdAt: string;
 }
 
+export interface SupportAttachment {
+  id: string;
+  filename: string;
+  contentType: string;
+  size: number;
+  status: 'PENDING' | 'UPLOADED';
+}
+
+export interface PendingUploadResponse {
+  attachment: SupportAttachment;
+  uploadUrl: string;
+  expiresAt: string;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: {
@@ -163,7 +177,7 @@ export function useSupportPortal() {
   }, [portalFetch]);
 
   const createTicket = useCallback(async (
-    data: { title: string; body?: string },
+    data: { title: string; body?: string; attachmentIds?: string[] },
     idempotencyKey?: string
   ): Promise<SupportTicket> => {
     const headers: Record<string, string> = {};
@@ -177,6 +191,52 @@ export function useSupportPortal() {
       headers,
     });
   }, [portalFetch]);
+
+  // ============================================================================
+  // Attachment Methods
+  // ============================================================================
+
+  const initiatePendingUpload = useCallback(async (
+    file: { filename: string; contentType: string; size: number }
+  ): Promise<PendingUploadResponse> => {
+    return portalFetch('/portal/tickets/attachments/pending', {
+      method: 'POST',
+      body: JSON.stringify(file),
+    });
+  }, [portalFetch]);
+
+  const confirmPendingUpload = useCallback(async (
+    attachmentId: string
+  ): Promise<SupportAttachment> => {
+    return portalFetch(`/portal/tickets/attachments/pending/${attachmentId}/confirm`, {
+      method: 'POST',
+    });
+  }, [portalFetch]);
+
+  const uploadFile = useCallback(async (file: File): Promise<SupportAttachment> => {
+    // 1. Initiate upload to get presigned URL
+    const response = await initiatePendingUpload({
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      size: file.size,
+    });
+
+    // 2. Upload directly to S3/R2
+    const uploadResponse = await fetch(response.uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream',
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Upload failed: ${uploadResponse.status}`);
+    }
+
+    // 3. Confirm the upload
+    return confirmPendingUpload(response.attachment.id);
+  }, [initiatePendingUpload, confirmPendingUpload]);
 
   const addComment = useCallback(async (
     ticketId: string,
@@ -210,5 +270,8 @@ export function useSupportPortal() {
     getTicket,
     createTicket,
     addComment,
+
+    // Attachment methods
+    uploadFile,
   };
 }
