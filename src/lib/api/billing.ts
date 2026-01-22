@@ -78,6 +78,17 @@ export interface InvoicesResponse {
   hasMore: boolean;
 }
 
+export interface DeleteAccountRequest {
+  confirmation: string;
+}
+
+export interface DeleteAccountResponse {
+  success: boolean;
+  message: string;
+  deletedBrands: string[];
+  deletedBrandsCount: number;
+}
+
 export const billingApi = {
   getPlans: async (): Promise<PlansResponse> => {
     const response = await apiClient.get<PlansResponse>('/auth/plans');
@@ -113,6 +124,11 @@ export const billingApi = {
     const response = await apiClient.get<InvoicesResponse>('/auth/invoices', {
       params: limit ? { limit } : undefined,
     });
+    return response.data;
+  },
+
+  deleteAccount: async (data: DeleteAccountRequest): Promise<DeleteAccountResponse> => {
+    const response = await apiClient.delete<DeleteAccountResponse>('/auth/account', { data });
     return response.data;
   },
 };

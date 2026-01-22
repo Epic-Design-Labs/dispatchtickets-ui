@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { billingApi, UpgradeRequest, CancelRequest } from '@/lib/api/billing';
+import { billingApi, UpgradeRequest, CancelRequest, DeleteAccountRequest } from '@/lib/api/billing';
 
 export const billingKeys = {
   plans: ['plans'] as const,
@@ -70,5 +70,11 @@ export function useInvoices(limit?: number) {
     queryKey: [...billingKeys.invoices, limit],
     queryFn: () => billingApi.getInvoices(limit),
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+export function useDeleteAccount() {
+  return useMutation({
+    mutationFn: (data: DeleteAccountRequest) => billingApi.deleteAccount(data),
   });
 }
