@@ -149,12 +149,11 @@ export function useSetupStatus(brandId: string): SetupStatus {
   ];
 
   const requiredSteps = steps.filter(s => !s.optional);
-  const completedSteps = steps.filter(s => s.completed);
   const completedRequired = requiredSteps.filter(s => s.completed);
 
   return {
     steps,
-    completedCount: completedSteps.length,
+    completedCount: completedRequired.length,  // Only count completed REQUIRED steps
     requiredCount: requiredSteps.length,
     totalCount: steps.length,
     percentComplete: Math.round((completedRequired.length / requiredSteps.length) * 100),
