@@ -1,157 +1,166 @@
 'use client';
 
-import { useState } from 'react';
 import { Header } from '@/components/layout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useSupportPortal, SupportTicket } from '@/lib/hooks/use-support-portal';
-import { SupportTicketList, SupportTicketDetail, NewSupportTicketForm } from '@/components/support';
-import { Plus, AlertCircle, Book, ExternalLink } from 'lucide-react';
-
-type View = 'list' | 'detail' | 'new';
+import { Book, Mail, MessageSquare, ExternalLink } from 'lucide-react';
 
 export default function SupportPage() {
-  const { loading, error, portalToken } = useSupportPortal();
-  const [view, setView] = useState<View>('list');
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-
-  const handleSelectTicket = (ticketId: string) => {
-    setSelectedTicketId(ticketId);
-    setView('detail');
-  };
-
-  const handleBack = () => {
-    setSelectedTicketId(null);
-    setView('list');
-  };
-
-  const handleTicketCreated = (ticket: SupportTicket) => {
-    setSelectedTicketId(ticket.id);
-    setView('detail');
-  };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex flex-col">
-        <Header title="Support" />
-        <div className="flex-1 p-6">
-          <div className="max-w-3xl mx-auto">
-            <Skeleton className="h-8 w-48 mb-6" />
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <Skeleton className="h-10 w-40" />
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state - show fallback support options
-  if (error) {
-    return (
-      <div className="flex flex-col">
-        <Header title="Support" />
-        <div className="flex-1 p-6">
-          <div className="max-w-3xl mx-auto">
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center py-8">
-                  <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h2 className="text-lg font-semibold mb-2">Support portal unavailable</h2>
-                  <p className="text-muted-foreground mb-6">
-                    {error}
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button variant="outline" asChild>
-                      <a href="https://dispatchtickets.com/docs" target="_blank" rel="noopener noreferrer">
-                        <Book className="h-4 w-4 mr-2" />
-                        View Documentation
-                      </a>
-                    </Button>
-                    <Button variant="outline" asChild>
-                      <a href="mailto:support@dispatchtickets.com">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Email Support
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col">
       <Header title="Support" />
       <div className="flex-1 p-6">
-        <div className="max-w-3xl mx-auto">
-          {/* Header with user info and new ticket button */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Get Help</h2>
-              {portalToken && (
-                <p className="text-sm text-muted-foreground">
-                  Logged in as {portalToken.email}
-                </p>
-              )}
-            </div>
-
-            {view === 'list' && (
-              <Button onClick={() => setView('new')}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Ticket
-              </Button>
-            )}
+        <div className="max-w-3xl mx-auto space-y-6">
+          {/* Header */}
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Get Help</h2>
+            <p className="text-muted-foreground">
+              Find answers in our documentation or reach out to our team.
+            </p>
           </div>
 
-          {/* Content */}
+          {/* Support Options */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Documentation */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Book className="h-5 w-5" />
+                  Documentation
+                </CardTitle>
+                <CardDescription>
+                  Learn how to use Dispatch Tickets with guides and API references.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" asChild>
+                  <a
+                    href="https://dispatchtickets.com/docs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View Docs
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Email Support */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Email Support
+                </CardTitle>
+                <CardDescription>
+                  Have a question or need help? Send us an email.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" asChild>
+                  <a href="mailto:support@dispatchtickets.com">
+                    Contact Support
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Feature Requests */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Feature Requests
+                </CardTitle>
+                <CardDescription>
+                  Have an idea? Submit and vote on feature requests.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" asChild>
+                  <a href="/feature-requests">
+                    View Requests
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* API Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  API Status
+                </CardTitle>
+                <CardDescription>
+                  Check the current status of Dispatch Tickets services.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" asChild>
+                  <a
+                    href="https://status.dispatchtickets.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View Status
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Links */}
           <Card>
-            <CardContent className="p-6">
-              {view === 'list' && (
-                <SupportTicketList onSelectTicket={handleSelectTicket} />
-              )}
-
-              {view === 'detail' && selectedTicketId && (
-                <SupportTicketDetail
-                  ticketId={selectedTicketId}
-                  onBack={handleBack}
-                />
-              )}
-
-              {view === 'new' && (
-                <NewSupportTicketForm
-                  onSuccess={handleTicketCreated}
-                  onCancel={handleBack}
-                />
-              )}
+            <CardHeader>
+              <CardTitle>Quick Links</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2 text-sm">
+                <a
+                  href="https://dispatchtickets.com/docs/getting-started"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Getting Started Guide
+                </a>
+                <a
+                  href="https://dispatchtickets.com/docs/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  API Reference
+                </a>
+                <a
+                  href="https://dispatchtickets.com/docs/webhooks"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Webhooks Documentation
+                </a>
+                <a
+                  href="https://dispatchtickets.com/docs/email"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Email Integration Guide
+                </a>
+              </div>
             </CardContent>
           </Card>
-
-          {/* Documentation link */}
-          <div className="text-center mt-6 text-sm text-muted-foreground">
-            Looking for documentation?{' '}
-            <a
-              href="https://dispatchtickets.com/docs"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              View the docs
-            </a>
-          </div>
         </div>
       </div>
     </div>
