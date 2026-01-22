@@ -81,18 +81,13 @@ export default function BillingPage() {
     }
   }, [subscription]);
 
-  // Group plans by base name (Free, Starter, Pro, Enterprise)
+  // Group plans by base name (Starter, Pro, Enterprise) - excludes Free plan
   const planGroups = useMemo(() => {
     const groups: Record<string, PlanGroup> = {};
 
     allPlans.forEach((plan) => {
-      // Handle free plan specially - it doesn't have monthly/annual variants
-      if (plan.price === 0) {
-        if (!groups['Free']) {
-          groups['Free'] = { baseName: 'Free', monthly: plan, annual: null };
-        }
-        return;
-      }
+      // Skip free plan from the upgrade grid - it shows in Current Plan section
+      if (plan.price === 0) return;
 
       // Extract base name (remove "Monthly" or "Annual" suffix)
       const baseName = plan.name.replace(/ (Monthly|Annual)$/i, '');
@@ -108,7 +103,7 @@ export default function BillingPage() {
       }
     });
 
-    // Sort by price (using monthly price as reference), Free first
+    // Sort by price (using monthly price as reference)
     return Object.values(groups).sort((a, b) => {
       const priceA = a.monthly?.price || 0;
       const priceB = b.monthly?.price || 0;
@@ -276,7 +271,6 @@ export default function BillingPage() {
 
   // Plan feature mapping based on plan name
   const planDetails: Record<string, { tickets: string; support: string; sla?: string }> = {
-    'Free': { tickets: '100 tickets/mo', support: 'Community support' },
     'Starter': { tickets: '1,000 tickets/mo', support: 'Email support' },
     'Pro': { tickets: '10,000 tickets/mo', support: 'Priority support' },
     'Enterprise': { tickets: '100,000 tickets/mo', support: 'Dedicated support', sla: '99.9% SLA' },
@@ -539,18 +533,16 @@ export default function BillingPage() {
               </CardHeader>
               <CardContent>
                 {plansLoading ? (
-                  <div className="grid gap-4 md:grid-cols-4">
-                    {[1, 2, 3, 4].map((i) => (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {[1, 2, 3].map((i) => (
                       <Skeleton key={i} className="h-64 w-full" />
                     ))}
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-4 items-stretch">
+                  <div className="grid gap-4 md:grid-cols-3 items-stretch">
                     {planGroups.map((group) => {
-                      // For plans with annual variant, use selected period; for Free plan, always use monthly
-                      const plan = billingPeriod === 'annual' && group.annual ? group.annual : group.monthly;
+                      const plan = billingPeriod === 'annual' ? group.annual : group.monthly;
                       if (!plan) return null;
-                      const isFreePlan = plan.price === 0;
 
                       const savings = getAnnualSavings(group);
                       const isCurrent = isCurrentPlan(plan);
@@ -576,9 +568,9 @@ export default function BillingPage() {
                           <div className="mb-4">
                             <h3 className="font-semibold">{group.baseName}</h3>
                             <p className="text-2xl font-bold mt-1">
-                              {isFreePlan ? '$0' : formatPrice(plan.price, plan.currency, plan.interval)}
+                              {formatPrice(plan.price, plan.currency, plan.interval)}
                             </p>
-                            {billingPeriod === 'annual' && !isFreePlan && (
+                            {billingPeriod === 'annual' && (
                               <p className="text-sm text-muted-foreground">
                                 {formatAnnualTotal(plan.price, plan.currency)}
                               </p>
@@ -593,15 +585,13 @@ export default function BillingPage() {
                                 {feature}
                               </li>
                             ))}
-                            {/* Overage pricing - not available on Free plan */}
-                            {!isFreePlan && (
-                              <li className="flex items-center gap-2 pt-2 border-t">
-                                <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                                </svg>
-                                <span>$0.02/ticket overage</span>
-                              </li>
-                            )}
+                            {/* Overage pricing */}
+                            <li className="flex items-center gap-2 pt-2 border-t">
+                              <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                              </svg>
+                              <span>$0.02/ticket overage</span>
+                            </li>
                           </ul>
                           {!isCurrent && (
                             <Button
