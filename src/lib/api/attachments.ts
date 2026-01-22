@@ -171,4 +171,73 @@ export const attachmentsApi = {
     // 4. Get the attachment with download URL
     return attachmentsApi.get(brandId, ticketId, id);
   },
+
+  /**
+   * Initiate a pending upload (before ticket creation)
+   */
+  initiatePendingUpload: async (
+    brandId: string,
+    dto: CreateAttachmentDto
+  ): Promise<InitiateUploadResponse> => {
+    const response = await apiClient.post<InitiateUploadResponse>(
+      `/brands/${brandId}/attachments/pending`,
+      dto
+    );
+    return response.data;
+  },
+
+  /**
+   * Confirm a pending upload
+   */
+  confirmPendingUpload: async (
+    brandId: string,
+    attachmentId: string
+  ): Promise<Attachment> => {
+    const response = await apiClient.post<Attachment>(
+      `/brands/${brandId}/attachments/pending/${attachmentId}/confirm`
+    );
+    return response.data;
+  },
+
+  /**
+   * Upload a pending file - convenience method for create ticket flow
+   * Returns the attachment ID to be passed when creating the ticket
+   */
+  uploadPendingFile: async (
+    brandId: string,
+    file: File
+  ): Promise<Attachment> => {
+    // 1. Initiate pending upload to get presigned URL
+    const response = await attachmentsApi.initiatePendingUpload(
+      brandId,
+      {
+        filename: file.name,
+        contentType: file.type,
+        size: file.size,
+      }
+    );
+
+    const id = (response as { attachment?: { id: string }; id?: string }).attachment?.id || response.id;
+    const uploadUrl = response.uploadUrl;
+
+    if (!id || !uploadUrl) {
+      throw new Error('Invalid response from upload initiation');
+    }
+
+    // 2. Upload directly to S3/R2
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+    }
+
+    // 3. Confirm the pending upload
+    return attachmentsApi.confirmPendingUpload(brandId, id);
+  },
 };

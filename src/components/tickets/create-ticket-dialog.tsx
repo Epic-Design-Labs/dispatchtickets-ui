@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateTicket, useCreateTicketDynamic, useBrands, useFieldsByEntity, useTeamMembers } from '@/lib/hooks';
+import { useCreateTicket, useCreateTicketDynamic, useBrands, useFieldsByEntity, useTeamMembers, useUploadPendingAttachment } from '@/lib/hooks';
+import { Attachment } from '@/lib/api/attachments';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -38,7 +39,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from 'sonner';
 import { CustomFieldsFormSection, validateCustomFields } from '@/components/fields';
 import { CustomerCombobox } from '@/components/customers/customer-combobox';
-import { Eye, Plus, X } from 'lucide-react';
+import { Eye, Plus, X, Paperclip, Upload, FileIcon, Loader2 } from 'lucide-react';
 
 const createTicketSchema = z.object({
   brandId: z.string().min(1, 'Brand is required'),
@@ -71,6 +72,13 @@ interface CreateTicketDialogProps {
   children?: React.ReactNode;
 }
 
+interface PendingAttachment {
+  id: string;
+  filename: string;
+  size: number;
+  uploading?: boolean;
+}
+
 export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTicketDialogProps) {
   const [open, setOpen] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
@@ -78,6 +86,9 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
   const [watchers, setWatchers] = useState<WatcherInput[]>([]);
   const [watcherPopoverOpen, setWatcherPopoverOpen] = useState(false);
   const [customWatcherEmail, setCustomWatcherEmail] = useState('');
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: brands } = useBrands();
 
   // Use fixed brand mutation if brandId is provided, otherwise use dynamic
@@ -120,12 +131,60 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
   const { data: teamData } = useTeamMembers({ brandId: currentBrandId || undefined });
   const teamMembers = teamData?.members?.filter(m => m.status === 'active') || [];
 
-  // Reset custom field values and watchers when brand changes
+  // Reset custom field values, watchers, and attachments when brand changes
   useEffect(() => {
     setCustomFieldValues({});
     setCustomFieldErrors({});
     setWatchers([]);
+    setPendingAttachments([]);
   }, [currentBrandId]);
+
+  // Upload pending attachment mutation
+  const uploadPendingAttachment = useUploadPendingAttachment(currentBrandId || '');
+
+  // Handle file selection
+  const handleFileSelect = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0 || !currentBrandId) return;
+
+    setIsUploading(true);
+    const newAttachments: PendingAttachment[] = [];
+
+    for (const file of Array.from(files)) {
+      // Add to list as uploading
+      const tempId = `temp_${Date.now()}_${file.name}`;
+      setPendingAttachments(prev => [...prev, { id: tempId, filename: file.name, size: file.size, uploading: true }]);
+
+      try {
+        const attachment = await uploadPendingAttachment.mutateAsync(file);
+        // Replace temp entry with actual attachment
+        setPendingAttachments(prev =>
+          prev.map(a => a.id === tempId ? { id: attachment.id, filename: attachment.filename, size: attachment.size } : a)
+        );
+        newAttachments.push({ id: attachment.id, filename: attachment.filename, size: attachment.size });
+      } catch (error) {
+        // Remove failed upload from list
+        setPendingAttachments(prev => prev.filter(a => a.id !== tempId));
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+
+    setIsUploading(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [currentBrandId, uploadPendingAttachment]);
+
+  // Remove a pending attachment
+  const removePendingAttachment = (attachmentId: string) => {
+    setPendingAttachments(prev => prev.filter(a => a.id !== attachmentId));
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const onSubmit = async (data: CreateTicketForm) => {
     // Validate custom fields
@@ -137,6 +196,11 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
     setCustomFieldErrors({});
 
     try {
+      // Get attachment IDs from pending attachments (only those that finished uploading)
+      const attachmentIds = pendingAttachments
+        .filter(a => !a.uploading)
+        .map(a => a.id);
+
       const ticketData = {
         title: data.title,
         body: data.body,
@@ -150,6 +214,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
         },
         notifyCustomer: data.notifyCustomer,
         watchers: watchers.length > 0 ? watchers : undefined,
+        attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
       };
 
       if (fixedBrandId) {
@@ -165,6 +230,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
       form.reset();
       setCustomFieldValues({});
       setWatchers([]);
+      setPendingAttachments([]);
     } catch {
       toast.error('Failed to create ticket');
     }
@@ -275,6 +341,69 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                 </FormItem>
               )}
             />
+
+            {/* Attachments Section */}
+            {currentBrandId && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    Attachments
+                  </FormLabel>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    Add
+                  </Button>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                />
+                {pendingAttachments.length > 0 ? (
+                  <div className="space-y-1">
+                    {pendingAttachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center gap-2 rounded border bg-muted/50 px-2 py-1.5 text-sm"
+                      >
+                        <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate flex-1">{attachment.filename}</span>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          {formatFileSize(attachment.size)}
+                        </span>
+                        {attachment.uploading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => removePendingAttachment(attachment.id)}
+                            className="hover:text-red-600 transition-colors"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No files attached</p>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

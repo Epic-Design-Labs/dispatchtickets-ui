@@ -66,6 +66,7 @@ export interface CreateTicketInput {
   metadata?: Record<string, unknown>;
   notifyCustomer?: boolean;
   watchers?: WatcherInput[];
+  attachmentIds?: string[];
 }
 
 export interface UpdateTicketInput {

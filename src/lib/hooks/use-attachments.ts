@@ -87,3 +87,13 @@ export function useAttachmentUrls(
     gcTime: 45 * 60 * 1000, // Keep in cache for 45 minutes
   });
 }
+
+/**
+ * Hook to upload pending attachments (before ticket creation)
+ * Returns the attachment to be associated when the ticket is created
+ */
+export function useUploadPendingAttachment(brandId: string) {
+  return useMutation({
+    mutationFn: (file: File) => attachmentsApi.uploadPendingFile(brandId, file),
+  });
+}
