@@ -68,7 +68,8 @@ export default function DashboardLayout({
       const isOnGettingStarted = pathname === '/getting-started';
       const isOnAllowedPage = pathname === '/profile' || pathname === '/team' ||
                               pathname === '/billing' || pathname === '/api-keys' ||
-                              pathname === '/support' || pathname === '/feature-requests';
+                              pathname === '/support' || pathname === '/feature-requests' ||
+                              pathname === '/brands';
 
       if (!hasBrands && !isOnGettingStarted && !isOnAllowedPage) {
         router.replace('/getting-started');
