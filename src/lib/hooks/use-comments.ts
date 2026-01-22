@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { commentsApi } from '@/lib/api';
 import { CreateCommentInput, UpdateCommentInput, Comment } from '@/types';
+import { ticketKeys } from './use-tickets';
 
 export const commentKeys = {
   all: (brandId: string, ticketId: string) =>
@@ -27,13 +28,21 @@ export function useCreateComment(brandId: string, ticketId: string) {
     mutationFn: (data: CreateCommentInput) =>
       commentsApi.create(brandId, ticketId, data),
     onSuccess: (newComment) => {
-      // Optimistic update
+      // Optimistic update for comments
       queryClient.setQueryData<Comment[]>(
         commentKeys.all(brandId, ticketId),
         (old) => (old ? [...old, newComment] : [newComment])
       );
       queryClient.invalidateQueries({
         queryKey: commentKeys.all(brandId, ticketId),
+      });
+      // Also invalidate the ticket since comments can change status/assignee
+      queryClient.invalidateQueries({
+        queryKey: ticketKeys.detail(brandId, ticketId),
+      });
+      // And the ticket list (for status badge updates)
+      queryClient.invalidateQueries({
+        queryKey: ticketKeys.all(brandId),
       });
     },
   });
