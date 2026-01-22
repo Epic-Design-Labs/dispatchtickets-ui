@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls } from '@/lib/hooks';
 import { useStatuses } from '@/lib/hooks/use-statuses';
 import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS } from '@/types';
-import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown } from 'lucide-react';
+import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown, Paperclip, FileIcon, Download, ExternalLink } from 'lucide-react';
 import { CustomFieldInput } from '@/components/fields';
 
 export default function TicketDetailPage() {
@@ -83,6 +83,11 @@ export default function TicketDetailPage() {
 
   // Custom fields
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
+
+  // Attachments
+  const { data: attachments } = useAttachments(brandId, ticketId);
+  const attachmentIds = useMemo(() => attachments?.map(a => a.id) || [], [attachments]);
+  const { data: attachmentUrls } = useAttachmentUrls(brandId, attachmentIds);
 
   // Auto-acknowledge any mentions for this ticket when viewing
   useAcknowledgeMentionsOnView(ticketId);
@@ -703,6 +708,69 @@ export default function TicketDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Attachments */}
+          {attachments && attachments.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="h-4 w-4" />
+                  <CardTitle>Attachments ({attachments.length})</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {attachments.map((attachment) => {
+                    const urlInfo = attachmentUrls?.[attachment.id];
+                    const isImage = attachment.contentType.startsWith('image/');
+                    const formatFileSize = (bytes: number) => {
+                      if (bytes < 1024) return `${bytes} B`;
+                      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+                    };
+
+                    return (
+                      <div key={attachment.id} className="border rounded-lg overflow-hidden bg-muted/30">
+                        {isImage && urlInfo?.url ? (
+                          <a href={urlInfo.url} target="_blank" rel="noopener noreferrer" className="block">
+                            <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
+                              <img
+                                src={urlInfo.url}
+                                alt={attachment.filename}
+                                className="object-cover w-full h-full hover:opacity-90 transition-opacity"
+                              />
+                            </div>
+                          </a>
+                        ) : (
+                          <div className="aspect-video bg-muted flex items-center justify-center">
+                            <FileIcon className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="p-2 space-y-1">
+                          <p className="text-xs font-medium truncate" title={attachment.filename}>
+                            {attachment.filename}
+                          </p>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{formatFileSize(attachment.size)}</span>
+                            {urlInfo?.url && (
+                              <a
+                                href={urlInfo.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-foreground transition-colors"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Activity / Comments */}
           <Card>
