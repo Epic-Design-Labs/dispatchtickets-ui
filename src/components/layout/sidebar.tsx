@@ -140,75 +140,98 @@ export function Sidebar({ brandId }: SidebarProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">
-        {/* Dashboard Views */}
-        <div className="px-3 mb-2">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-2">
-            Queue
-          </h3>
-          <nav className="space-y-1">
-            <Link
-              href="/dashboard"
+        {/* When no brands exist, show Getting Started prominently at top */}
+        {(!brands || brands.length === 0) && (
+          <div className="px-3 mb-4">
+            <Button
+              variant={pathname === '/getting-started' ? 'secondary' : 'ghost'}
               className={cn(
-                'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
-                isDashboard && view === 'all'
-                  ? 'bg-secondary text-foreground font-medium'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                'w-full justify-start gap-2',
+                pathname === '/getting-started' && 'bg-secondary'
               )}
+              asChild
             >
-              <Inbox className="h-4 w-4" />
-              All Active
-              {isDashboard && stats && (
-                <span className="ml-auto text-xs opacity-70">{(stats.open || 0) + (stats.pending || 0)}</span>
-              )}
-            </Link>
-            <Link
-              href="/dashboard?view=mine"
-              className={cn(
-                'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
-                isDashboard && view === 'mine'
-                  ? 'bg-secondary text-foreground font-medium'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <User className="h-4 w-4" />
-              My Tickets
-              {myTicketsCount > 0 && (
-                <span className="ml-auto text-xs opacity-70">{myTicketsCount}</span>
-              )}
-            </Link>
-            <Link
-              href="/dashboard?view=unassigned"
-              className={cn(
-                'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
-                isDashboard && view === 'unassigned'
-                  ? 'bg-secondary text-foreground font-medium'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <AlertCircle className="h-4 w-4" />
-              Unassigned
-            </Link>
-            <Link
-              href="/stats"
-              className={cn(
-                'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
-                pathname === '/stats'
-                  ? 'bg-secondary text-foreground font-medium'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <BarChart3 className="h-4 w-4" />
-              Statistics
-            </Link>
-          </nav>
-        </div>
+              <Link href="/getting-started">
+                <Rocket className="h-4 w-4" />
+                Getting Started
+              </Link>
+            </Button>
+          </div>
+        )}
 
-        <Separator className="mb-4" />
+        {/* Dashboard Views - only show when brands exist */}
+        {brands && brands.length > 0 && (
+          <>
+            <div className="px-3 mb-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-2">
+                Queue
+              </h3>
+              <nav className="space-y-1">
+                <Link
+                  href="/dashboard"
+                  className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
+                    isDashboard && view === 'all'
+                      ? 'bg-secondary text-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <Inbox className="h-4 w-4" />
+                  All Active
+                  {isDashboard && stats && (
+                    <span className="ml-auto text-xs opacity-70">{(stats.open || 0) + (stats.pending || 0)}</span>
+                  )}
+                </Link>
+                <Link
+                  href="/dashboard?view=mine"
+                  className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
+                    isDashboard && view === 'mine'
+                      ? 'bg-secondary text-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <User className="h-4 w-4" />
+                  My Tickets
+                  {myTicketsCount > 0 && (
+                    <span className="ml-auto text-xs opacity-70">{myTicketsCount}</span>
+                  )}
+                </Link>
+                <Link
+                  href="/dashboard?view=unassigned"
+                  className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
+                    isDashboard && view === 'unassigned'
+                      ? 'bg-secondary text-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  Unassigned
+                </Link>
+                <Link
+                  href="/stats"
+                  className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
+                    pathname === '/stats'
+                      ? 'bg-secondary text-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Statistics
+                </Link>
+              </nav>
+            </div>
 
-        {/* Brand Switcher (for brand-specific pages) */}
-        <div className="px-3">
-          <BrandSwitcher />
-        </div>
+            <Separator className="mb-4" />
+
+            {/* Brand Switcher - only show when brands exist */}
+            <div className="px-3">
+              <BrandSwitcher />
+            </div>
+          </>
+        )}
 
         {brandId && (
           <>
@@ -310,22 +333,6 @@ export function Sidebar({ brandId }: SidebarProps) {
       {/* Support section */}
       <div className="border-t p-3">
         <nav className="space-y-1">
-          {/* Only show global Getting Started when user has no brands yet */}
-          {(!brands || brands.length === 0) && (
-            <Button
-              variant={pathname === '/getting-started' ? 'secondary' : 'ghost'}
-              className={cn(
-                'w-full justify-start gap-2',
-                pathname === '/getting-started' && 'bg-secondary'
-              )}
-              asChild
-            >
-              <Link href="/getting-started">
-                <Rocket className="h-4 w-4" />
-                Getting Started
-              </Link>
-            </Button>
-          )}
           <Button
             variant={pathname === '/support' ? 'secondary' : 'ghost'}
             className={cn(

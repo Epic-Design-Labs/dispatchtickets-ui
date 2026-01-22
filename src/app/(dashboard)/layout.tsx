@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import { useAuth } from '@/providers';
 import { Sidebar } from '@/components/layout';
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
 import { ConnectionWarningBanner } from '@/components/connection-warning-banner';
-import { useKeyboardShortcuts, useMentionNotifications } from '@/lib/hooks';
+import { useKeyboardShortcuts, useMentionNotifications, useBrands } from '@/lib/hooks';
 
 // Separate component to enable mention polling only when authenticated
 function MentionNotificationPoller() {
@@ -21,13 +21,15 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const params = useParams();
+  const pathname = usePathname();
   const { isAuthenticated, isConnected, isLoading } = useAuth();
   const brandId = params.brandId as string | undefined;
+  const { data: brands, isLoading: brandsLoading } = useBrands();
 
   // Global keyboard shortcuts (just ? for help modal, handled in the hook)
   useKeyboardShortcuts([]);
 
-
+  // Auth redirects
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated) {
@@ -37,6 +39,21 @@ export default function DashboardLayout({
       }
     }
   }, [isAuthenticated, isConnected, isLoading, router]);
+
+  // Redirect to getting-started when no brands exist (unless already there or on allowed pages)
+  useEffect(() => {
+    if (!isLoading && !brandsLoading && isAuthenticated && isConnected) {
+      const hasBrands = brands && brands.length > 0;
+      const isOnGettingStarted = pathname === '/getting-started';
+      const isOnAllowedPage = pathname === '/profile' || pathname === '/team' ||
+                              pathname === '/billing' || pathname === '/api-keys' ||
+                              pathname === '/support' || pathname === '/feature-requests';
+
+      if (!hasBrands && !isOnGettingStarted && !isOnAllowedPage) {
+        router.replace('/getting-started');
+      }
+    }
+  }, [isLoading, brandsLoading, isAuthenticated, isConnected, brands, pathname, router]);
 
   if (isLoading) {
     return (
