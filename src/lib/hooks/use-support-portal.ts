@@ -238,6 +238,19 @@ export function useSupportPortal() {
     return confirmPendingUpload(response.attachment.id);
   }, [initiatePendingUpload, confirmPendingUpload]);
 
+  const listAttachments = useCallback(async (
+    ticketId: string
+  ): Promise<SupportAttachment[]> => {
+    return portalFetch(`/portal/tickets/${ticketId}/attachments`);
+  }, [portalFetch]);
+
+  const getAttachmentUrl = useCallback(async (
+    ticketId: string,
+    attachmentId: string
+  ): Promise<{ attachment: SupportAttachment; downloadUrl: string }> => {
+    return portalFetch(`/portal/tickets/${ticketId}/attachments/${attachmentId}`);
+  }, [portalFetch]);
+
   const addComment = useCallback(async (
     ticketId: string,
     body: string,
@@ -273,5 +286,7 @@ export function useSupportPortal() {
 
     // Attachment methods
     uploadFile,
+    listAttachments,
+    getAttachmentUrl,
   };
 }

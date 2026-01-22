@@ -1,14 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSupportPortal, SupportTicket, SupportComment } from '@/lib/hooks/use-support-portal';
+import { useSupportPortal, SupportTicket, SupportComment, SupportAttachment } from '@/lib/hooks/use-support-portal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ArrowLeft, Send, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Send, AlertCircle, Paperclip, Download, FileIcon, ImageIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface AttachmentWithUrl extends SupportAttachment {
+  downloadUrl?: string;
+  loading?: boolean;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface SupportTicketDetailProps {
   ticketId: string;
@@ -23,12 +34,14 @@ const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 
 };
 
 export function SupportTicketDetail({ ticketId, onBack }: SupportTicketDetailProps) {
-  const { getTicket, addComment, portalToken } = useSupportPortal();
+  const { getTicket, addComment, listAttachments, getAttachmentUrl, portalToken } = useSupportPortal();
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [attachments, setAttachments] = useState<AttachmentWithUrl[]>([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
 
   const fetchTicket = async () => {
     try {
@@ -43,9 +56,37 @@ export function SupportTicketDetail({ ticketId, onBack }: SupportTicketDetailPro
     }
   };
 
+  const fetchAttachments = async () => {
+    try {
+      setAttachmentsLoading(true);
+      const data = await listAttachments(ticketId);
+      // Initialize attachments without URLs
+      setAttachments(data.map(a => ({ ...a, loading: false })));
+
+      // Fetch URLs for each attachment
+      for (const attachment of data) {
+        try {
+          const result = await getAttachmentUrl(ticketId, attachment.id);
+          setAttachments(prev => prev.map(a =>
+            a.id === attachment.id
+              ? { ...a, downloadUrl: result.downloadUrl }
+              : a
+          ));
+        } catch {
+          // Silently ignore URL fetch errors
+        }
+      }
+    } catch {
+      // Silently ignore attachment fetch errors
+    } finally {
+      setAttachmentsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (portalToken) {
       fetchTicket();
+      fetchAttachments();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId, portalToken]);
@@ -168,6 +209,79 @@ export function SupportTicketDetail({ ticketId, onBack }: SupportTicketDetailPro
         <div className="bg-muted rounded-lg p-4 mb-6">
           <div className="text-xs text-muted-foreground mb-2">Original message</div>
           <p className="whitespace-pre-wrap">{ticket.body}</p>
+        </div>
+      )}
+
+      {/* Attachments */}
+      {(attachments.length > 0 || attachmentsLoading) && (
+        <div className="mb-6">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+            <Paperclip className="h-4 w-4" />
+            Attachments
+          </h2>
+
+          {attachmentsLoading && attachments.length === 0 ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading attachments...
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {attachments.map((attachment) => {
+                const isImage = attachment.contentType?.startsWith('image/');
+
+                return (
+                  <div
+                    key={attachment.id}
+                    className="border rounded-lg overflow-hidden"
+                  >
+                    {/* Image preview */}
+                    {isImage && attachment.downloadUrl && (
+                      <a
+                        href={attachment.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <img
+                          src={attachment.downloadUrl}
+                          alt={attachment.filename}
+                          className="w-full h-32 object-cover hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    )}
+
+                    {/* File info */}
+                    <div className="p-3 flex items-center gap-3">
+                      {isImage ? (
+                        <ImageIcon className="h-5 w-5 text-muted-foreground shrink-0" />
+                      ) : (
+                        <FileIcon className="h-5 w-5 text-muted-foreground shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{attachment.filename}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(attachment.size)}
+                        </p>
+                      </div>
+                      {attachment.downloadUrl && (
+                        <a
+                          href={attachment.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0"
+                        >
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
