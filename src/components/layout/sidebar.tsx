@@ -310,19 +310,22 @@ export function Sidebar({ brandId }: SidebarProps) {
       {/* Support section */}
       <div className="border-t p-3">
         <nav className="space-y-1">
-          <Button
-            variant={pathname === '/getting-started' ? 'secondary' : 'ghost'}
-            className={cn(
-              'w-full justify-start gap-2',
-              pathname === '/getting-started' && 'bg-secondary'
-            )}
-            asChild
-          >
-            <Link href="/getting-started">
-              <Rocket className="h-4 w-4" />
-              Getting Started
-            </Link>
-          </Button>
+          {/* Only show global Getting Started when user has no brands yet */}
+          {(!brands || brands.length === 0) && (
+            <Button
+              variant={pathname === '/getting-started' ? 'secondary' : 'ghost'}
+              className={cn(
+                'w-full justify-start gap-2',
+                pathname === '/getting-started' && 'bg-secondary'
+              )}
+              asChild
+            >
+              <Link href="/getting-started">
+                <Rocket className="h-4 w-4" />
+                Getting Started
+              </Link>
+            </Button>
+          )}
           <Button
             variant={pathname === '/support' ? 'secondary' : 'ghost'}
             className={cn(
