@@ -55,6 +55,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Fetch organization details to get the company name
+    let companyName: string | undefined;
+    let sourceOrgId: string | undefined;
+
+    if (sessionData.organizationId) {
+      try {
+        const orgResponse = await fetch(`${API_URL}/auth/organization`, {
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+          },
+        });
+
+        if (orgResponse.ok) {
+          const orgData = await orgResponse.json();
+          companyName = orgData.name;
+          sourceOrgId = orgData.id;
+        }
+      } catch (error) {
+        console.warn('Failed to fetch organization:', error);
+        // Continue without company name
+      }
+    }
+
     // Generate portal token for the support brand
     const portalResponse = await fetch(
       `${API_URL}/brands/${DISPATCH_SUPPORT_BRAND_ID}/portal/token`,
@@ -69,6 +92,8 @@ export async function GET(request: NextRequest) {
           name: sessionData.firstName && sessionData.lastName
             ? `${sessionData.firstName} ${sessionData.lastName}`.trim()
             : sessionData.email.split('@')[0],
+          companyName,
+          sourceOrgId,
         }),
       }
     );
