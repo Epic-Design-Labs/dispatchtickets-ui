@@ -36,6 +36,7 @@ import {
   useVerifyDomain,
   useUpdateDomain,
   useRemoveDomain,
+  useSubscription,
 } from '@/lib/hooks';
 import { OutboundReplyMode } from '@/lib/api/domains';
 import { toast } from 'sonner';
@@ -58,6 +59,10 @@ export default function EmailSettingsPage() {
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   const updateBrand = useUpdateBrand(brandId);
   const { data: domains, isLoading: domainsLoading } = useDomains(brandId);
+  const { data: subscriptionData } = useSubscription();
+
+  // Check if user has custom domain access (paid plans only)
+  const hasCustomDomainAccess = subscriptionData?.subscription && subscriptionData.subscription.planPrice > 0;
 
   // Domain mutations
   const addDomain = useAddDomain();
@@ -334,9 +339,24 @@ We'll reach back out soon!
                     Send replies from your own address (e.g., support@yourcompany.com)
                   </p>
                 </div>
-                <Button onClick={() => setAddDomainDialogOpen(true)}>
-                  <Plus className="mr-1 h-4 w-4" /> Add Custom Domain
-                </Button>
+                {hasCustomDomainAccess ? (
+                  <Button onClick={() => setAddDomainDialogOpen(true)}>
+                    <Plus className="mr-1 h-4 w-4" /> Add Custom Domain
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Button disabled variant="secondary">
+                      <Plus className="mr-1 h-4 w-4" /> Add Custom Domain
+                    </Button>
+                    <p className="text-sm text-muted-foreground">
+                      Custom domains are available on paid plans.{' '}
+                      <a href="/billing" className="text-primary hover:underline">
+                        Upgrade to Starter
+                      </a>{' '}
+                      or higher to use your own email domain.
+                    </p>
+                  </div>
+                )}
               </div>
             </>
           ) : (
