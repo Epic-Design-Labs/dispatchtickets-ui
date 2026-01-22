@@ -323,7 +323,7 @@ We'll reach back out soon!
               <div className="rounded-lg bg-muted/50 p-4">
                 <p className="text-sm">
                   <strong>Current:</strong> Replies sent from{' '}
-                  <code className="bg-background px-1 rounded">notifications@dispatchtickets.com</code>
+                  <code className="bg-background px-1 rounded">notifications@mail.dispatchtickets.com</code>
                 </p>
               </div>
 
