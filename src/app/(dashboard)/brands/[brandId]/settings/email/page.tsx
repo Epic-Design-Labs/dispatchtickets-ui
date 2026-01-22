@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,13 +36,6 @@ import {
   useVerifyDomain,
   useUpdateDomain,
   useRemoveDomain,
-  useEmailConnections,
-  useConnectGmail,
-  useDisconnectEmail,
-  useSetPrimaryConnection,
-  useSyncEmail,
-  useRetryConnection,
-  useReconnectEmail,
 } from '@/lib/hooks';
 import { OutboundReplyMode } from '@/lib/api/domains';
 import { toast } from 'sonner';
@@ -54,61 +46,24 @@ import {
   Copy,
   Trash2,
   Plus,
-  Star,
   Mail,
-  AlertCircle,
-  RefreshCw,
-  Unplug,
-  Link2,
   Send,
   Inbox,
 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 export default function EmailSettingsPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const brandId = params.brandId as string;
-
-  // Invalidate broken-connections cache when returning from successful OAuth
-  useEffect(() => {
-    if (searchParams.get('connected') === 'gmail') {
-      queryClient.invalidateQueries({ queryKey: ['broken-connections'] });
-      const email = searchParams.get('email');
-      if (email) {
-        toast.success(`Connected ${email} successfully!`);
-      }
-    }
-  }, [searchParams, queryClient]);
 
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   const updateBrand = useUpdateBrand(brandId);
   const { data: domains, isLoading: domainsLoading } = useDomains(brandId);
-  const { data: emailConnections, isLoading: emailConnectionsLoading } = useEmailConnections(brandId);
 
   // Domain mutations
   const addDomain = useAddDomain();
   const verifyDomain = useVerifyDomain();
   const updateDomain = useUpdateDomain();
   const removeDomain = useRemoveDomain();
-
-  // Email connection mutations
-  const connectGmail = useConnectGmail();
-  const disconnectEmail = useDisconnectEmail();
-  const setPrimaryConnection = useSetPrimaryConnection();
-  const syncEmail = useSyncEmail();
-  const retryConnection = useRetryConnection();
-  const reconnectEmail = useReconnectEmail();
 
   // Autoresponse state
   const [autoresponseEnabled, setAutoresponseEnabled] = useState(false);
@@ -125,14 +80,6 @@ We'll reach back out soon!
   // Add domain dialog state
   const [addDomainDialogOpen, setAddDomainDialogOpen] = useState(false);
   const [newDomainInput, setNewDomainInput] = useState('');
-
-  // Add email connection dialog state
-  const [showAddConnectionDialog, setShowAddConnectionDialog] = useState(false);
-  const [newConnectionName, setNewConnectionName] = useState('');
-
-  // Disconnect confirmation dialog
-  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
-  const [disconnectingConnection, setDisconnectingConnection] = useState<{id: string, email: string} | null>(null);
 
   // Outbound domain settings state
   const [fromName, setFromName] = useState('');
@@ -253,83 +200,7 @@ We'll reach back out soon!
     }
   };
 
-  // Email connection handlers
-  const handleConnectGmail = async () => {
-    try {
-      await connectGmail.mutateAsync({
-        brandId,
-        connectionName: newConnectionName.trim() || undefined,
-      });
-      setShowAddConnectionDialog(false);
-      setNewConnectionName('');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to initiate Gmail connection');
-    }
-  };
-
-  const handleDisconnectEmail = async () => {
-    if (!disconnectingConnection) return;
-    try {
-      await disconnectEmail.mutateAsync({
-        brandId,
-        connectionId: disconnectingConnection.id,
-      });
-      toast.success('Email connection removed');
-      setShowDisconnectDialog(false);
-      setDisconnectingConnection(null);
-    } catch {
-      toast.error('Failed to disconnect email');
-    }
-  };
-
-  const handleSetPrimaryConnection = async (connectionId: string) => {
-    try {
-      await setPrimaryConnection.mutateAsync({ brandId, connectionId });
-      toast.success('Primary connection updated');
-    } catch {
-      toast.error('Failed to set primary connection');
-    }
-  };
-
-  const handleSyncEmail = async (connectionId?: string, full = false) => {
-    try {
-      const result = await syncEmail.mutateAsync({ brandId, connectionId, full });
-      if (result.ticketsCreated > 0) {
-        toast.success(`Sync complete! ${result.ticketsCreated} new ticket(s) created.`);
-      } else {
-        toast.success('Sync complete. No new emails found.');
-      }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to sync emails');
-    }
-  };
-
-  const handleRetryConnection = async (connectionId: string) => {
-    try {
-      const result = await retryConnection.mutateAsync({ brandId, connectionId });
-      if (result.success) {
-        if (result.ticketsCreated > 0) {
-          toast.success(`Connection restored! ${result.ticketsCreated} new ticket(s) created.`);
-        } else {
-          toast.success('Connection restored successfully.');
-        }
-      } else {
-        toast.error(result.error || 'Failed to restore connection');
-      }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to retry connection');
-    }
-  };
-
-  const handleReconnectEmail = async (connectionId: string) => {
-    try {
-      await reconnectEmail.mutateAsync({ brandId, connectionId });
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to initiate reconnection');
-    }
-  };
-
-  const isLoading = brandLoading || domainsLoading || emailConnectionsLoading;
+  const isLoading = brandLoading || domainsLoading;
 
   if (isLoading) {
     return (
@@ -398,126 +269,20 @@ We'll reach back out soon!
             </div>
           </div>
 
-          {/* Gmail / Google Workspace */}
-          <div className="rounded-lg border p-4 space-y-4">
+          {/* Gmail / Google Workspace - Coming Soon */}
+          <div className="rounded-lg border border-dashed p-4 opacity-60">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium flex items-center gap-2">
                   <Mail className="h-4 w-4" />
                   Gmail / Google Workspace
+                  <Badge variant="outline" className="text-xs">Coming Soon</Badge>
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
                   Two-way sync. Replies sent directly from your Gmail account.
                 </p>
               </div>
-              <Button size="sm" onClick={() => setShowAddConnectionDialog(true)}>
-                <Plus className="mr-1 h-4 w-4" /> Connect
-              </Button>
             </div>
-
-            {emailConnections && emailConnections.length > 0 ? (
-              <div className="space-y-3">
-                {emailConnections.map((connection) => (
-                  <div key={connection.id} className="rounded-lg bg-muted/50 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`rounded-full p-1.5 ${
-                          connection.status === 'ACTIVE'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {connection.status === 'ACTIVE' ? (
-                            <CheckCircle className="h-4 w-4" />
-                          ) : (
-                            <AlertCircle className="h-4 w-4" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{connection.email}</span>
-                            {connection.isPrimary && (
-                              <Badge variant="outline" className="text-xs">
-                                <Star className="mr-1 h-3 w-3 fill-current" /> Primary
-                              </Badge>
-                            )}
-                          </div>
-                          <span className="text-xs text-muted-foreground">{connection.name}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!connection.isPrimary && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSetPrimaryConnection(connection.id)}
-                            disabled={setPrimaryConnection.isPending}
-                          >
-                            Set Primary
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            setDisconnectingConnection({ id: connection.id, email: connection.email });
-                            setShowDisconnectDialog(true);
-                          }}
-                        >
-                          <Unplug className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Error state */}
-                    {(connection.status === 'ERROR' || connection.status === 'DISCONNECTED') && (
-                      <div className="rounded border border-red-200 bg-red-50 p-2 flex items-center justify-between gap-2">
-                        <span className="text-sm text-red-700">{connection.errorMessage || 'Connection failed'}</span>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRetryConnection(connection.id)}
-                            disabled={retryConnection.isPending}
-                          >
-                            <RefreshCw className={`mr-1 h-3 w-3 ${retryConnection.isPending ? 'animate-spin' : ''}`} />
-                            Retry
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleReconnectEmail(connection.id)}
-                            disabled={reconnectEmail.isPending}
-                          >
-                            <Link2 className="mr-1 h-3 w-3" />
-                            Reconnect
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Sync info */}
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>
-                        {connection.lastSyncAt
-                          ? `Last synced: ${new Date(connection.lastSyncAt).toLocaleString()}`
-                          : 'Never synced'}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSyncEmail(connection.id, true)}
-                        disabled={syncEmail.isPending}
-                      >
-                        <RefreshCw className={`mr-1 h-3 w-3 ${syncEmail.isPending ? 'animate-spin' : ''}`} />
-                        Sync Now
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No Gmail accounts connected.</p>
-            )}
           </div>
 
           {/* Microsoft 365 - Coming Soon */}
@@ -891,77 +656,6 @@ We'll reach back out soon!
         </DialogContent>
       </Dialog>
 
-      {/* Add Email Connection Dialog */}
-      <Dialog open={showAddConnectionDialog} onOpenChange={setShowAddConnectionDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Connect Gmail Account</DialogTitle>
-            <DialogDescription>
-              Connect a Gmail or Google Workspace account to receive and send emails
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="connectionName">Connection Name (optional)</Label>
-              <Input
-                id="connectionName"
-                placeholder="e.g., Support, Sales"
-                value={newConnectionName}
-                onChange={(e) => setNewConnectionName(e.target.value)}
-                maxLength={50}
-              />
-              <p className="text-sm text-muted-foreground">
-                A friendly name to identify this connection
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowAddConnectionDialog(false);
-              setNewConnectionName('');
-            }}>
-              Cancel
-            </Button>
-            <Button onClick={handleConnectGmail} disabled={connectGmail.isPending}>
-              {connectGmail.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Connect Gmail
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Disconnect Email Confirmation */}
-      <AlertDialog open={showDisconnectDialog} onOpenChange={(open) => {
-        setShowDisconnectDialog(open);
-        if (!open) setDisconnectingConnection(null);
-      }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Disconnect Email Account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will stop syncing emails from {disconnectingConnection?.email}. Existing tickets will not be affected.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDisconnectEmail}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {disconnectEmail.isPending ? 'Disconnecting...' : 'Disconnect'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
