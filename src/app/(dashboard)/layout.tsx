@@ -6,11 +6,26 @@ import { useAuth } from '@/providers';
 import { Sidebar } from '@/components/layout';
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
 import { ConnectionWarningBanner } from '@/components/connection-warning-banner';
-import { useKeyboardShortcuts, useMentionNotifications, useBrands } from '@/lib/hooks';
+import { useKeyboardShortcuts, useMentionNotifications, useBrands, useProfile } from '@/lib/hooks';
 
 // Separate component to enable mention polling only when authenticated
 function MentionNotificationPoller() {
   useMentionNotifications();
+  return null;
+}
+
+// Initialize desktop notification localStorage from profile on app load
+function DesktopNotificationInitializer() {
+  const { data: profile } = useProfile();
+
+  useEffect(() => {
+    if (profile && typeof window !== 'undefined') {
+      // Sync profile's notifyDesktop setting to localStorage
+      // This ensures the notification hook has the correct value
+      localStorage.setItem('desktop_notifications_enabled', String(profile.notifyDesktop ?? false));
+    }
+  }, [profile]);
+
   return null;
 }
 
@@ -82,6 +97,7 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen">
       <MentionNotificationPoller />
+      <DesktopNotificationInitializer />
       <Sidebar brandId={brandId} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <ConnectionWarningBanner />
