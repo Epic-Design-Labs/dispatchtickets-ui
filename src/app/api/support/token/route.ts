@@ -74,15 +74,26 @@ export async function GET(request: NextRequest) {
     );
 
     if (!portalResponse.ok) {
-      const error = await portalResponse.text();
+      const errorText = await portalResponse.text();
       console.error('Portal token generation failed:', {
         status: portalResponse.status,
         brandId: DISPATCH_SUPPORT_BRAND_ID,
-        error,
+        error: errorText,
       });
+
+      // Parse error message for better user feedback
+      let errorMessage = 'Failed to generate support token';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorMessage;
+      } catch {
+        // Use raw text if not JSON
+        if (errorText) errorMessage = errorText;
+      }
+
       return NextResponse.json(
-        { error: 'Failed to generate support token' },
-        { status: 500 }
+        { error: errorMessage, status: portalResponse.status },
+        { status: portalResponse.status }
       );
     }
 
