@@ -11,7 +11,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        router.replace('/brands');
+        router.replace('/getting-started');
       } else {
         router.replace('/login');
       }

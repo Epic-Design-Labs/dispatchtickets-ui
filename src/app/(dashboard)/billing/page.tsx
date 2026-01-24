@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
 import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useInvoices, useDeleteAccount } from '@/lib/hooks';
+import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,6 +42,8 @@ interface PlanGroup {
 export default function BillingPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { session } = useAuth();
+  const isOwner = session?.orgRole === 'owner';
   const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError, refetch } = useSubscription();
   const { data: plansData, isLoading: plansLoading } = usePlans();
   const { data: usageData, isLoading: usageLoading } = useUsage();
@@ -112,6 +115,7 @@ export default function BillingPage() {
   }, [allPlans]);
 
   const freePlan = allPlans.find(p => p.price === 0);
+  const currentPlan = subscription ? allPlans.find(p => p.id === subscription.planId) : null;
 
   const handleCancel = async () => {
     try {
@@ -271,6 +275,7 @@ export default function BillingPage() {
 
   // Plan feature mapping based on plan name
   const planDetails: Record<string, { tickets: string; support: string; sla?: string }> = {
+    'Free': { tickets: '100 tickets/mo', support: 'Community support' },
     'Starter': { tickets: '1,000 tickets/mo', support: 'Email support' },
     'Pro': { tickets: '10,000 tickets/mo', support: 'Priority support' },
     'Enterprise': { tickets: '100,000 tickets/mo', support: 'Dedicated support', sla: '99.9% SLA' },
@@ -437,6 +442,20 @@ export default function BillingPage() {
                         )}
                       </span>
                     </div>
+
+                    {/* Plan Entitlements */}
+                    {currentPlan && (
+                      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm py-3 border-y">
+                        {getPlanFeatures(currentPlan, subscription.planName.replace(/ (Monthly|Annual)$/, '')).map((feature, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className="text-muted-foreground">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap gap-6 text-sm">
                       <div>
@@ -678,9 +697,9 @@ export default function BillingPage() {
                         Overage charges: ${((usageData.ticketCount - usageData.planLimit) * 0.02).toFixed(2)}
                       </p>
                     )}
-                    {usageData.billingPeriodStart && (
+                    {subscription?.currentPeriodEnd && (
                       <p className="text-xs text-muted-foreground">
-                        Period started: {formatDate(usageData.billingPeriodStart)}
+                        Period resets: {formatDate(subscription.currentPeriodEnd)}
                       </p>
                     )}
                   </div>
@@ -790,10 +809,16 @@ export default function BillingPage() {
                     <p className="text-sm text-muted-foreground">
                       Permanently delete your account and all associated data including brands, tickets, and settings.
                     </p>
+                    {!isOwner && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Only account owners can delete the account.
+                      </p>
+                    )}
                   </div>
                   <Button
                     variant="destructive"
                     onClick={() => setDeleteDialogOpen(true)}
+                    disabled={!isOwner}
                   >
                     Delete Account
                   </Button>
