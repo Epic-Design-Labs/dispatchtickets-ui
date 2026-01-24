@@ -35,6 +35,7 @@ export interface UpgradeRequest {
   planId: string;
   successUrl: string;
   cancelUrl?: string;
+  couponCode?: string;
 }
 
 export interface UpgradeResponse {

@@ -72,6 +72,7 @@ export default function BillingPage() {
   const [selectedDowngradePlan, setSelectedDowngradePlan] = useState<Plan | null>(null);
   const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
+  const [couponCode, setCouponCode] = useState('');
 
   const subscription = subscriptionData?.subscription;
   const allPlans = plansData?.plans || [];
@@ -152,6 +153,7 @@ export default function BillingPage() {
         planId,
         successUrl: `${window.location.origin}/billing?upgraded=true`,
         cancelUrl: `${window.location.origin}/billing`,
+        ...(couponCode.trim() && { couponCode: couponCode.trim() }),
       });
       // Redirect to Stripe checkout
       window.location.href = result.url;
@@ -636,6 +638,23 @@ export default function BillingPage() {
                     })}
                   </div>
                 )}
+
+                {/* Coupon Code Input */}
+                <div className="mt-6 pt-4 border-t">
+                  <div className="flex items-center gap-3 max-w-sm">
+                    <Input
+                      placeholder="Coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      className="flex-1"
+                    />
+                    {couponCode && (
+                      <span className="text-sm text-muted-foreground">
+                        Will be applied at checkout
+                      </span>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
