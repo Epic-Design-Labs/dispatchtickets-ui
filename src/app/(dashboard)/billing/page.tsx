@@ -71,18 +71,11 @@ export default function BillingPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [selectedDowngradePlan, setSelectedDowngradePlan] = useState<Plan | null>(null);
   const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
 
   const subscription = subscriptionData?.subscription;
   const allPlans = plansData?.plans || [];
   const invoices = invoicesData?.invoices || [];
-
-  // Detect current billing period from subscription
-  useEffect(() => {
-    if (subscription?.planInterval === 'year') {
-      setBillingPeriod('annual');
-    }
-  }, [subscription]);
 
   // Group plans by base name (Starter, Pro, Enterprise) - excludes Free plan
   const planGroups = useMemo(() => {
