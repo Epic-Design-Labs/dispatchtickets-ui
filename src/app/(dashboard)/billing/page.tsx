@@ -225,10 +225,11 @@ export default function BillingPage() {
   };
 
   const formatInvoiceAmount = (amount: number, currency: string) => {
+    // Stackbe returns invoice amounts in dollars, not cents
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency?.toUpperCase() || 'USD',
-    }).format(amount / 100);
+    }).format(amount);
   };
 
   const getStatusBadge = (status: string, cancelAtPeriodEnd: boolean) => {
