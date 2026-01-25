@@ -162,17 +162,17 @@ export default function BrandDashboardPage() {
     <div className="flex flex-col">
       <Header title={brand?.name || 'Dashboard'} />
       <div className="flex-1 p-6">
-        {/* Stats Cards */}
+        {/* Stats Cards - horizontally scrollable on mobile */}
         {isLoading ? (
-          <div className="mb-6 flex flex-wrap gap-3">
+          <div className="mb-6 flex gap-3 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="h-12 w-32 rounded-lg" />
+              <Skeleton key={i} className="h-12 w-32 flex-shrink-0 rounded-lg" />
             ))}
           </div>
         ) : (
-          <div className="mb-6 flex flex-wrap gap-3">
+          <div className="mb-6 flex gap-3 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0">
             <button
-              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'active'
                   ? 'bg-violet-500 text-white'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
@@ -185,7 +185,7 @@ export default function BrandDashboardPage() {
             </button>
 
             <button
-              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 !filters.status
                   ? 'bg-white border-2 border-blue-500'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
@@ -198,7 +198,7 @@ export default function BrandDashboardPage() {
             </button>
 
             <button
-              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'open'
                   ? 'bg-blue-50 border-2 border-blue-400 text-blue-700'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
@@ -211,7 +211,7 @@ export default function BrandDashboardPage() {
             </button>
 
             <button
-              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'pending'
                   ? 'bg-amber-50 border-2 border-amber-400 text-amber-700'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
@@ -224,7 +224,7 @@ export default function BrandDashboardPage() {
             </button>
 
             <button
-              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'resolved'
                   ? 'bg-green-50 border-2 border-green-400 text-green-700'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
@@ -237,7 +237,7 @@ export default function BrandDashboardPage() {
             </button>
 
             <button
-              className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'closed'
                   ? 'bg-green-50 border-2 border-green-400 text-green-700'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
@@ -250,16 +250,16 @@ export default function BrandDashboardPage() {
             </button>
 
             {/* Metrics pills */}
-            <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+            <div className="flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
               <MessageSquare className="h-4 w-4 text-purple-500" />
               <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(brandStats?.responseMetrics?.avgFirstResponseMinutes)}</span>
-              <span className="text-muted-foreground">Avg Response</span>
+              <span className="text-muted-foreground whitespace-nowrap">Avg Response</span>
             </div>
 
-            <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
+            <div className="flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
               <Timer className="h-4 w-4 text-indigo-500" />
               <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(brandStats?.responseMetrics?.avgResolutionMinutes)}</span>
-              <span className="text-muted-foreground">Avg Resolution</span>
+              <span className="text-muted-foreground whitespace-nowrap">Avg Resolution</span>
             </div>
           </div>
         )}

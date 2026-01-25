@@ -1,12 +1,17 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useAuth } from '@/providers';
-import { Sidebar } from '@/components/layout';
+import { Sidebar, NotificationBell } from '@/components/layout';
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
 import { ConnectionWarningBanner } from '@/components/connection-warning-banner';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 import { useKeyboardShortcuts, useMentionNotifications, useBrands, useProfile, useGlobalTicketNotifications } from '@/lib/hooks';
+import { Menu } from 'lucide-react';
 
 // Separate component to enable mention polling only when authenticated
 function MentionNotificationPoller() {
@@ -46,9 +51,15 @@ export default function DashboardLayout({
   const { isAuthenticated, isConnected, isLoading } = useAuth();
   const brandId = params.brandId as string | undefined;
   const { data: brands, isLoading: brandsLoading } = useBrands();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Global keyboard shortcuts (just ? for help modal, handled in the hook)
   useKeyboardShortcuts([]);
+
+  // Close mobile menu on navigation
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   // Auth redirects
   useEffect(() => {
@@ -106,8 +117,44 @@ export default function DashboardLayout({
       <MentionNotificationPoller />
       <DesktopNotificationInitializer />
       <GlobalTicketNotificationPoller />
-      <Sidebar brandId={brandId} />
+
+      {/* Desktop Sidebar - hidden on mobile */}
+      <div className="hidden md:flex">
+        <Sidebar brandId={brandId} />
+      </div>
+
+      {/* Mobile Sidebar Sheet */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="left" className="w-64 p-0">
+          <Sidebar brandId={brandId} />
+        </SheetContent>
+      </Sheet>
+
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile Header - shown only on mobile */}
+        <div className="flex md:hidden h-14 items-center justify-between border-b bg-background px-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+            <Link href="/dashboard">
+              <Image
+                src="/logo.svg"
+                alt="Dispatch Tickets"
+                width={140}
+                height={20}
+                priority
+              />
+            </Link>
+          </div>
+          <NotificationBell />
+        </div>
+
         <ConnectionWarningBanner />
         <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
       </div>
