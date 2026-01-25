@@ -193,8 +193,8 @@ form.addEventListener('submit', async (e) => {
       message.style.display = 'block';
       message.style.background = '#d4edda';
       message.style.color = '#155724';
-      message.textContent = 'Thanks! We received your message.' +
-        (data.ticket?.ticketNumber ? ' Reference #' + data.ticket.ticketNumber : '');
+      message.innerHTML = '<strong>Message sent!</strong> Thanks for reaching out. We\\'ll get back to you soon.' +
+        (data.ticket?.ticketNumber ? '<br>Reference: #' + data.ticket.ticketNumber : '');
       form.reset();
     } else {
       throw new Error(data.error || 'Submission failed');
@@ -203,7 +203,7 @@ form.addEventListener('submit', async (e) => {
     message.style.display = 'block';
     message.style.background = '#f8d7da';
     message.style.color = '#721c24';
-    message.textContent = err.message || 'Something went wrong. Please try again.';
+    message.innerHTML = '<strong>Oops!</strong> ' + (err.message || 'Something went wrong. Please try again.');
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Submit';
