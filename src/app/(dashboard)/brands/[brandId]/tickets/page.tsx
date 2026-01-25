@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, ReactNode } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBrand, useTickets, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, BulkActionType, ticketKeys } from '@/lib/hooks';
@@ -25,7 +25,6 @@ export default function BrandDashboardPage() {
   const brandId = params.brandId as string;
   // Default to 'active' status (shows open + pending)
   const [filters, setFilters] = useState<TicketFiltersType>({ status: 'active' });
-  const [columnsDropdown, setColumnsDropdown] = useState<ReactNode>(null);
 
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   // Fetch all tickets for stats (without filters)
@@ -313,9 +312,7 @@ export default function BrandDashboardPage() {
             categories={categories}
             tags={tags}
             teamMembers={teamMembers}
-          >
-            {columnsDropdown}
-          </TicketFilters>
+          />
         </div>
 
         {/* Ticket Table */}
@@ -329,7 +326,6 @@ export default function BrandDashboardPage() {
           categories={categories}
           tags={tags}
           customFields={ticketFields}
-          renderColumnsDropdown={setColumnsDropdown}
         />
 
         {/* Load More */}

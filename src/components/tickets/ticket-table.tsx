@@ -174,8 +174,6 @@ interface TicketTableProps {
   categories?: Category[];
   tags?: Tag[];
   customFields?: FieldDefinition[];
-  /** Callback to receive the columns dropdown element for placement elsewhere */
-  renderColumnsDropdown?: (dropdown: React.ReactNode) => void;
 }
 
 export function TicketTable({
@@ -189,7 +187,6 @@ export function TicketTable({
   categories = [],
   tags: availableTags = [],
   customFields = [],
-  renderColumnsDropdown,
 }: TicketTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -724,51 +721,6 @@ export function TicketTable({
     }
   };
 
-  // Columns dropdown element - can be placed via render prop
-  // Must be defined before early returns to satisfy React's rules of hooks
-  const columnsDropdown = useMemo(() => (
-    <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 gap-1">
-          <Settings2 className="h-4 w-4" />
-          <span className="text-xs">Columns</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Columns</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <div className="max-h-64 overflow-y-auto py-1">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={orderedColumns.map(c => c.key)}
-              strategy={verticalListSortingStrategy}
-            >
-              {orderedColumns.map(col => (
-                <SortableColumnItem
-                  key={col.key}
-                  column={col}
-                  isVisible={columnSettings.visible.includes(col.key)}
-                  onToggle={() => toggleColumn(col.key)}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  ), [columnSettingsOpen, orderedColumns, columnSettings.visible, sensors, handleDragEnd, toggleColumn]);
-
-  // Pass dropdown to parent via render prop
-  useEffect(() => {
-    if (renderColumnsDropdown) {
-      renderColumnsDropdown(columnsDropdown);
-    }
-  }, [renderColumnsDropdown, columnsDropdown]);
-
   if (isLoading) {
     return (
       <div className="rounded-md border">
@@ -960,6 +912,44 @@ export function TicketTable({
           </Button>
         </div>
       )}
+
+      {/* Columns Settings Toolbar */}
+      <div className="flex justify-end mb-2">
+        <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Settings2 className="mr-1 h-4 w-4" />
+              Columns
+              <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={orderedColumns.map(c => c.key)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="max-h-[300px] overflow-y-auto">
+                  {orderedColumns.map(col => (
+                    <SortableColumnItem
+                      key={col.key}
+                      column={col}
+                      isVisible={columnSettings.visible.includes(col.key)}
+                      onToggle={() => toggleColumn(col.key)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <div className="rounded-md border overflow-x-auto">
         <Table className={resizingColumn ? 'select-none' : ''} style={{ minWidth: 'max-content' }}>
