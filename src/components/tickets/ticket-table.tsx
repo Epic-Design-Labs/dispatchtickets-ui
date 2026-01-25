@@ -914,7 +914,7 @@ export function TicketTable({
       )}
 
       <div className="rounded-md border overflow-x-auto">
-        <Table className={resizingColumn ? 'select-none' : ''} style={{ tableLayout: 'fixed', minWidth: '100%' }}>
+        <Table className={resizingColumn ? 'select-none' : ''} style={{ minWidth: 'max-content' }}>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12 sticky left-0 z-20 bg-background">
