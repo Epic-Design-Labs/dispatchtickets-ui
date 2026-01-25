@@ -159,21 +159,57 @@ export default function ChannelsPage() {
 
   const getFetchCode = (form: FormToken) => {
     const endpoint = getFormEndpoint(form.token);
-    return `// With file attachments (FormData)
-const formData = new FormData();
-formData.append("email", "user@example.com");
-formData.append("name", "John Doe");
-formData.append("subject", "Help needed");
-formData.append("message", "I need assistance with...");
-// Add files (optional)
-// files.forEach(file => formData.append("attachments", file));
+    return `<form id="contact-form">
+  <input type="email" name="email" placeholder="Your email" required>
+  <input type="text" name="name" placeholder="Your name">
+  <input type="text" name="subject" placeholder="Subject" required>
+  <textarea name="message" placeholder="How can we help?" required></textarea>
+  <input type="file" name="attachments" multiple>
+  <div id="form-message" style="display:none; padding:10px; margin:10px 0; border-radius:4px;"></div>
+  <button type="submit" id="submit-btn">Submit</button>
+</form>
 
-fetch("${endpoint}", {
-  method: "POST",
-  body: formData
-})
-.then(res => res.json())
-.then(data => console.log(data));`;
+<script>
+const form = document.getElementById('contact-form');
+const message = document.getElementById('form-message');
+const submitBtn = document.getElementById('submit-btn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  message.style.display = 'none';
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sending...';
+
+  try {
+    const formData = new FormData(form);
+    const response = await fetch('${endpoint}', {
+      method: 'POST',
+      body: formData,
+      headers: { 'Accept': 'application/json' }
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      message.style.display = 'block';
+      message.style.background = '#d4edda';
+      message.style.color = '#155724';
+      message.textContent = 'Thanks! We received your message.' +
+        (data.ticket?.ticketNumber ? ' Reference #' + data.ticket.ticketNumber : '');
+      form.reset();
+    } else {
+      throw new Error(data.error || 'Submission failed');
+    }
+  } catch (err) {
+    message.style.display = 'block';
+    message.style.background = '#f8d7da';
+    message.style.color = '#721c24';
+    message.textContent = err.message || 'Something went wrong. Please try again.';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit';
+  }
+});
+</script>`;
   };
 
   const apiEndpoint = `${API_BASE_URL}/brands/${brandId}/tickets`;
