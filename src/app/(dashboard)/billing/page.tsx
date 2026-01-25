@@ -377,7 +377,7 @@ export default function BillingPage() {
   return (
     <div className="flex flex-col">
       <Header title="Billing" />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         <div className="mb-6">
           <h2 className="text-2xl font-bold tracking-tight">Billing & Subscription</h2>
           <p className="text-muted-foreground">

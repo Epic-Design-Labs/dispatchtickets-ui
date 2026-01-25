@@ -57,7 +57,7 @@ export default function CompaniesPage() {
   return (
     <div className="flex flex-col">
       <Header title="Companies" />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

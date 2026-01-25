@@ -32,7 +32,7 @@ export default function SpamPage() {
   return (
     <div className="flex flex-col">
       <Header title={`${brand?.name || ''} - Spam`} />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         <div className="mb-6">
           <div className="flex items-center gap-2">
             <ShieldX className="h-6 w-6 text-muted-foreground" />

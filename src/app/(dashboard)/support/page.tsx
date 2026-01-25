@@ -36,7 +36,7 @@ export default function SupportPage() {
     return (
       <div className="flex flex-col">
         <Header title="Support" />
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 md:p-6">
           <div className="max-w-3xl mx-auto">
             <Skeleton className="h-8 w-48 mb-6" />
             <Card>
@@ -60,7 +60,7 @@ export default function SupportPage() {
     return (
       <div className="flex flex-col">
         <Header title="Support" />
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 md:p-6">
           <div className="max-w-3xl mx-auto space-y-6">
             {/* Error Card */}
             <Card className="border-destructive/50">
@@ -142,7 +142,7 @@ export default function SupportPage() {
   return (
     <div className="flex flex-col">
       <Header title="Support" />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         <div className="max-w-3xl mx-auto">
           {/* Header with user info and new ticket button */}
           <div className="flex items-center justify-between mb-6">

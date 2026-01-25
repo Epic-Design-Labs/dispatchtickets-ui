@@ -73,7 +73,7 @@ export default function BrandsPage() {
   return (
     <div className="flex flex-col">
       <Header title="Brands" />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Your Brands</h2>

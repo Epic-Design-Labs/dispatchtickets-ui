@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,9 +14,24 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { TicketFilters as TicketFiltersType, Category, Tag, TeamMember } from '@/types';
 import { cn } from '@/lib/utils';
-import { X, ChevronDown, FolderOpen, Tag as TagIcon, User } from 'lucide-react';
+import { X, ChevronDown, FolderOpen, Tag as TagIcon, User, SlidersHorizontal } from 'lucide-react';
 
 interface Brand {
   id: string;
@@ -59,6 +75,8 @@ export function TicketFilters({
   teamMembers,
   children,
 }: TicketFiltersProps) {
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
   const updateFilter = <K extends keyof TicketFiltersType>(
     key: K,
     value: TicketFiltersType[K]
@@ -106,17 +124,202 @@ export function TicketFilters({
     onBrandFilterChange(selectedBrandIds.filter((id) => id !== brandId));
   };
 
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Search */}
-      <Input
-        placeholder="Search tickets..."
-        value={filters.search || ''}
-        onChange={(e) => updateFilter('search', e.target.value)}
-        className="w-64"
-      />
+  // Count active filters for mobile badge
+  const activeFilterCount = [
+    filters.status,
+    filters.priority,
+    filters.categoryId,
+    filters.assigneeId,
+    filters.tagIds && filters.tagIds.length > 0,
+    selectedBrandIds.length > 0,
+  ].filter(Boolean).length;
 
-      {/* Status Button Bar */}
+  // Mobile filter content (used in Sheet)
+  const mobileFilterContent = (
+    <div className="space-y-6 py-4">
+      {/* Status */}
+      <div className="space-y-2">
+        <Label>Status</Label>
+        <Select
+          value={filters.status || ''}
+          onValueChange={(value) => updateFilter('status', value || undefined)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            {statusOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value || 'all'}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Priority */}
+      <div className="space-y-2">
+        <Label>Priority</Label>
+        <Select
+          value={filters.priority || ''}
+          onValueChange={(value) => updateFilter('priority', value || undefined)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="All priorities" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="urgent">Urgent</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Category */}
+      {categories && categories.length > 0 && (
+        <div className="space-y-2">
+          <Label>Category</Label>
+          <Select
+            value={filters.categoryId || ''}
+            onValueChange={(value) => updateFilter('categoryId', value || undefined)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="null">Uncategorized</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: cat.color || '#6366f1' }}
+                    />
+                    {cat.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Assignee */}
+      {teamMembers && teamMembers.length > 0 && (
+        <div className="space-y-2">
+          <Label>Assignee</Label>
+          <Select
+            value={filters.assigneeId || ''}
+            onValueChange={(value) => updateFilter('assigneeId', value || undefined)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All assignees" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
+              {teamMembers
+                .filter((m) => m.status === 'active')
+                .map((member) => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.firstName || member.lastName
+                      ? `${member.firstName || ''} ${member.lastName || ''}`.trim()
+                      : member.email}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Tags */}
+      {tags && tags.length > 0 && (
+        <div className="space-y-2">
+          <Label>Tags</Label>
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <button
+                key={tag.id}
+                onClick={() => toggleTag(tag.id)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm border transition-colors',
+                  filters.tagIds?.includes(tag.id)
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:bg-muted'
+                )}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: tag.color || '#6366f1' }}
+                />
+                {tag.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Clear filters button */}
+      {hasFilters && (
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => {
+            clearFilters();
+            setMobileFiltersOpen(false);
+          }}
+        >
+          Clear all filters
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-2">
+      {/* Mobile Filters */}
+      <div className="flex md:hidden items-center gap-2">
+        <Input
+          placeholder="Search tickets..."
+          value={filters.search || ''}
+          onChange={(e) => updateFilter('search', e.target.value)}
+          className="flex-1"
+        />
+        <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="icon" className="relative">
+              <SlidersHorizontal className="h-4 w-4" />
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right">
+            <SheetHeader>
+              <SheetTitle>Filters</SheetTitle>
+            </SheetHeader>
+            {mobileFilterContent}
+          </SheetContent>
+        </Sheet>
+        {children}
+      </div>
+
+      {/* Desktop Filters */}
+      <div className="hidden md:flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <Input
+          placeholder="Search tickets..."
+          value={filters.search || ''}
+          onChange={(e) => updateFilter('search', e.target.value)}
+          className="w-64"
+        />
+
+        {/* Status Button Bar */}
       <div className="flex items-center rounded-md border bg-muted/30 p-0.5">
         {statusOptions.map((option) => (
           <button
@@ -389,19 +592,20 @@ export function TicketFilters({
         </div>
       )}
 
-      {/* Clear Filters */}
-      {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearFilters}>
-          Clear filters
-        </Button>
-      )}
+        {/* Clear Filters */}
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        )}
 
-      {/* Additional content (e.g., Columns button) */}
-      {children && (
-        <div className="ml-auto flex items-center gap-2">
-          {children}
-        </div>
-      )}
+        {/* Additional content (e.g., Columns button) */}
+        {children && (
+          <div className="ml-auto flex items-center gap-2">
+            {children}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

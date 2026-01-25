@@ -161,7 +161,7 @@ export default function BrandDashboardPage() {
   return (
     <div className="flex flex-col">
       <Header title={brand?.name || 'Dashboard'} />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         {/* Stats Cards - horizontally scrollable on mobile */}
         {isLoading ? (
           <div className="mb-6 flex gap-3 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0">

@@ -117,7 +117,7 @@ export default function CompanyDetailPage() {
     return (
       <div className="flex flex-col">
         <Header title="Company" />
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 md:p-6">
           <Skeleton className="h-8 w-64 mb-6" />
           <div className="grid gap-6 lg:grid-cols-3">
             <Card className="lg:col-span-2">
@@ -151,7 +151,7 @@ export default function CompanyDetailPage() {
   return (
     <div className="flex flex-col">
       <Header title={company.name} />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         {/* Breadcrumb */}
         <div className="mb-6">
           <Link

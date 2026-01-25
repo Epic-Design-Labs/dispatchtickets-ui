@@ -330,7 +330,7 @@ export default function ApiKeysPage() {
     return (
       <div className="flex flex-col">
         <Header title="API Keys" />
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 md:p-6">
           <Card className="max-w-4xl">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <ShieldX className="h-12 w-12 text-muted-foreground mb-4" />
@@ -348,7 +348,7 @@ export default function ApiKeysPage() {
   return (
     <div className="flex flex-col">
       <Header title="API Keys" />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         <div className="max-w-4xl space-y-6">
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground">
