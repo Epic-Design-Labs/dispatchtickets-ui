@@ -934,15 +934,15 @@ export function TicketTable({
                 return (
                   <TableHead
                     key={col.key}
-                    className="relative group"
+                    className="relative group whitespace-normal"
                     style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
                   >
                     {col.sortable ? (
                       <button
-                        className="flex items-center hover:text-foreground transition-colors"
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors text-left"
                         onClick={() => handleSort(col.key)}
                       >
-                        {col.label}
+                        <span>{col.label}</span>
                         <SortIcon column={col.key} />
                       </button>
                     ) : (
