@@ -143,26 +143,30 @@ export default function ChannelsPage() {
 
   const getEmbedCode = (form: FormToken) => {
     const endpoint = getFormEndpoint(form.token);
-    return `<form action="${endpoint}" method="POST">
+    return `<form action="${endpoint}" method="POST" enctype="multipart/form-data">
   <input type="email" name="email" placeholder="Your email" required>
   <input type="text" name="name" placeholder="Your name">
   <input type="text" name="subject" placeholder="Subject" required>
   <textarea name="message" placeholder="How can we help?" required></textarea>
+  <input type="file" name="attachments" multiple>
   <button type="submit">Submit</button>
 </form>`;
   };
 
   const getFetchCode = (form: FormToken) => {
     const endpoint = getFormEndpoint(form.token);
-    return `fetch("${endpoint}", {
+    return `// With file attachments (FormData)
+const formData = new FormData();
+formData.append("email", "user@example.com");
+formData.append("name", "John Doe");
+formData.append("subject", "Help needed");
+formData.append("message", "I need assistance with...");
+// Add files (optional)
+// files.forEach(file => formData.append("attachments", file));
+
+fetch("${endpoint}", {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    email: "user@example.com",
-    name: "John Doe",
-    subject: "Help needed",
-    message: "I need assistance with..."
-  })
+  body: formData
 })
 .then(res => res.json())
 .then(data => console.log(data));`;
