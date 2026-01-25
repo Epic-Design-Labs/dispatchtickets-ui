@@ -917,7 +917,7 @@ export function TicketTable({
         <Table className={resizingColumn ? 'select-none' : ''} style={{ tableLayout: 'fixed', minWidth: '100%' }}>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">
+              <TableHead className="w-12 sticky left-0 z-20 bg-background">
                 <Checkbox
                   checked={allSelected}
                   ref={(el) => {
@@ -929,13 +929,20 @@ export function TicketTable({
                   aria-label="Select all"
                 />
               </TableHead>
-              {visibleColumns.map(col => {
+              {visibleColumns.map((col, index) => {
                 const width = getColumnWidth(col.key);
+                const isFirstColumn = index === 0;
+                const stickyClasses = isFirstColumn
+                  ? 'sticky left-12 z-10 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
+                  : '';
                 return (
                   <TableHead
                     key={col.key}
-                    className="relative group whitespace-normal"
-                    style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
+                    className={`relative group whitespace-normal ${stickyClasses}`}
+                    style={width
+                      ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` }
+                      : { minWidth: 'min-content' }
+                    }
                   >
                     {col.sortable ? (
                       <button
@@ -1006,22 +1013,32 @@ export function TicketTable({
               return (
                 <TableRow
                   key={ticket.id}
-                  className={`cursor-pointer hover:bg-muted/50 ${isSelected ? 'bg-muted/30' : ''}`}
+                  className={`group cursor-pointer hover:bg-muted/50 ${isSelected ? 'bg-muted/30' : ''}`}
                 >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell
+                    onClick={(e) => e.stopPropagation()}
+                    className={`sticky left-0 z-20 group-hover:bg-muted/50 ${isSelected ? 'bg-muted/30' : 'bg-background'}`}
+                  >
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => toggleOne(ticket.id)}
                       aria-label={`Select ticket ${ticket.title}`}
                     />
                   </TableCell>
-                  {visibleColumns.map(col => {
+                  {visibleColumns.map((col, index) => {
                     const width = getColumnWidth(col.key);
+                    const isFirstColumn = index === 0;
+                    const stickyClasses = isFirstColumn
+                      ? `sticky left-12 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] group-hover:bg-muted/50 ${isSelected ? 'bg-muted/30' : 'bg-background'}`
+                      : '';
                     return (
                       <TableCell
                         key={col.key}
-                        style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : undefined}
-                        className={width ? 'truncate' : ''}
+                        style={width
+                          ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` }
+                          : { minWidth: 'min-content' }
+                        }
+                        className={`${width ? 'truncate' : ''} ${stickyClasses}`}
                       >
                         {renderCellValue(ticket, col.key)}
                       </TableCell>
