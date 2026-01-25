@@ -778,6 +778,43 @@ export function TicketTable({
 
   return (
     <div className="space-y-2">
+      {/* Toolbar with column settings */}
+      <div className="flex items-center justify-end">
+        <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 gap-1">
+              <Settings2 className="h-4 w-4" />
+              <span className="text-xs">Columns</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="max-h-64 overflow-y-auto py-1">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={orderedColumns.map(c => c.key)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {orderedColumns.map(col => (
+                    <SortableColumnItem
+                      key={col.key}
+                      column={col}
+                      isVisible={columnSettings.visible.includes(col.key)}
+                      onToggle={() => toggleColumn(col.key)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
         <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2">
@@ -971,40 +1008,7 @@ export function TicketTable({
                   </TableHead>
                 );
               })}
-              <TableHead className="w-10">
-                <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>Columns</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <div className="max-h-64 overflow-y-auto py-1">
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <SortableContext
-                          items={orderedColumns.map(c => c.key)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {orderedColumns.map(col => (
-                            <SortableColumnItem
-                              key={col.key}
-                              column={col}
-                              isVisible={columnSettings.visible.includes(col.key)}
-                              onToggle={() => toggleColumn(col.key)}
-                            />
-                          ))}
-                        </SortableContext>
-                      </DndContext>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
