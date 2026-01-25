@@ -34,6 +34,8 @@ interface TicketFiltersProps {
   categories?: Category[];
   tags?: Tag[];
   teamMembers?: TeamMember[];
+  /** Additional content to render at the end (e.g., Columns button) */
+  children?: React.ReactNode;
 }
 
 const statusOptions = [
@@ -55,6 +57,7 @@ export function TicketFilters({
   categories,
   tags,
   teamMembers,
+  children,
 }: TicketFiltersProps) {
   const updateFilter = <K extends keyof TicketFiltersType>(
     key: K,
@@ -391,6 +394,13 @@ export function TicketFilters({
         <Button variant="ghost" size="sm" onClick={clearFilters}>
           Clear filters
         </Button>
+      )}
+
+      {/* Additional content (e.g., Columns button) */}
+      {children && (
+        <div className="ml-auto flex items-center gap-2">
+          {children}
+        </div>
       )}
     </div>
   );

@@ -174,6 +174,8 @@ interface TicketTableProps {
   categories?: Category[];
   tags?: Tag[];
   customFields?: FieldDefinition[];
+  /** Render prop for placing the columns dropdown elsewhere (e.g., in filters toolbar) */
+  renderColumnsDropdown?: (dropdown: React.ReactNode) => React.ReactNode;
 }
 
 export function TicketTable({
@@ -187,6 +189,7 @@ export function TicketTable({
   categories = [],
   tags: availableTags = [],
   customFields = [],
+  renderColumnsDropdown,
 }: TicketTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -776,44 +779,52 @@ export function TicketTable({
     );
   }
 
+  // Columns dropdown element - can be placed via render prop
+  const columnsDropdown = useMemo(() => (
+    <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 gap-1">
+          <Settings2 className="h-4 w-4" />
+          <span className="text-xs">Columns</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>Columns</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <div className="max-h-64 overflow-y-auto py-1">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={orderedColumns.map(c => c.key)}
+              strategy={verticalListSortingStrategy}
+            >
+              {orderedColumns.map(col => (
+                <SortableColumnItem
+                  key={col.key}
+                  column={col}
+                  isVisible={columnSettings.visible.includes(col.key)}
+                  onToggle={() => toggleColumn(col.key)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ), [columnSettingsOpen, orderedColumns, columnSettings.visible, sensors, handleDragEnd, toggleColumn]);
+
+  // Pass dropdown to parent via render prop
+  useEffect(() => {
+    if (renderColumnsDropdown) {
+      renderColumnsDropdown(columnsDropdown);
+    }
+  }, [renderColumnsDropdown, columnsDropdown]);
+
   return (
     <div className="space-y-2">
-      {/* Toolbar with column settings */}
-      <div className="flex items-center justify-end">
-        <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 gap-1">
-              <Settings2 className="h-4 w-4" />
-              <span className="text-xs">Columns</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Columns</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <div className="max-h-64 overflow-y-auto py-1">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={orderedColumns.map(c => c.key)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {orderedColumns.map(col => (
-                    <SortableColumnItem
-                      key={col.key}
-                      column={col}
-                      isVisible={columnSettings.visible.includes(col.key)}
-                      onToggle={() => toggleColumn(col.key)}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
 
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
