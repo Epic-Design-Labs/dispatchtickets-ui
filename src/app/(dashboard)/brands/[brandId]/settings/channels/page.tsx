@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -53,6 +54,7 @@ export default function ChannelsPage() {
   const [editFormName, setEditFormName] = useState('');
   const [editFormSuccessUrl, setEditFormSuccessUrl] = useState('');
   const [editFormErrorUrl, setEditFormErrorUrl] = useState('');
+  const [editFormThankYouMessage, setEditFormThankYouMessage] = useState('');
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -100,6 +102,7 @@ export default function ChannelsPage() {
     setEditFormName(form.name);
     setEditFormSuccessUrl(form.successUrl || '');
     setEditFormErrorUrl(form.errorUrl || '');
+    setEditFormThankYouMessage(form.thankYouMessage || '');
     setEditDialogOpen(true);
   };
 
@@ -116,6 +119,7 @@ export default function ChannelsPage() {
           name: editFormName.trim(),
           successUrl: editFormSuccessUrl.trim() || undefined,
           errorUrl: editFormErrorUrl.trim() || undefined,
+          thankYouMessage: editFormThankYouMessage.trim() || undefined,
         },
       });
       toast.success('Form updated successfully');
@@ -559,6 +563,19 @@ Content-Type: application/json`}
               />
               <p className="text-xs text-muted-foreground">
                 Where to redirect if submission fails. Leave empty to show an error message.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editThankYouMessage">Thank You Message</Label>
+              <Textarea
+                id="editThankYouMessage"
+                placeholder="Thanks for reaching out! We will get back to you within 24 hours."
+                value={editFormThankYouMessage}
+                onChange={(e) => setEditFormThankYouMessage(e.target.value)}
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                Custom message shown on the thank you page when no Success Redirect URL is set.
               </p>
             </div>
           </div>

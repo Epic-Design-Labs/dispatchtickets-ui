@@ -7,6 +7,7 @@ export interface FormToken {
   token: string;
   successUrl: string | null;
   errorUrl: string | null;
+  thankYouMessage: string | null;
   fieldMapping: Record<string, string> | null;
   enabled: boolean;
   honeypotField: string | null;
@@ -21,6 +22,7 @@ export interface CreateFormTokenDto {
   name: string;
   successUrl?: string;
   errorUrl?: string;
+  thankYouMessage?: string;
   fieldMapping?: Record<string, string>;
   honeypotField?: string;
   allowedOrigins?: string[];
@@ -30,6 +32,7 @@ export interface UpdateFormTokenDto {
   name?: string;
   successUrl?: string;
   errorUrl?: string;
+  thankYouMessage?: string;
   fieldMapping?: Record<string, string>;
   honeypotField?: string;
   allowedOrigins?: string[];
