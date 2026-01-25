@@ -174,8 +174,8 @@ interface TicketTableProps {
   categories?: Category[];
   tags?: Tag[];
   customFields?: FieldDefinition[];
-  /** Render prop for placing the columns dropdown elsewhere (e.g., in filters toolbar) */
-  renderColumnsDropdown?: (dropdown: React.ReactNode) => React.ReactNode;
+  /** Callback to receive the columns dropdown element for placement elsewhere */
+  renderColumnsDropdown?: (dropdown: React.ReactNode) => void;
 }
 
 export function TicketTable({
