@@ -441,8 +441,8 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
           </div>
         </div>
       )}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 md:gap-4">
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -450,7 +450,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
               onChange={(e) => setIsInternal(e.target.checked)}
               className="rounded border-gray-300"
             />
-            <span className="text-muted-foreground">Internal note</span>
+            <span className="text-muted-foreground whitespace-nowrap">Internal note</span>
           </label>
           <Button
             type="button"
@@ -474,35 +474,40 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={() => handleSubmit('pending')}
             disabled={createComment.isPending || !body.trim()}
             title={`Add & Pending (${modKey}+Shift+P)`}
+            className="px-2 md:px-3"
           >
-            <Clock className="mr-2 h-4 w-4" />
-            Pending
+            <Clock className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Pending</span>
           </Button>
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={() => handleSubmit('resolved')}
             disabled={createComment.isPending || !body.trim()}
             title={`Add & Resolve (${modKey}+Shift+R)`}
+            className="px-2 md:px-3"
           >
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Resolve
+            <CheckCircle className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Resolve</span>
           </Button>
           <Button
             type="button"
+            size="sm"
             onClick={() => handleSubmit('comment')}
             disabled={createComment.isPending || !body.trim()}
             title={`Add Comment (${modKey}+Enter)`}
           >
-            <Send className="mr-2 h-4 w-4" />
-            {createComment.isPending ? 'Adding...' : 'Send'}
+            <Send className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">{createComment.isPending ? 'Adding...' : 'Send'}</span>
           </Button>
         </div>
       </div>

@@ -496,8 +496,8 @@ export default function TicketDetailPage() {
       </header>
 
       {/* Title bar - White background */}
-      <div className="flex items-center justify-between border-b bg-white px-4 md:px-6 py-4">
-        <div className="flex-1">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b bg-white px-4 md:px-6 py-3 md:py-4">
+        <div className="flex-1 min-w-0">
           {isEditingTitle ? (
             <div className="flex items-center gap-2 max-w-2xl">
               <Input
@@ -507,7 +507,7 @@ export default function TicketDetailPage() {
                   if (e.key === 'Enter') handleSaveTitle();
                   if (e.key === 'Escape') handleCancelEditTitle();
                 }}
-                className="text-2xl font-bold h-auto py-1"
+                className="text-xl md:text-2xl font-bold h-auto py-1"
                 autoFocus
               />
               <Button variant="ghost" size="sm" onClick={handleSaveTitle} disabled={updateTicket.isPending}>
@@ -520,14 +520,14 @@ export default function TicketDetailPage() {
           ) : (
             <>
               <h1
-                className="text-2xl font-bold tracking-tight cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded group flex items-center gap-2 inline-flex"
+                className="text-xl md:text-2xl font-bold tracking-tight cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded group flex items-center gap-2 inline-flex"
                 onClick={handleStartEditTitle}
                 title="Click to edit title"
               >
-                {ticket.title}
-                <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50" />
+                <span className="truncate">{ticket.title}</span>
+                <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50 flex-shrink-0" />
               </h1>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {/* Priority badge - clickable */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -548,11 +548,11 @@ export default function TicketDetailPage() {
                 </DropdownMenu>
 
                 {/* Time badge */}
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm">
-                  <Clock className="h-3.5 w-3.5" />
+                <div className="flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs md:text-sm">
+                  <Clock className="h-3 md:h-3.5 w-3 md:w-3.5" />
                   <span>{getTicketAge()}</span>
-                  <span>•</span>
-                  <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline">{new Date(ticket.createdAt).toLocaleDateString()}</span>
                 </div>
 
                 {/* Source indicator */}
@@ -567,10 +567,10 @@ export default function TicketDetailPage() {
         </div>
 
         {/* Right side: Navigation + Status dropdown */}
-        <div className="flex items-center gap-4">
-          {/* Prev/Next navigation */}
+        <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+          {/* Prev/Next navigation - hidden on mobile */}
           {totalCount > 0 && (
-            <div className="flex items-center border rounded-lg bg-white">
+            <div className="hidden md:flex items-center border rounded-lg bg-white">
               <Button
                 variant="ghost"
                 size="sm"
