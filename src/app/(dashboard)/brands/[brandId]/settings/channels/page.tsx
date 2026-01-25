@@ -405,10 +405,10 @@ Content-Type: application/json`}
                     </div>
                   </div>
 
-                  <Tabs defaultValue="html" className="mt-4">
+                  <Tabs defaultValue="js" className="mt-4">
                     <TabsList className="h-8">
-                      <TabsTrigger value="html" className="text-xs">HTML Form</TabsTrigger>
                       <TabsTrigger value="js" className="text-xs">JavaScript</TabsTrigger>
+                      <TabsTrigger value="html" className="text-xs">HTML Form</TabsTrigger>
                     </TabsList>
                     <TabsContent value="html" className="mt-2">
                       <div className="relative">
