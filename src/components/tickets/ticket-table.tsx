@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, RefObject } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
@@ -175,7 +175,7 @@ interface TicketTableProps {
   categories?: Category[];
   tags?: Tag[];
   customFields?: FieldDefinition[];
-  columnsPortalRef?: RefObject<HTMLDivElement | null>;
+  columnsPortalElement?: HTMLDivElement | null;
 }
 
 export function TicketTable({
@@ -189,7 +189,7 @@ export function TicketTable({
   categories = [],
   tags: availableTags = [],
   customFields = [],
-  columnsPortalRef,
+  columnsPortalElement,
 }: TicketTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -955,9 +955,9 @@ export function TicketTable({
           </DropdownMenu>
         );
 
-        // If portal ref provided, render into that container
-        if (columnsPortalRef?.current) {
-          return createPortal(columnsDropdown, columnsPortalRef.current);
+        // If portal element provided, render into that container
+        if (columnsPortalElement) {
+          return createPortal(columnsDropdown, columnsPortalElement);
         }
         // Otherwise render inline above the table
         return <div className="flex justify-end mb-2">{columnsDropdown}</div>;
