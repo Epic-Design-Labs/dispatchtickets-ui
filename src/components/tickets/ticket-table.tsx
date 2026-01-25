@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
   DndContext,
@@ -174,6 +175,7 @@ interface TicketTableProps {
   categories?: Category[];
   tags?: Tag[];
   customFields?: FieldDefinition[];
+  columnsPortalRef?: RefObject<HTMLDivElement | null>;
 }
 
 export function TicketTable({
@@ -187,6 +189,7 @@ export function TicketTable({
   categories = [],
   tags: availableTags = [],
   customFields = [],
+  columnsPortalRef,
 }: TicketTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -913,43 +916,52 @@ export function TicketTable({
         </div>
       )}
 
-      {/* Columns Settings Toolbar */}
-      <div className="flex justify-end mb-2">
-        <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Settings2 className="mr-1 h-4 w-4" />
-              Columns
-              <ChevronDown className="ml-1 h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={orderedColumns.map(c => c.key)}
-                strategy={verticalListSortingStrategy}
+      {/* Columns Settings Dropdown - rendered via portal if ref provided */}
+      {(() => {
+        const columnsDropdown = (
+          <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings2 className="mr-1 h-4 w-4" />
+                Columns
+                <ChevronDown className="ml-1 h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
-                <div className="max-h-[300px] overflow-y-auto">
-                  {orderedColumns.map(col => (
-                    <SortableColumnItem
-                      key={col.key}
-                      column={col}
-                      isVisible={columnSettings.visible.includes(col.key)}
-                      onToggle={() => toggleColumn(col.key)}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+                <SortableContext
+                  items={orderedColumns.map(c => c.key)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {orderedColumns.map(col => (
+                      <SortableColumnItem
+                        key={col.key}
+                        column={col}
+                        isVisible={columnSettings.visible.includes(col.key)}
+                        onToggle={() => toggleColumn(col.key)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+
+        // If portal ref provided, render into that container
+        if (columnsPortalRef?.current) {
+          return createPortal(columnsDropdown, columnsPortalRef.current);
+        }
+        // Otherwise render inline above the table
+        return <div className="flex justify-end mb-2">{columnsDropdown}</div>;
+      })()}
 
       <div className="rounded-md border overflow-x-auto">
         <Table className={resizingColumn ? 'select-none' : ''} style={{ minWidth: 'max-content' }}>

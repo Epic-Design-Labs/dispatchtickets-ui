@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBrand, useTickets, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, BulkActionType, ticketKeys } from '@/lib/hooks';
@@ -25,6 +25,7 @@ export default function BrandDashboardPage() {
   const brandId = params.brandId as string;
   // Default to 'active' status (shows open + pending)
   const [filters, setFilters] = useState<TicketFiltersType>({ status: 'active' });
+  const columnsPortalRef = useRef<HTMLDivElement>(null);
 
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   // Fetch all tickets for stats (without filters)
@@ -312,7 +313,10 @@ export default function BrandDashboardPage() {
             categories={categories}
             tags={tags}
             teamMembers={teamMembers}
-          />
+          >
+            {/* Portal target for Columns dropdown from TicketTable */}
+            <div ref={columnsPortalRef} />
+          </TicketFilters>
         </div>
 
         {/* Ticket Table */}
@@ -326,6 +330,7 @@ export default function BrandDashboardPage() {
           categories={categories}
           tags={tags}
           customFields={ticketFields}
+          columnsPortalRef={columnsPortalRef}
         />
 
         {/* Load More */}
