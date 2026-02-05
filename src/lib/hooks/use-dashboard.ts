@@ -16,10 +16,11 @@ export const dashboardKeys = {
     ['dashboard', 'team-metrics', options] as const,
 };
 
-export function useDashboardTickets(filters?: DashboardTicketFilters) {
+export function useDashboardTickets(filters?: DashboardTicketFilters, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: dashboardKeys.tickets(filters),
     queryFn: () => dashboardApi.listTickets(filters),
+    enabled: options?.enabled !== false,
     staleTime: 30000, // Consider data fresh for 30 seconds
   });
 }

@@ -56,7 +56,7 @@ interface TicketFiltersProps {
 
 const statusOptions = [
   { value: 'active', label: 'Active' },
-  { value: '', label: 'All' },
+  { value: 'all', label: 'All' },
   { value: 'open', label: 'Open' },
   { value: 'pending', label: 'Pending' },
   { value: 'resolved', label: 'Resolved' },
@@ -141,15 +141,15 @@ export function TicketFilters({
       <div className="space-y-2">
         <Label>Status</Label>
         <Select
-          value={filters.status || ''}
-          onValueChange={(value) => updateFilter('status', value || undefined)}
+          value={filters.status ?? 'active'}
+          onValueChange={(value) => updateFilter('status', value)}
         >
           <SelectTrigger>
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
             {statusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value || 'all'}>
+              <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>
             ))}
@@ -324,10 +324,10 @@ export function TicketFilters({
         {statusOptions.map((option) => (
           <button
             key={option.value}
-            onClick={() => updateFilter('status', option.value || undefined)}
+            onClick={() => updateFilter('status', option.value)}
             className={cn(
               'px-3 py-1 text-sm rounded transition-colors',
-              (filters.status || '') === option.value
+              (filters.status ?? 'active') === option.value
                 ? 'bg-background shadow-sm font-medium'
                 : 'text-muted-foreground hover:text-foreground'
             )}

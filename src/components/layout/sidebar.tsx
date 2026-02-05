@@ -40,9 +40,10 @@ export function Sidebar({ brandId }: SidebarProps) {
   // Only fetch stats when on dashboard (for queue counts)
   const { data: stats } = useDashboardStats(isDashboard ? {} : undefined);
 
-  // Fetch my tickets count using memberId
+  // Fetch my active tickets count using memberId
   const { data: myTicketsData } = useDashboardTickets(
-    session?.memberId ? { assigneeId: session.memberId, status: 'active', limit: 100 } : undefined
+    session?.memberId ? { assigneeId: session.memberId, status: 'active', limit: 100 } : undefined,
+    { enabled: !!session?.memberId }
   );
   const myTicketsCount = myTicketsData?.data?.length ?? 0;
 

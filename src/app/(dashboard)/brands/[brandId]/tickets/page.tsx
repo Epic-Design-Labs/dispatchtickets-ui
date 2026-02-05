@@ -34,8 +34,16 @@ export default function BrandDashboardPage() {
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   // Fetch all tickets for stats (without filters)
   const { data: allTicketsData, isLoading: allTicketsLoading } = useTickets(brandId, {});
+  // Convert 'all' status to undefined (no filter) for API
+  const apiFilters = useMemo(() => {
+    if (filters.status === 'all') {
+      const { status, ...rest } = filters;
+      return rest;
+    }
+    return filters;
+  }, [filters]);
   // Fetch filtered tickets for display
-  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, filters);
+  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, apiFilters);
 
   // Email sync and refresh
   const queryClient = useQueryClient();
@@ -149,10 +157,10 @@ export default function BrandDashboardPage() {
   }, [ticketsData?.data, filters.status]);
 
   // Handle clicking on a stat card to filter
-  const handleStatClick = (status: string | undefined) => {
+  const handleStatClick = (status: string) => {
     if (status === filters.status) {
-      // If already filtered by this status, clear it
-      setFilters((f) => ({ ...f, status: undefined }));
+      // Already showing this status, go back to default (active)
+      setFilters((f) => ({ ...f, status: 'active' }));
     } else {
       setFilters((f) => ({ ...f, status }));
     }
@@ -186,11 +194,11 @@ export default function BrandDashboardPage() {
 
             <button
               className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                !filters.status
+                filters.status === 'all'
                   ? 'bg-white border-2 border-blue-500'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
-              onClick={() => handleStatClick(undefined)}
+              onClick={() => handleStatClick('all')}
             >
               <span className="h-2 w-2 rounded-full bg-blue-500" />
               <span>All</span>
@@ -268,9 +276,9 @@ export default function BrandDashboardPage() {
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">
             Tickets
-            {filters.status && (
+            {filters.status && filters.status !== 'active' && (
               <span className="ml-2 text-sm font-normal text-muted-foreground">
-                (filtered by {filters.status})
+                (filtered by {filters.status === 'all' ? 'all statuses' : filters.status})
               </span>
             )}
           </h3>
@@ -313,7 +321,7 @@ export default function BrandDashboardPage() {
         <div className="mb-4">
           <TicketFilters
             filters={filters}
-            onFiltersChange={setFilters}
+            onFiltersChange={(newFilters) => setFilters({ ...newFilters, status: newFilters.status || 'active' })}
             categories={categories}
             tags={tags}
             teamMembers={teamMembers}

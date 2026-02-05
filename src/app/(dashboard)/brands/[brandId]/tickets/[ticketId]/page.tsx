@@ -753,14 +753,29 @@ export default function TicketDetailPage() {
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>{formatFileSize(attachment.size)}</span>
                             {urlInfo?.url && (
-                              <a
-                                href={urlInfo.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  try {
+                                    const response = await fetch(urlInfo.url);
+                                    const blob = await response.blob();
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = attachment.filename;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                  } catch {
+                                    // Fallback to opening in new tab
+                                    window.open(urlInfo.url, '_blank');
+                                  }
+                                }}
                                 className="hover:text-foreground transition-colors"
                               >
                                 <Download className="h-3.5 w-3.5" />
-                              </a>
+                              </button>
                             )}
                           </div>
                         </div>

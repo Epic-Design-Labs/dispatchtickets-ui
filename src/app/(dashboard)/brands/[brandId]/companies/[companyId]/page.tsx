@@ -9,9 +9,15 @@ import {
   useUpdateCompany,
   useDeleteCompany,
   useCustomers,
+  useTickets,
+  useTeamMembers,
+  useFieldsByEntity,
+  useBulkAction,
+  BulkActionType,
   customerKeys,
 } from '@/lib/hooks';
 import { Header } from '@/components/layout';
+import { TicketTable } from '@/components/tickets';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,13 +56,50 @@ export default function CompanyDetailPage() {
 
   const { data: company, isLoading } = useCompany(brandId, companyId);
   const { data: customersData, isLoading: customersLoading } = useCustomers(brandId);
+  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, {});
+  const { data: teamMembersData } = useTeamMembers({ brandId });
+  const teamMembers = teamMembersData?.members;
+  const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
   const updateCompany = useUpdateCompany(brandId, companyId);
   const deleteCompany = useDeleteCompany(brandId);
+  const bulkAction = useBulkAction(brandId);
 
   // Filter customers belonging to this company
   const companyCustomers = customersData?.data?.filter(
     (c) => c.companyId === companyId
   ) || [];
+
+  // Filter tickets from customers in this company
+  const companyTickets = ticketsData?.data?.filter(
+    (t) => t.customer?.companyId === companyId
+  ) || [];
+
+  const handleBulkAction = async (
+    action: BulkActionType,
+    ticketIds: string[],
+    options?: { assigneeId?: string | null; categoryId?: string | null; tags?: string[]; closeReason?: string }
+  ) => {
+    try {
+      const result = await bulkAction.mutateAsync({ action, ticketIds, ...options });
+      const actionLabels: Record<BulkActionType, string> = {
+        spam: 'marked as spam',
+        resolve: 'resolved',
+        close: 'closed',
+        delete: 'deleted',
+        assign: options?.assigneeId ? 'assigned' : 'unassigned',
+        setCategory: options?.categoryId ? 'categorized' : 'uncategorized',
+        setTags: 'tagged',
+      };
+      if (result.success > 0) {
+        toast.success(`${result.success} ticket(s) ${actionLabels[action]}`);
+      }
+      if (result.failed > 0) {
+        toast.error(`${result.failed} ticket(s) failed`);
+      }
+    } catch {
+      toast.error('Bulk action failed');
+    }
+  };
 
   const startEditing = () => {
     setEditName(company?.name || '');
@@ -324,8 +367,10 @@ export default function CompanyDetailPage() {
           </Card>
           </div>
 
+          {/* Right Column: Customers + Tickets */}
+          <div className="lg:col-span-2 space-y-6">
           {/* Customers */}
-          <Card className="lg:col-span-2">
+          <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -402,6 +447,35 @@ export default function CompanyDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Tickets */}
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Tickets</CardTitle>
+                <CardDescription>
+                  All tickets from customers in this company
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {companyTickets.length === 0 && !ticketsLoading ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No tickets from this company yet
+                </p>
+              ) : (
+                <TicketTable
+                  tickets={companyTickets}
+                  brandId={brandId}
+                  isLoading={ticketsLoading}
+                  customFields={ticketFields}
+                  teamMembers={teamMembers}
+                  onBulkAction={handleBulkAction}
+                />
+              )}
+            </CardContent>
+          </Card>
+          </div>
         </div>
       </div>
 

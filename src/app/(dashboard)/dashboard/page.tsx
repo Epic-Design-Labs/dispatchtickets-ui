@@ -162,6 +162,9 @@ export default function DashboardPage() {
   );
 
   // Build filters based on view
+  // 'all' means show all statuses (no filter), undefined/default means 'active' (open+pending)
+  const apiStatus = status === 'all' ? undefined : (status || 'active');
+
   const apiFilters: DashboardTicketFilters = useMemo(() => {
     const baseFilters: DashboardTicketFilters = {
       brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
@@ -172,44 +175,38 @@ export default function DashboardPage() {
 
     switch (view) {
       case 'mine':
-        // Show tickets assigned to current user (non-closed)
         return {
           ...baseFilters,
           assigneeId: session?.memberId,
-          status: status || undefined, // Show all non-closed statuses
+          status: apiStatus,
         };
       case 'unassigned':
-        // Show tickets with no assignee
         return {
           ...baseFilters,
-          assigneeId: 'null', // Special value to filter for null assignee
-          status: status || 'active', // Default to active (open+pending)
+          assigneeId: 'null',
+          status: apiStatus,
         };
       case 'all':
       default:
-        // Show all active tickets (open + pending) unless status filter is set
         return {
           ...baseFilters,
-          status: status || 'active',
+          status: apiStatus,
         };
     }
-  }, [status, priority, search, selectedBrands, view, session?.memberId]);
+  }, [apiStatus, priority, search, selectedBrands, view, session?.memberId]);
 
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
   // For "all" view, use global stats; for "mine"/"unassigned", we need to fetch ALL tickets for that view
   // to get accurate counts (not just the first page)
-  const allTicketsFilters: DashboardTicketFilters = useMemo(() => {
-    if (view === 'all') return { brandIds: selectedBrands.length > 0 ? selectedBrands : undefined };
-    // For mine/unassigned, fetch all statuses to calculate stats
-    return {
-      brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
-      assigneeId: view === 'mine' ? session?.memberId : (view === 'unassigned' ? 'null' : undefined),
-      limit: 200, // Get more tickets for stats calculation
-    };
-  }, [view, selectedBrands, session?.memberId]);
+  const allTicketsFilters: DashboardTicketFilters = useMemo(() => ({
+    brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
+    assigneeId: view === 'mine' ? session?.memberId : (view === 'unassigned' ? 'null' : undefined),
+    limit: 100, // Max allowed by API
+  }), [view, selectedBrands, session?.memberId]);
 
   const { data: allTicketsData, isLoading: allTicketsLoading } = useDashboardTickets(
-    view !== 'all' ? allTicketsFilters : { limit: 0 } // Skip if "all" view
+    allTicketsFilters,
+    { enabled: view !== 'all' } // Only fetch for mine/unassigned views
   );
   const { data: globalStats, isLoading: globalStatsLoading } = useDashboardStats({
     brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
@@ -241,9 +238,9 @@ export default function DashboardPage() {
   const statsActive = stats.open + stats.pending;
 
   // Handle clicking on a stat card to filter
-  const handleStatClick = (newStatus: string | undefined) => {
-    if (newStatus === status) {
-      // If already filtered by this status, clear it
+  const handleStatClick = (newStatus: string) => {
+    if (newStatus === status || (newStatus === 'active' && !status)) {
+      // Already showing this status, go back to default (active)
       updateUrlParams({ status: undefined });
     } else {
       updateUrlParams({ status: newStatus });
@@ -266,8 +263,8 @@ export default function DashboardPage() {
   // Sort tickets: open first (by newest), then pending (by newest)
   const tickets = useMemo(() => {
     const rawTickets = ticketsData?.data || [];
-    // Only apply grouping when showing "active" (default view with no specific status filter)
-    if (!status) {
+    // Only apply grouping when showing "active" (default view or explicit active filter)
+    if (!status || status === 'active') {
       const openTickets = rawTickets
         .filter(t => t.status === 'open')
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -285,24 +282,24 @@ export default function DashboardPage() {
       <div className="mb-6 flex flex-wrap gap-3">
         <button
           className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            status === 'active' || (!status && !priority && !search)
+            status === 'active' || !status
               ? 'bg-violet-500 text-white'
               : 'bg-white border border-gray-200 hover:bg-gray-50'
           }`}
           onClick={() => handleStatClick('active')}
         >
-          <span className={`h-2 w-2 rounded-full ${status === 'active' || (!status && !priority && !search) ? 'bg-blue-300' : 'bg-blue-500'}`} />
+          <span className={`h-2 w-2 rounded-full ${status === 'active' || !status ? 'bg-blue-300' : 'bg-blue-500'}`} />
           <span>Active</span>
           <span className="font-bold text-lg ml-2">{statsLoading ? '...' : statsActive}</span>
         </button>
 
         <button
           className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            status === undefined && (priority || search)
+            status === 'all'
               ? 'bg-white border-2 border-blue-500'
               : 'bg-white border border-gray-200 hover:bg-gray-50'
           }`}
-          onClick={() => handleStatClick(undefined)}
+          onClick={() => handleStatClick('all')}
         >
           <span className="h-2 w-2 rounded-full bg-blue-500" />
           <span>All</span>
@@ -379,9 +376,9 @@ export default function DashboardPage() {
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">
           Tickets
-          {status && (
+          {status && status !== 'active' && (
             <span className="ml-2 text-sm font-normal text-muted-foreground">
-              (filtered by {status})
+              (filtered by {status === 'all' ? 'all statuses' : status})
             </span>
           )}
         </h3>

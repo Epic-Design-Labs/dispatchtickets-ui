@@ -127,49 +127,24 @@ export const attachmentsApi = {
   },
 
   /**
-   * Upload a file - convenience method that handles the full flow
+   * Upload a file directly via server (multipart/form-data)
    */
   uploadFile: async (
     brandId: string,
     ticketId: string,
     file: File
   ): Promise<AttachmentWithUrl> => {
-    // 1. Initiate upload to get presigned URL
-    const response = await attachmentsApi.initiateUpload(
-      brandId,
-      ticketId,
-      {
-        filename: file.name,
-        contentType: file.type,
-        size: file.size,
-      }
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<{ attachment: Attachment; downloadUrl: string }>(
+      `/brands/${brandId}/tickets/${ticketId}/attachments/upload`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
-    // API returns { attachment: { id, ... }, uploadUrl } or { id, uploadUrl }
-    const id = (response as { attachment?: { id: string }; id?: string }).attachment?.id || response.id;
-    const uploadUrl = response.uploadUrl;
-
-    if (!id || !uploadUrl) {
-      throw new Error('Invalid response from upload initiation');
-    }
-
-    // 2. Upload directly to S3/R2
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: file,
-      headers: {
-        'Content-Type': file.type,
-      },
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
-    }
-
-    // 3. Confirm upload and get download URL
-    await attachmentsApi.confirmUpload(brandId, ticketId, id);
-
-    // 4. Get the attachment with download URL
-    return attachmentsApi.get(brandId, ticketId, id);
+    return {
+      ...response.data.attachment,
+      downloadUrl: response.data.downloadUrl,
+    };
   },
 
   /**
@@ -200,44 +175,20 @@ export const attachmentsApi = {
   },
 
   /**
-   * Upload a pending file - convenience method for create ticket flow
-   * Returns the attachment ID to be passed when creating the ticket
+   * Upload a pending file directly via server (multipart/form-data)
+   * Returns the attachment to be associated when the ticket is created
    */
   uploadPendingFile: async (
     brandId: string,
     file: File
   ): Promise<Attachment> => {
-    // 1. Initiate pending upload to get presigned URL
-    const response = await attachmentsApi.initiatePendingUpload(
-      brandId,
-      {
-        filename: file.name,
-        contentType: file.type,
-        size: file.size,
-      }
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<Attachment>(
+      `/brands/${brandId}/attachments/pending/upload`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
-
-    const id = (response as { attachment?: { id: string }; id?: string }).attachment?.id || response.id;
-    const uploadUrl = response.uploadUrl;
-
-    if (!id || !uploadUrl) {
-      throw new Error('Invalid response from upload initiation');
-    }
-
-    // 2. Upload directly to S3/R2
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: file,
-      headers: {
-        'Content-Type': file.type,
-      },
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
-    }
-
-    // 3. Confirm the pending upload
-    return attachmentsApi.confirmPendingUpload(brandId, id);
+    return response.data;
   },
 };

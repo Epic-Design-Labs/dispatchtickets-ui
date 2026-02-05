@@ -10,6 +10,7 @@ import {
   useTickets,
   useFieldsByEntity,
   useBulkAction,
+  useTeamMembers,
   BulkActionType,
 } from '@/lib/hooks';
 import { Header } from '@/components/layout';
@@ -55,6 +56,8 @@ export default function CustomerDetailPage() {
   const updateCustomer = useUpdateCustomer(brandId, customerId);
   const deleteCustomer = useDeleteCustomer(brandId);
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
+  const { data: teamMembersData } = useTeamMembers({ brandId });
+  const teamMembers = teamMembersData?.members;
   const bulkAction = useBulkAction(brandId);
 
   // Filter tickets for this customer
@@ -346,6 +349,7 @@ export default function CustomerDetailPage() {
                   brandId={brandId}
                   isLoading={ticketsLoading}
                   customFields={ticketFields}
+                  teamMembers={teamMembers}
                   onBulkAction={handleBulkAction}
                 />
               )}
