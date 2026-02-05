@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
-const POLL_INTERVAL = 30000; // 30 seconds
+const POLL_INTERVAL = 60000; // 1 minute
 
 export interface MentionNotification {
   id: string;

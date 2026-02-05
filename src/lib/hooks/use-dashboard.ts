@@ -21,7 +21,7 @@ export function useDashboardTickets(filters?: DashboardTicketFilters, options?: 
     queryKey: dashboardKeys.tickets(filters),
     queryFn: () => dashboardApi.listTickets(filters),
     enabled: options?.enabled !== false,
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    staleTime: 60000, // Consider data fresh for 1 minute
   });
 }
 

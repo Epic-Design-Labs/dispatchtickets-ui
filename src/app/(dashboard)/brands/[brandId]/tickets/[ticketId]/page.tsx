@@ -259,6 +259,11 @@ export default function TicketDetailPage() {
     return '?';
   };
 
+  const getMemberAvatarUrl = (memberId: string) => {
+    const member = teamMembers.find(m => m.id === memberId);
+    return member?.avatarUrl;
+  };
+
   const handleMarkAsSpam = async () => {
     try {
       await markAsSpam.mutateAsync({ ticketId, isSpam: true });
@@ -849,9 +854,17 @@ export default function TicketDetailPage() {
             </div>
             {ticket.assigneeId ? (
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
-                  {getMemberInitials(ticket.assigneeId)}
-                </div>
+                {getMemberAvatarUrl(ticket.assigneeId) ? (
+                  <img
+                    src={getMemberAvatarUrl(ticket.assigneeId)}
+                    alt={getMemberName(ticket.assigneeId)}
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+                    {getMemberInitials(ticket.assigneeId)}
+                  </div>
+                )}
                 <span className="text-sm">{getMemberName(ticket.assigneeId)}</span>
               </div>
             ) : (

@@ -597,6 +597,7 @@ export function TicketTable({
       initials: name
         ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
         : member.email.slice(0, 2).toUpperCase(),
+      avatarUrl: member.avatarUrl,
     };
   };
 
@@ -688,6 +689,7 @@ export function TicketTable({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Avatar className="h-7 w-7 cursor-default">
+                  {assignee.avatarUrl && <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />}
                   <AvatarFallback className="text-xs">{assignee.initials}</AvatarFallback>
                 </Avatar>
               </TooltipTrigger>

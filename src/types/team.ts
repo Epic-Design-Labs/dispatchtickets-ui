@@ -33,6 +33,7 @@ export interface TeamMember {
   status: MemberStatus;
   sentAt?: string;
   brandAssignment?: BrandAssignment;
+  avatarUrl?: string;
 }
 
 export interface TeamMembersResponse {

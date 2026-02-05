@@ -6,7 +6,7 @@ import { ticketsApi, commentsApi, brandsApi } from '@/lib/api';
 import { Ticket } from '@/types';
 import { toast } from 'sonner';
 
-const POLL_INTERVAL = 30000; // 30 seconds
+const POLL_INTERVAL = 120000; // 2 minutes
 
 // Check if desktop notifications are enabled
 function isDesktopNotificationsEnabled(): boolean {
