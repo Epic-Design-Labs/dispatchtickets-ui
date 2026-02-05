@@ -42,7 +42,9 @@ export const profileApi = {
   uploadAvatar: async (file: File): Promise<Profile> => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await apiClient.post('/auth/profile/avatar/upload', formData);
+    const response = await apiClient.post('/auth/profile/avatar/upload', formData, {
+      headers: { 'Content-Type': undefined },
+    });
     return response.data;
   },
 
