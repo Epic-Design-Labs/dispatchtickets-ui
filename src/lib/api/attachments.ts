@@ -138,8 +138,7 @@ export const attachmentsApi = {
     formData.append('file', file);
     const response = await apiClient.post<{ attachment: Attachment; downloadUrl: string }>(
       `/brands/${brandId}/tickets/${ticketId}/attachments/upload`,
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      formData
     );
     return {
       ...response.data.attachment,
@@ -186,8 +185,7 @@ export const attachmentsApi = {
     formData.append('file', file);
     const response = await apiClient.post<Attachment>(
       `/brands/${brandId}/attachments/pending/upload`,
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      formData
     );
     return response.data;
   },
