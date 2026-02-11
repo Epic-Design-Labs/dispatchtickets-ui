@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
 import { useProfile, useBrands, useDashboardStats, useDashboardTickets, useSetupStatus } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
+import { OrgSwitcher } from './org-switcher';
 import { NotificationBell } from './notification-bell';
 import { Inbox, User, AlertCircle, Key, Rocket, Check, BarChart3 } from 'lucide-react';
 
@@ -375,6 +376,11 @@ export function Sidebar({ brandId }: SidebarProps) {
             </Link>
           </Button>
         </nav>
+      </div>
+
+      {/* Org switcher - only visible for multi-org users */}
+      <div className="border-t px-3 pt-2">
+        <OrgSwitcher />
       </div>
 
       {/* Profile section */}

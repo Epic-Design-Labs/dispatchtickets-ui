@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
 
@@ -48,6 +49,7 @@ interface AuthContextType {
   verifyToken: (token: string) => Promise<Session | null>;
   connectApiKey: (apiKey: string) => Promise<boolean>;
   acceptInvite: (inviteId: string) => Promise<AcceptInviteResult>;
+  switchOrganization: (organizationId: string) => Promise<boolean>;
   refreshSession: () => Promise<Session | null>;
   logout: () => void;
 }
@@ -79,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Refs to prevent race conditions
   const refreshPromiseRef = useRef<Promise<Session | null> | null>(null);
@@ -339,6 +342,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const switchOrganization = async (organizationId: string): Promise<boolean> => {
+    const token = getSessionToken();
+    if (!token) return false;
+
+    try {
+      const response = await fetch(`${API_URL}/auth/switch-organization`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ organizationId }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json();
+      if (data.sessionToken) {
+        setSessionToken(data.sessionToken);
+        // Clear all cached data since we're switching orgs
+        queryClient.clear();
+        // Refresh session to load new org context
+        await refreshSession();
+        router.push('/dashboard');
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   const logout = () => {
     // Set flag to prevent stale refresh results from updating state
     isLoggedOutRef.current = true;
@@ -362,6 +399,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyToken,
         connectApiKey,
         acceptInvite,
+        switchOrganization,
         refreshSession,
         logout,
       }}

@@ -20,6 +20,14 @@ import { TicketFilters } from '@/components/tickets/ticket-filters';
 import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog';
 import { StatusBadge } from '@/components/tickets/status-badge';
 import { PriorityBadge } from '@/components/tickets/priority-badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { getGravatarUrl } from '@/lib/gravatar';
 import { toast } from 'sonner';
 import {
   Plus,
@@ -542,11 +550,35 @@ export default function DashboardPage() {
                   )}
                   {visibleColumns.assignee !== false && (
                     <TableCell>
-                      <span className="text-sm text-muted-foreground truncate">
-                        {assignee
-                          ? `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.email
-                          : '-'}
-                      </span>
+                      {assignee ? (() => {
+                        const name = [assignee.firstName, assignee.lastName].filter(Boolean).join(' ');
+                        const displayName = name || assignee.email;
+                        const initials = name
+                          ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                          : assignee.email.slice(0, 2).toUpperCase();
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Avatar className="h-7 w-7 cursor-default">
+                                  <AvatarImage src={assignee.avatarUrl || getGravatarUrl(assignee.email)} alt={displayName} />
+                                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                                </Avatar>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="text-sm">
+                                  <p className="font-medium">{displayName}</p>
+                                  {name && name !== assignee.email && (
+                                    <p className="text-muted-foreground">{assignee.email}</p>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })() : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                   )}
                   {visibleColumns.category !== false && (

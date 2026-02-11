@@ -90,4 +90,17 @@ export const teamApi = {
     );
     return response.data;
   },
+
+  listOrganizations: async (): Promise<Array<{ id: string; name: string }>> => {
+    const response = await apiClient.get<Array<{ id: string; name: string }>>('/auth/organizations');
+    return response.data;
+  },
+
+  switchOrganization: async (organizationId: string): Promise<{ sessionToken: string; organizationId: string; orgRole: string }> => {
+    const response = await apiClient.post<{ sessionToken: string; organizationId: string; orgRole: string }>(
+      '/auth/switch-organization',
+      { organizationId }
+    );
+    return response.data;
+  },
 };

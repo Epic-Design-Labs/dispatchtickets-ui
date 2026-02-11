@@ -65,6 +65,7 @@ import { Ticket, TeamMember, FieldDefinition, CloseReason } from '@/types';
 import { Category } from '@/lib/api/categories';
 import { Tag } from '@/lib/api/tags';
 import { BulkActionType } from '@/lib/hooks/use-tickets';
+import { getGravatarUrl } from '@/lib/gravatar';
 import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical } from 'lucide-react';
 
 // Column definitions - built-in columns use these keys
@@ -689,7 +690,7 @@ export function TicketTable({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Avatar className="h-7 w-7 cursor-default">
-                  {assignee.avatarUrl && <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />}
+                  <AvatarImage src={assignee.avatarUrl || getGravatarUrl(assignee.email)} alt={assignee.name} />
                   <AvatarFallback className="text-xs">{assignee.initials}</AvatarFallback>
                 </Avatar>
               </TooltipTrigger>
