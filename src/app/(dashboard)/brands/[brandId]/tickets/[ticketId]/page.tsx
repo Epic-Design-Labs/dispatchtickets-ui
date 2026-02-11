@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls, useUploadAttachment, useDeleteAttachment } from '@/lib/hooks';
 import { useStatuses } from '@/lib/hooks/use-statuses';
 import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers } from '@/components/tickets';
 import { CommentThread, CommentEditor } from '@/components/comments';
@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS } from '@/types';
-import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown, Paperclip, FileIcon, Download, ExternalLink } from 'lucide-react';
+import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown, Paperclip, FileIcon, Download, ExternalLink, Upload, Loader2 } from 'lucide-react';
 import { CustomFieldInput } from '@/components/fields';
 
 export default function TicketDetailPage() {
@@ -88,6 +88,10 @@ export default function TicketDetailPage() {
   const { data: attachments } = useAttachments(brandId, ticketId);
   const attachmentIds = useMemo(() => attachments?.map(a => a.id) || [], [attachments]);
   const { data: attachmentUrls } = useAttachmentUrls(brandId, attachmentIds);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const uploadAttachment = useUploadAttachment(brandId, ticketId);
+  const deleteAttachment = useDeleteAttachment(brandId, ticketId);
 
   // Auto-acknowledge any mentions for this ticket when viewing
   useAcknowledgeMentionsOnView(ticketId);
@@ -354,6 +358,30 @@ export default function TicketDetailPage() {
       toast.error('Failed to update field');
     }
   };
+
+  const handleFileSelect = useCallback(async (files: FileList) => {
+    setIsUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        await uploadAttachment.mutateAsync(file);
+      }
+      toast.success(files.length === 1 ? 'File uploaded' : `${files.length} files uploaded`);
+    } catch {
+      toast.error('Failed to upload file');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [uploadAttachment]);
+
+  const handleDeleteAttachment = useCallback(async (id: string) => {
+    try {
+      await deleteAttachment.mutateAsync(id);
+      toast.success('Attachment deleted');
+    } catch {
+      toast.error('Failed to delete attachment');
+    }
+  }, [deleteAttachment]);
 
   const toggleMergeSelection = (ticketId: string) => {
     setSelectedForMerge((prev) =>
@@ -715,15 +743,39 @@ export default function TicketDetailPage() {
           </Card>
 
           {/* Attachments */}
-          {attachments && attachments.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Paperclip className="h-4 w-4" />
-                  <CardTitle>Attachments ({attachments.length})</CardTitle>
+                  <CardTitle>Attachments{attachments && attachments.length > 0 ? ` (${attachments.length})` : ''}</CardTitle>
                 </div>
-              </CardHeader>
-              <CardContent>
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4 mr-1.5" />
+                    )}
+                    Add
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {attachments && attachments.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {attachments.map((attachment) => {
                     const urlInfo = attachmentUrls?.[attachment.id];
@@ -757,40 +809,51 @@ export default function TicketDetailPage() {
                           </p>
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>{formatFileSize(attachment.size)}</span>
-                            {urlInfo?.url && (
+                            <div className="flex items-center gap-1">
+                              {urlInfo?.url && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                      const response = await fetch(urlInfo.url);
+                                      const blob = await response.blob();
+                                      const url = URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = attachment.filename;
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      document.body.removeChild(a);
+                                      URL.revokeObjectURL(url);
+                                    } catch {
+                                      // Fallback to opening in new tab
+                                      window.open(urlInfo.url, '_blank');
+                                    }
+                                  }}
+                                  className="hover:text-foreground transition-colors"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                               <button
-                                onClick={async (e) => {
-                                  e.preventDefault();
-                                  try {
-                                    const response = await fetch(urlInfo.url);
-                                    const blob = await response.blob();
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = attachment.filename;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    URL.revokeObjectURL(url);
-                                  } catch {
-                                    // Fallback to opening in new tab
-                                    window.open(urlInfo.url, '_blank');
-                                  }
-                                }}
-                                className="hover:text-foreground transition-colors"
+                                onClick={() => handleDeleteAttachment(attachment.id)}
+                                className="hover:text-destructive transition-colors"
+                                title="Delete attachment"
                               >
-                                <Download className="h-3.5 w-3.5" />
+                                <Trash2 className="h-3.5 w-3.5" />
                               </button>
-                            )}
+                            </div>
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <p className="text-sm text-muted-foreground">No attachments</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Activity / Comments */}
           <Card>
