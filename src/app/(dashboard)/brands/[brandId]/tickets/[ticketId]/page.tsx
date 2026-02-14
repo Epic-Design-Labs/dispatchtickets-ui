@@ -863,7 +863,7 @@ export default function TicketDetailPage() {
             <CardContent className="space-y-4">
               <CommentEditor brandId={brandId} ticketId={ticketId} />
               <Separator />
-              <CommentThread comments={comments || []} isLoading={commentsLoading} brandId={brandId} />
+              <CommentThread comments={comments || []} isLoading={commentsLoading} brandId={brandId} customer={ticket.customer} />
             </CardContent>
           </Card>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Comment } from '@/types';
+import { Comment, Customer } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MarkdownContent } from '@/components/ui/markdown-content';
@@ -9,9 +9,10 @@ interface CommentThreadProps {
   comments: Comment[];
   isLoading?: boolean;
   brandId?: string;
+  customer?: Customer;
 }
 
-export function CommentThread({ comments, isLoading, brandId }: CommentThreadProps) {
+export function CommentThread({ comments, isLoading, brandId, customer }: CommentThreadProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -57,6 +58,9 @@ export function CommentThread({ comments, isLoading, brandId }: CommentThreadPro
     // Fall back to type-based labels
     if (comment.authorType === 'AGENT') return 'Agent';
     if (comment.authorType === 'SYSTEM') return 'System';
+    // Use customer name or email if available
+    if (customer?.name) return customer.name;
+    if (customer?.email) return customer.email;
     return comment.authorId || 'Customer';
   };
 
@@ -70,6 +74,9 @@ export function CommentThread({ comments, isLoading, brandId }: CommentThreadPro
     // Fall back to type-based initials
     if (comment.authorType === 'AGENT') return 'A';
     if (comment.authorType === 'SYSTEM') return 'S';
+    // Use customer name/email initial if available
+    if (customer?.name) return customer.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    if (customer?.email) return customer.email[0].toUpperCase();
     return 'C';
   };
 
