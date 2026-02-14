@@ -69,7 +69,7 @@ import { getGravatarUrl } from '@/lib/gravatar';
 import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical } from 'lucide-react';
 
 // Column definitions - built-in columns use these keys
-type BuiltInColumnKey = 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated';
+type BuiltInColumnKey = 'ticketNumber' | 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated';
 
 interface ColumnDef {
   key: string; // Can be built-in key or custom field key prefixed with 'cf_'
@@ -80,6 +80,7 @@ interface ColumnDef {
 }
 
 const BUILT_IN_COLUMNS: ColumnDef[] = [
+  { key: 'ticketNumber', label: '#', defaultVisible: false, sortable: true },
   { key: 'subject', label: 'Subject', defaultVisible: true, sortable: true },
   { key: 'status', label: 'Status', defaultVisible: true, sortable: true },
   { key: 'priority', label: 'Priority', defaultVisible: true, sortable: true },
@@ -446,6 +447,10 @@ export function TicketTable({
       } else {
         // Built-in columns
         switch (column) {
+          case 'ticketNumber':
+            aVal = a.ticketNumber || 0;
+            bVal = b.ticketNumber || 0;
+            break;
           case 'subject':
             aVal = a.title.toLowerCase();
             bVal = b.title.toLowerCase();
@@ -653,6 +658,8 @@ export function TicketTable({
     const customerName = ticket.customer?.name || (ticket.customFields?.requesterName as string | undefined);
 
     switch (columnKey) {
+      case 'ticketNumber':
+        return <span className="text-muted-foreground">#{ticket.ticketNumber}</span>;
       case 'subject':
         return (
           <Link
