@@ -37,7 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS } from '@/types';
+import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS, Comment } from '@/types';
 import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown, Paperclip, FileIcon, Download, ExternalLink, Upload, Loader2 } from 'lucide-react';
 import { CustomFieldInput } from '@/components/fields';
 
@@ -863,7 +863,21 @@ export default function TicketDetailPage() {
             <CardContent className="space-y-4">
               <CommentEditor brandId={brandId} ticketId={ticketId} />
               <Separator />
-              <CommentThread comments={comments || []} isLoading={commentsLoading} brandId={brandId} customer={ticket.customer} teamMembers={teamMembers} />
+              <CommentThread comments={(() => {
+                const ticketBodyComment: Comment | null = ticket.body ? {
+                  id: 'ticket-body',
+                  ticketId: ticket.id,
+                  authorId: ticket.customerId,
+                  authorType: 'CUSTOMER',
+                  body: ticket.body,
+                  metadata: { isTicketBody: true },
+                  createdAt: ticket.createdAt,
+                  updatedAt: ticket.createdAt,
+                } : null;
+                return ticketBodyComment
+                  ? [ticketBodyComment, ...(comments || [])]
+                  : (comments || []);
+              })()} isLoading={commentsLoading} brandId={brandId} customer={ticket.customer} teamMembers={teamMembers} />
             </CardContent>
           </Card>
         </div>

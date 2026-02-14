@@ -143,6 +143,11 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="font-medium">{getAuthorLabel(comment)}</span>
+              {comment.metadata?.isTicketBody === true && (
+                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-800">
+                  Original Request
+                </span>
+              )}
               {isInternal(comment) && (
                 <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-xs text-yellow-800">
                   Internal
