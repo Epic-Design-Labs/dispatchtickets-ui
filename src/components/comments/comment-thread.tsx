@@ -1,18 +1,20 @@
 'use client';
 
-import { Comment, Customer } from '@/types';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Comment, Customer, TeamMember } from '@/types';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MarkdownContent } from '@/components/ui/markdown-content';
+import { getGravatarUrl } from '@/lib/gravatar';
 
 interface CommentThreadProps {
   comments: Comment[];
   isLoading?: boolean;
   brandId?: string;
   customer?: Customer;
+  teamMembers?: TeamMember[];
 }
 
-export function CommentThread({ comments, isLoading, brandId, customer }: CommentThreadProps) {
+export function CommentThread({ comments, isLoading, brandId, customer, teamMembers = [] }: CommentThreadProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -49,6 +51,39 @@ export function CommentThread({ comments, isLoading, brandId, customer }: Commen
       </div>
     );
   }
+
+  const findMemberForComment = (comment: Comment): TeamMember | undefined => {
+    if (comment.authorType !== 'AGENT') return undefined;
+    // Match by authorId first
+    if (comment.authorId) {
+      const byId = teamMembers.find(m => m.id === comment.authorId);
+      if (byId) return byId;
+    }
+    // Match by authorName in metadata
+    const authorName = comment.metadata?.authorName as string | undefined;
+    if (authorName) {
+      return teamMembers.find(m => {
+        const fullName = [m.firstName, m.lastName].filter(Boolean).join(' ');
+        return fullName === authorName || m.firstName === authorName || m.email === authorName;
+      });
+    }
+    return undefined;
+  };
+
+  const getAuthorAvatarUrl = (comment: Comment): string | undefined => {
+    if (comment.authorType === 'AGENT') {
+      const member = findMemberForComment(comment);
+      if (member?.avatarUrl) return member.avatarUrl;
+      if (member?.email) return getGravatarUrl(member.email, 32);
+      return undefined;
+    }
+    if (comment.authorType === 'CUSTOMER') {
+      if (customer?.avatarUrl) return customer.avatarUrl;
+      if (customer?.email) return getGravatarUrl(customer.email, 32);
+      return undefined;
+    }
+    return undefined;
+  };
 
   const getAuthorLabel = (comment: Comment) => {
     // Check for author name in metadata
@@ -92,6 +127,7 @@ export function CommentThread({ comments, isLoading, brandId, customer }: Commen
       {sortedComments.map((comment) => (
         <div key={comment.id} className="flex gap-3">
           <Avatar className="h-8 w-8">
+            <AvatarImage src={getAuthorAvatarUrl(comment)} alt={getAuthorLabel(comment)} />
             <AvatarFallback
               className={
                 comment.authorType === 'AGENT'
