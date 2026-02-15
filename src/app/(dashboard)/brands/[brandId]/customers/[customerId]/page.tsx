@@ -51,7 +51,8 @@ export default function CustomerDetailPage() {
 
   const { data: customer, isLoading } = useCustomer(brandId, customerId);
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, {
-    // Filter tickets by this customer's email
+    customerId,
+    limit: 100,
   });
   const updateCustomer = useUpdateCustomer(brandId, customerId);
   const deleteCustomer = useDeleteCustomer(brandId);
@@ -60,10 +61,7 @@ export default function CustomerDetailPage() {
   const teamMembers = teamMembersData?.members;
   const bulkAction = useBulkAction(brandId);
 
-  // Filter tickets for this customer
-  const customerTickets = ticketsData?.data?.filter(
-    (t) => (t.customFields?.requesterEmail as string)?.toLowerCase() === customer?.email?.toLowerCase()
-  ) || [];
+  const customerTickets = ticketsData?.data || [];
 
   const handleBulkAction = async (
     action: BulkActionType,
