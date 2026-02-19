@@ -170,7 +170,7 @@ interface BigCommerceStoreCardProps {
 }
 
 export function BigCommerceStoreCard({ brandId }: BigCommerceStoreCardProps) {
-  const { data: stores } = useStores(brandId);
+  const { data: stores } = useStores(brandId, { pollWhileSyncing: true });
   const { data: subscriptionData } = useSubscription();
   const connectStore = useConnectStore(brandId);
   const [showConnect, setShowConnect] = useState(false);

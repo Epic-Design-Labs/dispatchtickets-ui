@@ -19,11 +19,20 @@ export const ecommerceKeys = {
     ['ecommerce', brandId, 'products', params] as const,
 };
 
-export function useStores(brandId: string) {
+export function useStores(brandId: string, options?: { pollWhileSyncing?: boolean }) {
   return useQuery({
     queryKey: ecommerceKeys.stores(brandId),
     queryFn: () => ecommerceApi.getStores(brandId),
     enabled: !!brandId,
+    refetchInterval: options?.pollWhileSyncing
+      ? (query) => {
+          const stores = query.state.data;
+          if (stores?.some((s) => s.status === 'SYNCING' || s.status === 'PENDING_SETUP')) {
+            return 5000;
+          }
+          return false;
+        }
+      : undefined,
   });
 }
 
