@@ -35,6 +35,9 @@ import {
   MessageSquare,
   Timer,
   Settings2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -62,6 +65,27 @@ const DASHBOARD_COLUMNS = [
 ] as const;
 
 const DASHBOARD_COLUMNS_STORAGE_KEY = 'dispatch-dashboard-columns';
+const DASHBOARD_SORT_STORAGE_KEY = 'dispatch-dashboard-sort';
+
+type SortDirection = 'asc' | 'desc' | null;
+
+interface SortState {
+  column: string | null;
+  direction: SortDirection;
+}
+
+// Map dashboard column keys to API sort field names
+const DASHBOARD_COLUMN_TO_API_SORT: Record<string, string> = {
+  subject: 'title',
+  status: 'status',
+  priority: 'priority',
+  customer: 'customer',
+  company: 'company',
+  assignee: 'assignee',
+  category: 'category',
+  created: 'createdAt',
+  updated: 'updatedAt',
+};
 
 function formatTimeAgo(date: string) {
   const now = new Date();
@@ -111,6 +135,44 @@ export default function DashboardPage() {
     try {
       localStorage.setItem(DASHBOARD_COLUMNS_STORAGE_KEY, JSON.stringify(newVisible));
     } catch {}
+  };
+
+  // Sort state
+  const [sortState, setSortState] = useState<SortState>(() => {
+    if (typeof window === 'undefined') return { column: null, direction: null };
+    try {
+      const stored = localStorage.getItem(DASHBOARD_SORT_STORAGE_KEY);
+      if (stored) return JSON.parse(stored) as SortState;
+    } catch {}
+    return { column: null, direction: null };
+  });
+
+  const handleSort = useCallback((column: string) => {
+    setSortState(prev => {
+      let next: SortState;
+      if (prev.column !== column) {
+        next = { column, direction: 'asc' };
+      } else if (prev.direction === 'asc') {
+        next = { column, direction: 'desc' };
+      } else {
+        next = { column: null, direction: null };
+      }
+      try {
+        localStorage.setItem(DASHBOARD_SORT_STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  // Sort icon component
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortState.column !== column) {
+      return <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />;
+    }
+    if (sortState.direction === 'asc') {
+      return <ArrowUp className="ml-1 h-3 w-3" />;
+    }
+    return <ArrowDown className="ml-1 h-3 w-3" />;
   };
 
   // Parse URL params
@@ -181,6 +243,15 @@ export default function DashboardPage() {
       search,
     };
 
+    // Add sort/order if active
+    if (sortState.column && sortState.direction) {
+      const apiSort = DASHBOARD_COLUMN_TO_API_SORT[sortState.column];
+      if (apiSort) {
+        baseFilters.sort = apiSort;
+        baseFilters.order = sortState.direction;
+      }
+    }
+
     switch (view) {
       case 'mine':
         return {
@@ -201,7 +272,7 @@ export default function DashboardPage() {
           status: apiStatus,
         };
     }
-  }, [apiStatus, priority, search, selectedBrands, view, session?.memberId]);
+  }, [apiStatus, priority, search, selectedBrands, view, session?.memberId, sortState]);
 
   const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
   // For "all" view, use global stats; for "mine"/"unassigned", we need to fetch ALL tickets for that view
@@ -269,10 +340,12 @@ export default function DashboardPage() {
   };
 
   // Sort tickets: open first (by newest), then pending (by newest)
+  // Skip grouping when user has an explicit sort active
+  const hasExplicitSort = !!sortState.column;
   const tickets = useMemo(() => {
     const rawTickets = ticketsData?.data || [];
-    // Only apply grouping when showing "active" (default view or explicit active filter)
-    if (!status || status === 'active') {
+    // Only apply grouping when showing "active" and no explicit sort
+    if ((!status || status === 'active') && !hasExplicitSort) {
       const openTickets = rawTickets
         .filter(t => t.status === 'open')
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -281,8 +354,21 @@ export default function DashboardPage() {
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       return [...openTickets, ...pendingTickets];
     }
+
+    // Client-side sort for brand column (not API-sortable)
+    if (sortState.column === 'brand' && sortState.direction) {
+      const dir = sortState.direction === 'asc' ? 1 : -1;
+      return [...rawTickets].sort((a, b) => {
+        const aName = a.brand?.name?.toLowerCase() || '';
+        const bName = b.brand?.name?.toLowerCase() || '';
+        if (aName < bName) return -1 * dir;
+        if (aName > bName) return 1 * dir;
+        return 0;
+      });
+    }
+
     return rawTickets;
-  }, [ticketsData?.data, status]);
+  }, [ticketsData?.data, status, hasExplicitSort, sortState]);
 
   return (
     <div className="h-full overflow-auto p-6">
@@ -450,16 +536,76 @@ export default function DashboardPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              {visibleColumns.brand !== false && <TableHead className="w-[100px]">Brand</TableHead>}
-              {visibleColumns.subject !== false && <TableHead>Subject</TableHead>}
-              {visibleColumns.status !== false && <TableHead className="w-[100px]">Status</TableHead>}
-              {visibleColumns.priority !== false && <TableHead className="w-[100px]">Priority</TableHead>}
-              {visibleColumns.customer !== false && <TableHead className="w-[150px]">Customer</TableHead>}
-              {visibleColumns.company !== false && <TableHead className="w-[150px]">Company</TableHead>}
-              {visibleColumns.assignee !== false && <TableHead className="w-[140px]">Assignee</TableHead>}
-              {visibleColumns.category !== false && <TableHead className="w-[120px]">Category</TableHead>}
-              {visibleColumns.created !== false && <TableHead className="w-[120px]">Created</TableHead>}
-              {visibleColumns.updated !== false && <TableHead className="w-[120px]">Updated</TableHead>}
+              {visibleColumns.brand !== false && (
+                <TableHead className="w-[100px]">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('brand')}>
+                    Brand <SortIcon column="brand" />
+                  </button>
+                </TableHead>
+              )}
+              {visibleColumns.subject !== false && (
+                <TableHead>
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('subject')}>
+                    Subject <SortIcon column="subject" />
+                  </button>
+                </TableHead>
+              )}
+              {visibleColumns.status !== false && (
+                <TableHead className="w-[100px]">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('status')}>
+                    Status <SortIcon column="status" />
+                  </button>
+                </TableHead>
+              )}
+              {visibleColumns.priority !== false && (
+                <TableHead className="w-[100px]">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('priority')}>
+                    Priority <SortIcon column="priority" />
+                  </button>
+                </TableHead>
+              )}
+              {visibleColumns.customer !== false && (
+                <TableHead className="w-[150px]">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('customer')}>
+                    Customer <SortIcon column="customer" />
+                  </button>
+                </TableHead>
+              )}
+              {visibleColumns.company !== false && (
+                <TableHead className="w-[150px]">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('company')}>
+                    Company <SortIcon column="company" />
+                  </button>
+                </TableHead>
+              )}
+              {visibleColumns.assignee !== false && (
+                <TableHead className="w-[140px]">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('assignee')}>
+                    Assignee <SortIcon column="assignee" />
+                  </button>
+                </TableHead>
+              )}
+              {visibleColumns.category !== false && (
+                <TableHead className="w-[120px]">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('category')}>
+                    Category <SortIcon column="category" />
+                  </button>
+                </TableHead>
+              )}
+              {visibleColumns.created !== false && (
+                <TableHead className="w-[120px]">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('created')}>
+                    Created <SortIcon column="created" />
+                  </button>
+                </TableHead>
+              )}
+              {visibleColumns.updated !== false && (
+                <TableHead className="w-[120px]">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('updated')}>
+                    Updated <SortIcon column="updated" />
+                  </button>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>

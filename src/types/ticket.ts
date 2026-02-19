@@ -94,6 +94,8 @@ export interface TicketFilters {
   cursor?: string;
   limit?: number;
   isSpam?: boolean;
+  sort?: string;
+  order?: 'asc' | 'desc';
 }
 
 // Dashboard types for cross-brand tickets

@@ -95,9 +95,9 @@ const BUILT_IN_COLUMNS: ColumnDef[] = [
 const STORAGE_KEY = 'dispatch-ticket-columns-v2'; // v2 to support new format with order
 const SORT_STORAGE_KEY = 'dispatch-ticket-sort';
 
-type SortDirection = 'asc' | 'desc' | null;
+export type SortDirection = 'asc' | 'desc' | null;
 
-interface SortState {
+export interface SortState {
   column: string | null;
   direction: SortDirection;
 }
@@ -178,6 +178,10 @@ interface TicketTableProps {
   tags?: Tag[];
   customFields?: FieldDefinition[];
   columnsPortalElement?: HTMLDivElement | null;
+  /** Controlled sort mode: when provided, sort state is managed externally */
+  sortState?: SortState;
+  /** Callback for sort changes in controlled mode */
+  onSortChange?: (sort: SortState) => void;
 }
 
 export function TicketTable({
@@ -192,7 +196,10 @@ export function TicketTable({
   tags: availableTags = [],
   customFields = [],
   columnsPortalElement,
+  sortState: controlledSortState,
+  onSortChange,
 }: TicketTableProps) {
+  const isControlledSort = !!onSortChange;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
@@ -263,9 +270,9 @@ export function TicketTable({
     });
   }, [allColumns]);
 
-  // Sort state
-  const [sortState, setSortState] = useState<SortState>(() => {
-    if (typeof window === 'undefined') {
+  // Sort state (only used in uncontrolled mode)
+  const [internalSortState, setInternalSortState] = useState<SortState>(() => {
+    if (isControlledSort || typeof window === 'undefined') {
       return { column: null, direction: null };
     }
     const stored = localStorage.getItem(SORT_STORAGE_KEY);
@@ -278,6 +285,9 @@ export function TicketTable({
     }
     return { column: null, direction: null };
   });
+
+  // Use controlled or internal sort state
+  const sortState = isControlledSort ? (controlledSortState || { column: null, direction: null }) : internalSortState;
 
   // New bulk action dialogs state
   const [showAssignDialog, setShowAssignDialog] = useState(false);
@@ -323,10 +333,12 @@ export function TicketTable({
     localStorage.setItem(STORAGE_KEY, JSON.stringify(columnSettings));
   }, [columnSettings]);
 
-  // Persist sort state
+  // Persist sort state (uncontrolled mode only)
   useEffect(() => {
-    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sortState));
-  }, [sortState]);
+    if (!isControlledSort) {
+      localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(internalSortState));
+    }
+  }, [internalSortState, isControlledSort]);
 
   const toggleColumn = useCallback((key: string) => {
     setColumnSettings(prev => {
@@ -355,7 +367,7 @@ export function TicketTable({
   }, []);
 
   const handleSort = useCallback((column: string) => {
-    setSortState(prev => {
+    const computeNext = (prev: SortState): SortState => {
       if (prev.column !== column) {
         return { column, direction: 'asc' };
       }
@@ -363,8 +375,14 @@ export function TicketTable({
         return { column, direction: 'desc' };
       }
       return { column: null, direction: null };
-    });
-  }, []);
+    };
+
+    if (isControlledSort) {
+      onSortChange!(computeNext(sortState));
+    } else {
+      setInternalSortState(prev => computeNext(prev));
+    }
+  }, [isControlledSort, onSortChange, sortState]);
 
   // Column resize handlers
   const handleResizeStart = useCallback((e: React.MouseEvent, columnKey: string, currentWidth: number) => {
@@ -413,8 +431,15 @@ export function TicketTable({
   }, []);
 
   // Sort tickets
+  // In controlled mode, the API handles sorting for built-in columns,
+  // so only client-sort custom field (cf_*) columns.
   const sortedTickets = useMemo(() => {
     if (!sortState.column || !sortState.direction) {
+      return tickets;
+    }
+
+    // In controlled mode, skip client-side sort for built-in columns (API sorted)
+    if (isControlledSort && !sortState.column.startsWith('cf_')) {
       return tickets;
     }
 

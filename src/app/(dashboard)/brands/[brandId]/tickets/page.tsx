@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { TicketFilters as TicketFiltersType } from '@/types';
+import type { SortState } from '@/components/tickets/ticket-table';
 
 function formatDuration(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return '-';
@@ -19,6 +20,22 @@ function formatDuration(minutes: number | null | undefined): string {
   if (minutes < 1440) return `${Math.round(minutes / 60)}h`;
   return `${Math.round(minutes / 1440)}d`;
 }
+
+const SORT_STORAGE_KEY = 'dispatch-brand-ticket-sort';
+
+// Map TicketTable column keys to API sort field names
+const COLUMN_TO_API_SORT: Record<string, string> = {
+  ticketNumber: 'ticketNumber',
+  subject: 'title',
+  status: 'status',
+  priority: 'priority',
+  customer: 'customer',
+  company: 'company',
+  assignee: 'assignee',
+  category: 'category',
+  created: 'createdAt',
+  updated: 'updatedAt',
+};
 
 export default function BrandDashboardPage() {
   const params = useParams();
@@ -31,17 +48,43 @@ export default function BrandDashboardPage() {
     setColumnsPortalElement(node);
   }, []);
 
+  // Sort state with localStorage persistence
+  const [sortState, setSortState] = useState<SortState>(() => {
+    if (typeof window === 'undefined') return { column: null, direction: null };
+    try {
+      const stored = localStorage.getItem(SORT_STORAGE_KEY);
+      if (stored) return JSON.parse(stored) as SortState;
+    } catch {}
+    return { column: null, direction: null };
+  });
+
+  const handleSortChange = useCallback((newSort: SortState) => {
+    setSortState(newSort);
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(newSort));
+    } catch {}
+  }, []);
+
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
   // Fetch all tickets for stats (without filters)
   const { data: allTicketsData, isLoading: allTicketsLoading } = useTickets(brandId, {});
-  // Convert 'all' status to undefined (no filter) for API
+  // Convert 'all' status to undefined (no filter) for API, include sort/order
   const apiFilters = useMemo(() => {
-    if (filters.status === 'all') {
-      const { status, ...rest } = filters;
-      return rest;
+    const base = filters.status === 'all'
+      ? (() => { const { status, ...rest } = filters; return rest; })()
+      : { ...filters };
+
+    // Map column name to API sort field
+    if (sortState.column && sortState.direction) {
+      const apiSort = COLUMN_TO_API_SORT[sortState.column];
+      if (apiSort) {
+        base.sort = apiSort;
+        base.order = sortState.direction;
+      }
     }
-    return filters;
-  }, [filters]);
+
+    return base;
+  }, [filters, sortState]);
   // Fetch filtered tickets for display
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, apiFilters);
 
@@ -141,10 +184,12 @@ export default function BrandDashboardPage() {
   };
 
   // Sort tickets: open first (by newest), then pending (by newest) when showing active
+  // Skip grouping when user has an explicit sort active
+  const hasExplicitSort = !!sortState.column;
   const tickets = useMemo(() => {
     const rawTickets = ticketsData?.data || [];
-    // Only apply grouping when showing "active"
-    if (filters.status === 'active') {
+    // Only apply grouping when showing "active" and no explicit sort
+    if (filters.status === 'active' && !hasExplicitSort) {
       const openTickets = rawTickets
         .filter(t => t.status === 'open')
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -154,7 +199,7 @@ export default function BrandDashboardPage() {
       return [...openTickets, ...pendingTickets];
     }
     return rawTickets;
-  }, [ticketsData?.data, filters.status]);
+  }, [ticketsData?.data, filters.status, hasExplicitSort]);
 
   // Handle clicking on a stat card to filter
   const handleStatClick = (status: string) => {
@@ -343,6 +388,8 @@ export default function BrandDashboardPage() {
           tags={tags}
           customFields={ticketFields}
           columnsPortalElement={columnsPortalElement}
+          sortState={sortState}
+          onSortChange={handleSortChange}
         />
 
         {/* Load More */}
