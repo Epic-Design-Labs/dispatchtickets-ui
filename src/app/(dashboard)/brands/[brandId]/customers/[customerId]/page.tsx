@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Building2, Mail, Plus, Trash2, Bell } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { CreateTicketForCustomerDialog } from '@/components/tickets/create-ticket-for-customer-dialog';
+import { CustomerOrdersCard } from '@/components/ecommerce';
 
 export default function CustomerDetailPage() {
   const params = useParams();
@@ -353,6 +354,9 @@ export default function CustomerDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Orders */}
+          <CustomerOrdersCard brandId={brandId} customerId={customerId} />
         </div>
       </div>
 

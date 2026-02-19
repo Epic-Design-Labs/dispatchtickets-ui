@@ -14,3 +14,4 @@ export * from './audit-log';
 export * from './field';
 export * from './feedback';
 export * from './watcher';
+export * from './ecommerce';

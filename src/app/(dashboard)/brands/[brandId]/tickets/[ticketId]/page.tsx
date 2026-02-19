@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls, useUploadAttachment, useDeleteAttachment } from '@/lib/hooks';
 import { useStatuses } from '@/lib/hooks/use-statuses';
 import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers } from '@/components/tickets';
+import { TicketOrdersSection } from '@/components/ecommerce';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
@@ -1285,6 +1286,9 @@ export default function TicketDetailPage() {
               </div>
             </>
           )}
+
+          {/* Orders */}
+          <TicketOrdersSection brandId={brandId} ticketId={ticketId} />
 
           {/* Ticket History */}
           <Separator />

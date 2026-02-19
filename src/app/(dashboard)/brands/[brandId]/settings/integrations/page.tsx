@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, ShoppingCart, Zap, MessageCircle, Lightbulb } from 'lucide-react';
+import { BigCommerceStoreCard } from '@/components/ecommerce';
 
 export default function IntegrationsPage() {
   const params = useParams();
@@ -59,28 +60,7 @@ export default function IntegrationsPage() {
             </div>
 
             {/* BigCommerce */}
-            <div className="border rounded-lg p-6 relative overflow-hidden">
-              <div className="absolute top-3 right-3">
-                <Badge variant="secondary">Coming Soon</Badge>
-              </div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded bg-[#121118] flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6 text-white" fill="currentColor">
-                    <path d="M12.006 18.985L3.607 12.88l1.876-1.397 6.523 4.854 6.52-4.856 1.877 1.4-8.397 6.104zm0-4.166L3.607 8.714l8.399-6.103 8.397 6.103-8.397 6.105z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold">BigCommerce</h3>
-                  <p className="text-sm text-muted-foreground">Sync orders and customers</p>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                View customer order history, create tickets from orders, and access customer data directly in tickets.
-              </p>
-              <Button variant="outline" className="mt-4 w-full" disabled>
-                Connect BigCommerce
-              </Button>
-            </div>
+            <BigCommerceStoreCard brandId={brandId} />
 
             {/* WooCommerce */}
             <div className="border rounded-lg p-6 relative overflow-hidden">
