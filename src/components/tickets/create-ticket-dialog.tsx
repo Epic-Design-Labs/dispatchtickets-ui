@@ -187,8 +187,8 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
   };
 
   const onSubmit = async (data: CreateTicketForm) => {
-    // Validate custom fields
-    const cfErrors = validateCustomFields(ticketFields, customFieldValues);
+    // Validate custom fields (only those shown on create form)
+    const cfErrors = validateCustomFields(ticketFields, customFieldValues, { createForm: true });
     if (Object.keys(cfErrors).length > 0) {
       setCustomFieldErrors(cfErrors);
       return;
@@ -274,7 +274,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
       <DialogTrigger asChild>
         {children || <Button>Create Ticket</Button>}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Ticket</DialogTitle>
           <DialogDescription>
@@ -644,7 +644,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
               </div>
             )}
 
-            {currentBrandId && ticketFields && ticketFields.filter(f => f.visible).length > 0 && (
+            {currentBrandId && ticketFields && ticketFields.filter(f => f.visible && f.showOnCreate !== false).length > 0 && (
               <div className="border-t pt-4">
                 <h4 className="text-sm font-medium mb-4">Custom Fields</h4>
                 <CustomFieldsFormSection
@@ -653,6 +653,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                   values={customFieldValues}
                   onChange={setCustomFieldValues}
                   errors={customFieldErrors}
+                  createForm
                 />
               </div>
             )}

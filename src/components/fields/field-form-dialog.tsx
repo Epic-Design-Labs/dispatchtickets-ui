@@ -63,6 +63,7 @@ export function FieldFormDialog({
     type: FieldType;
     required: boolean;
     visible: boolean;
+    showOnCreate: boolean;
     description: string;
     placeholder: string;
     options: string[];
@@ -72,6 +73,7 @@ export function FieldFormDialog({
     type: 'text',
     required: false,
     visible: true,
+    showOnCreate: true,
     description: '',
     placeholder: '',
     options: [],
@@ -87,6 +89,7 @@ export function FieldFormDialog({
         type: editingField.type,
         required: editingField.required,
         visible: editingField.visible,
+        showOnCreate: editingField.showOnCreate ?? true,
         description: editingField.description || '',
         placeholder: editingField.placeholder || '',
         options: editingField.options || [],
@@ -98,6 +101,7 @@ export function FieldFormDialog({
         type: 'text',
         required: false,
         visible: true,
+        showOnCreate: true,
         description: '',
         placeholder: '',
         options: [],
@@ -166,6 +170,7 @@ export function FieldFormDialog({
         type: form.type,
         required: form.required,
         visible: form.visible,
+        showOnCreate: form.showOnCreate,
         description: form.description.trim() || undefined,
         placeholder: form.placeholder.trim() || undefined,
         options: ['select', 'multiselect'].includes(form.type) ? form.options : undefined,
@@ -338,6 +343,22 @@ export function FieldFormDialog({
               onCheckedChange={(checked) => setForm({ ...form, visible: checked })}
             />
           </div>
+
+          {entityType === 'ticket' && form.visible && (
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label htmlFor="field-show-on-create" className="cursor-pointer">Show on new ticket form</Label>
+                <p className="text-xs text-muted-foreground">
+                  Include this field when creating new tickets
+                </p>
+              </div>
+              <Switch
+                id="field-show-on-create"
+                checked={form.showOnCreate}
+                onCheckedChange={(checked) => setForm({ ...form, showOnCreate: checked })}
+              />
+            </div>
+          )}
         </div>
 
         <DialogFooter>

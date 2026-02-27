@@ -11,6 +11,8 @@ interface CustomFieldsFormSectionProps {
   values: Record<string, unknown>;
   onChange: (values: Record<string, unknown>) => void;
   errors?: Record<string, string>;
+  /** When true, only show fields with showOnCreate !== false */
+  createForm?: boolean;
 }
 
 export function CustomFieldsFormSection({
@@ -19,6 +21,7 @@ export function CustomFieldsFormSection({
   values,
   onChange,
   errors,
+  createForm,
 }: CustomFieldsFormSectionProps) {
   const { data: fields, isLoading } = useFieldsByEntity(brandId, entityType);
 
@@ -33,8 +36,11 @@ export function CustomFieldsFormSection({
     );
   }
 
-  // Only show visible fields in forms
-  const visibleFields = fields?.filter((f) => f.visible).sort((a, b) => a.sortOrder - b.sortOrder);
+  // Only show visible fields in forms, additionally filter by showOnCreate when in create context
+  const visibleFields = fields
+    ?.filter((f) => f.visible)
+    .filter((f) => !createForm || f.showOnCreate !== false)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   if (!visibleFields || visibleFields.length === 0) {
     return null;
@@ -66,16 +72,18 @@ export function CustomFieldsFormSection({
  * Validate custom field values against field definitions
  */
 export function validateCustomFields(
-  fields: { key: string; label: string; required: boolean; visible: boolean }[] | undefined,
-  values: Record<string, unknown>
+  fields: { key: string; label: string; required: boolean; visible: boolean; showOnCreate?: boolean }[] | undefined,
+  values: Record<string, unknown>,
+  options?: { createForm?: boolean }
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 
   if (!fields) return errors;
 
   for (const field of fields) {
-    // Only validate visible required fields
+    // Only validate visible required fields (respect showOnCreate filter in create context)
     if (field.visible && field.required) {
+      if (options?.createForm && field.showOnCreate === false) continue;
       const value = values[field.key];
       if (value === undefined || value === null || value === '' ||
           (Array.isArray(value) && value.length === 0)) {

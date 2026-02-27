@@ -21,6 +21,7 @@ export interface FieldDefinition {
   placeholder?: string;
   options?: string[];
   visible: boolean;
+  showOnCreate: boolean;
   sortOrder: number;
   source?: string;
   createdAt: string;
@@ -42,6 +43,7 @@ export interface CreateFieldInput {
   placeholder?: string;
   options?: string[];
   visible?: boolean;
+  showOnCreate?: boolean;
   sortOrder?: number;
   source?: string;
 }

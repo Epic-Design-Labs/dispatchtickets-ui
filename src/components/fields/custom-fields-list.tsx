@@ -182,6 +182,11 @@ export function CustomFieldsList({ brandId, entityType }: CustomFieldsListProps)
                               Hidden
                             </Badge>
                           )}
+                          {field.visible && field.showOnCreate === false && entityType === 'ticket' && (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                              Not on create form
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>{FIELD_TYPE_LABELS[field.type]}</span>
