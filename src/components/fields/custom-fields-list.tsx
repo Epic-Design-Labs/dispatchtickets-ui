@@ -177,14 +177,19 @@ export function CustomFieldsList({ brandId, entityType }: CustomFieldsListProps)
                               {field.source}
                             </Badge>
                           )}
-                          {!field.visible && (
+                          {!field.showOnCreate && entityType === 'ticket' && (
                             <Badge variant="outline" className="text-xs text-muted-foreground">
-                              Hidden
+                              Not on create
                             </Badge>
                           )}
-                          {field.visible && field.showOnCreate === false && entityType === 'ticket' && (
+                          {!field.showInTable && (
                             <Badge variant="outline" className="text-xs text-muted-foreground">
-                              Not on create form
+                              Not in table
+                            </Badge>
+                          )}
+                          {!field.showInDetail && (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                              Not in detail
                             </Badge>
                           )}
                         </div>

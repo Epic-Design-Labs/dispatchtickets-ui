@@ -62,8 +62,9 @@ export function FieldFormDialog({
     label: string;
     type: FieldType;
     required: boolean;
-    visible: boolean;
     showOnCreate: boolean;
+    showInTable: boolean;
+    showInDetail: boolean;
     description: string;
     placeholder: string;
     options: string[];
@@ -72,8 +73,9 @@ export function FieldFormDialog({
     label: '',
     type: 'text',
     required: false,
-    visible: true,
     showOnCreate: true,
+    showInTable: true,
+    showInDetail: true,
     description: '',
     placeholder: '',
     options: [],
@@ -83,13 +85,16 @@ export function FieldFormDialog({
 
   useEffect(() => {
     if (editingField) {
+      // Migrate legacy `visible` field for older definitions
+      const legacyVisible = editingField.visible ?? true;
       setForm({
         key: editingField.key,
         label: editingField.label,
         type: editingField.type,
         required: editingField.required,
-        visible: editingField.visible,
-        showOnCreate: editingField.showOnCreate ?? true,
+        showOnCreate: editingField.showOnCreate ?? legacyVisible,
+        showInTable: editingField.showInTable ?? legacyVisible,
+        showInDetail: editingField.showInDetail ?? legacyVisible,
         description: editingField.description || '',
         placeholder: editingField.placeholder || '',
         options: editingField.options || [],
@@ -100,8 +105,9 @@ export function FieldFormDialog({
         label: '',
         type: 'text',
         required: false,
-        visible: true,
         showOnCreate: true,
+        showInTable: true,
+        showInDetail: true,
         description: '',
         placeholder: '',
         options: [],
@@ -169,8 +175,9 @@ export function FieldFormDialog({
         label: form.label.trim(),
         type: form.type,
         required: form.required,
-        visible: form.visible,
         showOnCreate: form.showOnCreate,
+        showInTable: form.showInTable,
+        showInDetail: form.showInDetail,
         description: form.description.trim() || undefined,
         placeholder: form.placeholder.trim() || undefined,
         options: ['select', 'multiselect'].includes(form.type) ? form.options : undefined,
@@ -238,7 +245,9 @@ export function FieldFormDialog({
               onValueChange={(value) => setForm({ ...form, type: value as FieldType })}
             >
               <SelectTrigger id="field-type">
-                <SelectValue placeholder="Select type" />
+                <SelectValue placeholder="Select type">
+                  {FIELD_TYPES.find(t => t.value === form.type)?.label}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {FIELD_TYPES.map((type) => (
@@ -330,35 +339,52 @@ export function FieldFormDialog({
             />
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <Label htmlFor="field-visible" className="cursor-pointer">Visible in UI</Label>
-              <p className="text-xs text-muted-foreground">
-                Show this field in forms and detail views
-              </p>
-            </div>
-            <Switch
-              id="field-visible"
-              checked={form.visible}
-              onCheckedChange={(checked) => setForm({ ...form, visible: checked })}
-            />
-          </div>
-
-          {entityType === 'ticket' && form.visible && (
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div>
-                <Label htmlFor="field-show-on-create" className="cursor-pointer">Show on new ticket form</Label>
-                <p className="text-xs text-muted-foreground">
-                  Include this field when creating new tickets
-                </p>
+          <div className="space-y-1">
+            <Label className="text-sm font-medium">Visibility</Label>
+            <div className="space-y-2">
+              {entityType === 'ticket' && (
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <Label htmlFor="field-show-on-create" className="cursor-pointer">New ticket form</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Show when creating new tickets
+                    </p>
+                  </div>
+                  <Switch
+                    id="field-show-on-create"
+                    checked={form.showOnCreate}
+                    onCheckedChange={(checked) => setForm({ ...form, showOnCreate: checked })}
+                  />
+                </div>
+              )}
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label htmlFor="field-show-in-table" className="cursor-pointer">Table columns</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Available as a column in ticket lists
+                  </p>
+                </div>
+                <Switch
+                  id="field-show-in-table"
+                  checked={form.showInTable}
+                  onCheckedChange={(checked) => setForm({ ...form, showInTable: checked })}
+                />
               </div>
-              <Switch
-                id="field-show-on-create"
-                checked={form.showOnCreate}
-                onCheckedChange={(checked) => setForm({ ...form, showOnCreate: checked })}
-              />
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label htmlFor="field-show-in-detail" className="cursor-pointer">Detail view</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Show in the ticket detail sidebar
+                  </p>
+                </div>
+                <Switch
+                  id="field-show-in-detail"
+                  checked={form.showInDetail}
+                  onCheckedChange={(checked) => setForm({ ...form, showInDetail: checked })}
+                />
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
         <DialogFooter>

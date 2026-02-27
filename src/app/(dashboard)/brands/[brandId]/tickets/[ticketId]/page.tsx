@@ -1193,7 +1193,7 @@ export default function TicketDetailPage() {
           </div>
 
           {/* Custom Fields */}
-          {ticketFields && ticketFields.filter(f => f.visible).length > 0 && (
+          {ticketFields && ticketFields.filter(f => f.showInDetail !== false).length > 0 && (
             <>
               <Separator />
               <div className="space-y-3">
@@ -1203,7 +1203,7 @@ export default function TicketDetailPage() {
                 </div>
                 <div className="space-y-4">
                   {ticketFields
-                    .filter(f => f.visible)
+                    .filter(f => f.showInDetail !== false)
                     .sort((a, b) => a.sortOrder - b.sortOrder)
                     .map((field) => {
                       const customFields = ticket.customFields as Record<string, unknown> || {};

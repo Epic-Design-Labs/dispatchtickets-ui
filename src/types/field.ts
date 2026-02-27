@@ -20,8 +20,11 @@ export interface FieldDefinition {
   description?: string;
   placeholder?: string;
   options?: string[];
-  visible: boolean;
   showOnCreate: boolean;
+  showInTable: boolean;
+  showInDetail: boolean;
+  /** @deprecated Use showOnCreate/showInTable/showInDetail instead */
+  visible?: boolean;
   sortOrder: number;
   source?: string;
   createdAt: string;
@@ -42,8 +45,11 @@ export interface CreateFieldInput {
   description?: string;
   placeholder?: string;
   options?: string[];
-  visible?: boolean;
   showOnCreate?: boolean;
+  showInTable?: boolean;
+  showInDetail?: boolean;
+  /** @deprecated Use showOnCreate/showInTable/showInDetail instead */
+  visible?: boolean;
   sortOrder?: number;
   source?: string;
 }

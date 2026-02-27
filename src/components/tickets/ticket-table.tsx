@@ -210,7 +210,7 @@ export function TicketTable({
   // Build all columns including custom fields
   const allColumns = useMemo<ColumnDef[]>(() => {
     const customFieldColumns: ColumnDef[] = customFields
-      .filter(f => f.visible)
+      .filter(f => f.showInTable !== false)
       .map(f => ({
         key: `cf_${f.key}`,
         label: f.label,

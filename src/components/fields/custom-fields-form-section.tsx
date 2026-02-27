@@ -36,10 +36,9 @@ export function CustomFieldsFormSection({
     );
   }
 
-  // Only show visible fields in forms, additionally filter by showOnCreate when in create context
+  // Filter fields by context: showOnCreate for create forms, showInDetail for detail views
   const visibleFields = fields
-    ?.filter((f) => f.visible)
-    .filter((f) => !createForm || f.showOnCreate !== false)
+    ?.filter((f) => createForm ? f.showOnCreate !== false : f.showInDetail !== false)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   if (!visibleFields || visibleFields.length === 0) {
@@ -72,7 +71,7 @@ export function CustomFieldsFormSection({
  * Validate custom field values against field definitions
  */
 export function validateCustomFields(
-  fields: { key: string; label: string; required: boolean; visible: boolean; showOnCreate?: boolean }[] | undefined,
+  fields: { key: string; label: string; required: boolean; showOnCreate?: boolean; showInDetail?: boolean }[] | undefined,
   values: Record<string, unknown>,
   options?: { createForm?: boolean }
 ): Record<string, string> {
@@ -81,9 +80,12 @@ export function validateCustomFields(
   if (!fields) return errors;
 
   for (const field of fields) {
-    // Only validate visible required fields (respect showOnCreate filter in create context)
-    if (field.visible && field.required) {
-      if (options?.createForm && field.showOnCreate === false) continue;
+    // Only validate required fields that are visible in the current context
+    const isVisible = options?.createForm
+      ? field.showOnCreate !== false
+      : field.showInDetail !== false;
+
+    if (isVisible && field.required) {
       const value = values[field.key];
       if (value === undefined || value === null || value === '' ||
           (Array.isArray(value) && value.length === 0)) {

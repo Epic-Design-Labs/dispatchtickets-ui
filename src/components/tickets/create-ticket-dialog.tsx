@@ -644,7 +644,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
               </div>
             )}
 
-            {currentBrandId && ticketFields && ticketFields.filter(f => f.visible && f.showOnCreate !== false).length > 0 && (
+            {currentBrandId && ticketFields && ticketFields.filter(f => f.showOnCreate !== false).length > 0 && (
               <div className="border-t pt-4">
                 <h4 className="text-sm font-medium mb-4">Custom Fields</h4>
                 <CustomFieldsFormSection
