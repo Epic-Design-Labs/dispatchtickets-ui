@@ -3,11 +3,29 @@
 import { useMemo, useCallback, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useDashboardTickets, useDashboardStats, useBrands, useTeamMembers } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { DashboardTicketFilters, TicketFilters as TicketFiltersType } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -38,6 +56,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  GripVertical,
+  ChevronDown,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -45,13 +65,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 
 type ViewType = 'all' | 'mine' | 'unassigned';
 
 // Column definitions for global dashboard (matching brand view + brand column)
-const DASHBOARD_COLUMNS = [
+interface DashboardColumnDef {
+  key: string;
+  label: string;
+  defaultVisible: boolean;
+}
+
+const DASHBOARD_COLUMNS: DashboardColumnDef[] = [
   { key: 'brand', label: 'Brand', defaultVisible: true },
   { key: 'subject', label: 'Subject', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
@@ -62,9 +87,69 @@ const DASHBOARD_COLUMNS = [
   { key: 'category', label: 'Category', defaultVisible: false },
   { key: 'created', label: 'Created', defaultVisible: true },
   { key: 'updated', label: 'Updated', defaultVisible: false },
-] as const;
+];
 
-const DASHBOARD_COLUMNS_STORAGE_KEY = 'dispatch-dashboard-columns';
+interface DashboardColumnSettings {
+  visible: string[];
+  order: string[];
+}
+
+const DASHBOARD_COLUMNS_STORAGE_KEY = 'dispatch-dashboard-columns-v2';
+
+function getDefaultColumnSettings(): DashboardColumnSettings {
+  return {
+    visible: DASHBOARD_COLUMNS.filter(c => c.defaultVisible).map(c => c.key),
+    order: DASHBOARD_COLUMNS.map(c => c.key),
+  };
+}
+
+// Sortable column item for the settings dropdown
+function SortableDashboardColumnItem({
+  column,
+  isVisible,
+  onToggle,
+}: {
+  column: DashboardColumnDef;
+  isVisible: boolean;
+  onToggle: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: column.key });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded-sm"
+    >
+      <button
+        className="cursor-grab touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </button>
+      <Switch
+        checked={isVisible}
+        onCheckedChange={onToggle}
+        className="scale-75"
+      />
+      <span className="text-sm flex-1">{column.label}</span>
+    </div>
+  );
+}
 const DASHBOARD_SORT_STORAGE_KEY = 'dispatch-dashboard-sort';
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -117,25 +202,83 @@ export default function DashboardPage() {
   const { data: teamMembersData } = useTeamMembers();
   const teamMembers = teamMembersData?.members;
 
-  // Column visibility state
-  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
-    if (typeof window === 'undefined') {
-      return Object.fromEntries(DASHBOARD_COLUMNS.map(c => [c.key, c.defaultVisible]));
-    }
+  // Column settings state (visibility + order)
+  const [columnSettings, setColumnSettings] = useState<DashboardColumnSettings>(() => {
+    if (typeof window === 'undefined') return getDefaultColumnSettings();
     try {
       const saved = localStorage.getItem(DASHBOARD_COLUMNS_STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved) as DashboardColumnSettings;
+        // Ensure any new columns get added to the order
+        const allKeys = DASHBOARD_COLUMNS.map(c => c.key);
+        const missingKeys = allKeys.filter(k => !parsed.order.includes(k));
+        if (missingKeys.length > 0) {
+          parsed.order = [...parsed.order, ...missingKeys];
+        }
+        return parsed;
+      }
     } catch {}
-    return Object.fromEntries(DASHBOARD_COLUMNS.map(c => [c.key, c.defaultVisible]));
+    return getDefaultColumnSettings();
   });
 
-  const toggleColumn = (key: string) => {
-    const newVisible = { ...visibleColumns, [key]: !visibleColumns[key] };
-    setVisibleColumns(newVisible);
+  const saveColumnSettings = useCallback((settings: DashboardColumnSettings) => {
+    setColumnSettings(settings);
     try {
-      localStorage.setItem(DASHBOARD_COLUMNS_STORAGE_KEY, JSON.stringify(newVisible));
+      localStorage.setItem(DASHBOARD_COLUMNS_STORAGE_KEY, JSON.stringify(settings));
     } catch {}
-  };
+  }, []);
+
+  const toggleColumn = useCallback((key: string) => {
+    setColumnSettings(prev => {
+      const isVisible = prev.visible.includes(key);
+      const newSettings = {
+        ...prev,
+        visible: isVisible
+          ? prev.visible.filter(k => k !== key)
+          : [...prev.visible, key],
+      };
+      try {
+        localStorage.setItem(DASHBOARD_COLUMNS_STORAGE_KEY, JSON.stringify(newSettings));
+      } catch {}
+      return newSettings;
+    });
+  }, []);
+
+  // DnD sensors for column reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleColumnDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setColumnSettings(prev => {
+      const oldIndex = prev.order.indexOf(active.id as string);
+      const newIndex = prev.order.indexOf(over.id as string);
+      const newSettings = {
+        ...prev,
+        order: arrayMove(prev.order, oldIndex, newIndex),
+      };
+      try {
+        localStorage.setItem(DASHBOARD_COLUMNS_STORAGE_KEY, JSON.stringify(newSettings));
+      } catch {}
+      return newSettings;
+    });
+  }, []);
+
+  // Build ordered column definitions for the dropdown and table
+  const orderedColumns = useMemo(() => {
+    return columnSettings.order
+      .map(key => DASHBOARD_COLUMNS.find(c => c.key === key))
+      .filter((c): c is DashboardColumnDef => !!c);
+  }, [columnSettings.order]);
+
+  // Visible columns in display order
+  const visibleColumnDefs = useMemo(() => {
+    return orderedColumns.filter(c => columnSettings.visible.includes(c.key));
+  }, [orderedColumns, columnSettings.visible]);
 
   // Sort state
   const [sortState, setSortState] = useState<SortState>(() => {
@@ -511,22 +654,35 @@ export default function DashboardPage() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
-              <Settings2 className="mr-2 h-4 w-4" />
+              <Settings2 className="mr-1 h-4 w-4" />
               Columns
+              <ChevronDown className="ml-1 h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {DASHBOARD_COLUMNS.map(col => (
-              <DropdownMenuCheckboxItem
-                key={col.key}
-                checked={visibleColumns[col.key] !== false}
-                onCheckedChange={() => toggleColumn(col.key)}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleColumnDragEnd}
+            >
+              <SortableContext
+                items={orderedColumns.map(c => c.key)}
+                strategy={verticalListSortingStrategy}
               >
-                {col.label}
-              </DropdownMenuCheckboxItem>
-            ))}
+                <div className="max-h-[300px] overflow-y-auto">
+                  {orderedColumns.map(col => (
+                    <SortableDashboardColumnItem
+                      key={col.key}
+                      column={col}
+                      isVisible={columnSettings.visible.includes(col.key)}
+                      onToggle={() => toggleColumn(col.key)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -536,88 +692,38 @@ export default function DashboardPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              {visibleColumns.brand !== false && (
-                <TableHead className="w-[100px]">
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('brand')}>
-                    Brand <SortIcon column="brand" />
-                  </button>
-                </TableHead>
-              )}
-              {visibleColumns.subject !== false && (
-                <TableHead>
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('subject')}>
-                    Subject <SortIcon column="subject" />
-                  </button>
-                </TableHead>
-              )}
-              {visibleColumns.status !== false && (
-                <TableHead className="w-[100px]">
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('status')}>
-                    Status <SortIcon column="status" />
-                  </button>
-                </TableHead>
-              )}
-              {visibleColumns.priority !== false && (
-                <TableHead className="w-[100px]">
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('priority')}>
-                    Priority <SortIcon column="priority" />
-                  </button>
-                </TableHead>
-              )}
-              {visibleColumns.customer !== false && (
-                <TableHead className="w-[150px]">
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('customer')}>
-                    Customer <SortIcon column="customer" />
-                  </button>
-                </TableHead>
-              )}
-              {visibleColumns.company !== false && (
-                <TableHead className="w-[150px]">
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('company')}>
-                    Company <SortIcon column="company" />
-                  </button>
-                </TableHead>
-              )}
-              {visibleColumns.assignee !== false && (
-                <TableHead className="w-[140px]">
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('assignee')}>
-                    Assignee <SortIcon column="assignee" />
-                  </button>
-                </TableHead>
-              )}
-              {visibleColumns.category !== false && (
-                <TableHead className="w-[120px]">
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('category')}>
-                    Category <SortIcon column="category" />
-                  </button>
-                </TableHead>
-              )}
-              {visibleColumns.created !== false && (
-                <TableHead className="w-[120px]">
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('created')}>
-                    Created <SortIcon column="created" />
-                  </button>
-                </TableHead>
-              )}
-              {visibleColumns.updated !== false && (
-                <TableHead className="w-[120px]">
-                  <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort('updated')}>
-                    Updated <SortIcon column="updated" />
-                  </button>
-                </TableHead>
-              )}
+              {visibleColumnDefs.map(col => {
+                const widthClass = col.key === 'brand' ? 'w-[100px]'
+                  : col.key === 'subject' ? ''
+                  : col.key === 'status' ? 'w-[100px]'
+                  : col.key === 'priority' ? 'w-[100px]'
+                  : col.key === 'customer' ? 'w-[150px]'
+                  : col.key === 'company' ? 'w-[150px]'
+                  : col.key === 'assignee' ? 'w-[140px]'
+                  : col.key === 'category' ? 'w-[120px]'
+                  : col.key === 'created' ? 'w-[120px]'
+                  : col.key === 'updated' ? 'w-[120px]'
+                  : '';
+                return (
+                  <TableHead key={col.key} className={widthClass}>
+                    <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort(col.key)}>
+                      {col.label} <SortIcon column={col.key} />
+                    </button>
+                  </TableHead>
+                );
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
             {ticketsLoading ? (
               <TableRow>
-                <TableCell colSpan={Object.values(visibleColumns).filter(v => v !== false).length || 7} className="text-center py-8">
+                <TableCell colSpan={visibleColumnDefs.length || 7} className="text-center py-8">
                   <div className="text-muted-foreground">Loading tickets...</div>
                 </TableCell>
               </TableRow>
             ) : tickets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={Object.values(visibleColumns).filter(v => v !== false).length || 7} className="text-center py-8">
+                <TableCell colSpan={visibleColumnDefs.length || 7} className="text-center py-8">
                   <div className="text-muted-foreground">No tickets found</div>
                 </TableCell>
               </TableRow>
@@ -634,128 +740,107 @@ export default function DashboardPage() {
                     router.push(`/brands/${ticket.brandId}/tickets/${ticket.id}`)
                   }
                 >
-                  {visibleColumns.brand !== false && (
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {ticket.brand.iconUrl ? (
-                          <img
-                            src={ticket.brand.iconUrl}
-                            alt={ticket.brand.name}
-                            className="w-5 h-5 rounded"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground">
-                            {ticket.brand.ticketPrefix?.charAt(0) || 'B'}
-                          </div>
-                        )}
-                        <Badge
-                          variant="outline"
-                          className="font-mono text-xs"
-                        >
-                          {ticket.brand.ticketPrefix}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                  )}
-                  {visibleColumns.subject !== false && (
-                    <TableCell>
-                      <div className="font-medium truncate max-w-[400px]">
-                        {ticket.title}
-                      </div>
-                    </TableCell>
-                  )}
-                  {visibleColumns.status !== false && (
-                    <TableCell>
-                      {ticket.status && (
+                  {visibleColumnDefs.map(col => (
+                    <TableCell key={col.key}>
+                      {col.key === 'brand' && (
+                        <div className="flex items-center gap-2">
+                          {ticket.brand.iconUrl ? (
+                            <img
+                              src={ticket.brand.iconUrl}
+                              alt={ticket.brand.name}
+                              className="w-5 h-5 rounded"
+                            />
+                          ) : (
+                            <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground">
+                              {ticket.brand.ticketPrefix?.charAt(0) || 'B'}
+                            </div>
+                          )}
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {ticket.brand.ticketPrefix}
+                          </Badge>
+                        </div>
+                      )}
+                      {col.key === 'subject' && (
+                        <div className="font-medium truncate max-w-[400px]">
+                          {ticket.title}
+                        </div>
+                      )}
+                      {col.key === 'status' && ticket.status && (
                         <StatusBadge status={ticket.status} statusRef={ticket.statusRef} />
                       )}
-                    </TableCell>
-                  )}
-                  {visibleColumns.priority !== false && (
-                    <TableCell>
-                      {ticket.priority ? (
-                        <PriorityBadge priority={ticket.priority as 'low' | 'normal' | 'medium' | 'high' | 'urgent'} />
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
+                      {col.key === 'priority' && (
+                        ticket.priority ? (
+                          <PriorityBadge priority={ticket.priority as 'low' | 'normal' | 'medium' | 'high' | 'urgent'} />
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )
+                      )}
+                      {col.key === 'customer' && (
+                        <div className="text-sm truncate">
+                          {ticket.customer?.name || ticket.customer?.email || '-'}
+                        </div>
+                      )}
+                      {col.key === 'company' && (
+                        <span className="text-sm text-muted-foreground truncate">
+                          {ticket.customer?.company?.name || '-'}
+                        </span>
+                      )}
+                      {col.key === 'assignee' && (
+                        assignee ? (() => {
+                          const name = [assignee.firstName, assignee.lastName].filter(Boolean).join(' ');
+                          const displayName = name || assignee.email;
+                          const initials = name
+                            ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                            : assignee.email.slice(0, 2).toUpperCase();
+                          return (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Avatar className="h-7 w-7 cursor-default">
+                                    <AvatarImage src={assignee.avatarUrl || getGravatarUrl(assignee.email)} alt={displayName} />
+                                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                                  </Avatar>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="text-sm">
+                                    <p className="font-medium">{displayName}</p>
+                                    {name && name !== assignee.email && (
+                                      <p className="text-muted-foreground">{assignee.email}</p>
+                                    )}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        })() : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )
+                      )}
+                      {col.key === 'category' && (
+                        ticket.category ? (
+                          <Badge variant="outline" className="text-xs">
+                            <span
+                              className="w-2 h-2 rounded-full mr-1.5"
+                              style={{ backgroundColor: ticket.category.color || '#6366f1' }}
+                            />
+                            {ticket.category.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )
+                      )}
+                      {col.key === 'created' && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatTimeAgo(ticket.createdAt)}
+                        </span>
+                      )}
+                      {col.key === 'updated' && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatTimeAgo(ticket.updatedAt)}
+                        </span>
                       )}
                     </TableCell>
-                  )}
-                  {visibleColumns.customer !== false && (
-                    <TableCell>
-                      <div className="text-sm truncate">
-                        {ticket.customer?.name || ticket.customer?.email || '-'}
-                      </div>
-                    </TableCell>
-                  )}
-                  {visibleColumns.company !== false && (
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground truncate">
-                        {ticket.customer?.company?.name || '-'}
-                      </span>
-                    </TableCell>
-                  )}
-                  {visibleColumns.assignee !== false && (
-                    <TableCell>
-                      {assignee ? (() => {
-                        const name = [assignee.firstName, assignee.lastName].filter(Boolean).join(' ');
-                        const displayName = name || assignee.email;
-                        const initials = name
-                          ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-                          : assignee.email.slice(0, 2).toUpperCase();
-                        return (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Avatar className="h-7 w-7 cursor-default">
-                                  <AvatarImage src={assignee.avatarUrl || getGravatarUrl(assignee.email)} alt={displayName} />
-                                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                                </Avatar>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <div className="text-sm">
-                                  <p className="font-medium">{displayName}</p>
-                                  {name && name !== assignee.email && (
-                                    <p className="text-muted-foreground">{assignee.email}</p>
-                                  )}
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        );
-                      })() : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                  )}
-                  {visibleColumns.category !== false && (
-                    <TableCell>
-                      {ticket.category ? (
-                        <Badge variant="outline" className="text-xs">
-                          <span
-                            className="w-2 h-2 rounded-full mr-1.5"
-                            style={{ backgroundColor: ticket.category.color || '#6366f1' }}
-                          />
-                          {ticket.category.name}
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                  )}
-                  {visibleColumns.created !== false && (
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {formatTimeAgo(ticket.createdAt)}
-                      </span>
-                    </TableCell>
-                  )}
-                  {visibleColumns.updated !== false && (
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {formatTimeAgo(ticket.updatedAt)}
-                      </span>
-                    </TableCell>
-                  )}
+                  ))}
                 </TableRow>
                 );
               })
