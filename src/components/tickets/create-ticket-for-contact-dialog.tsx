@@ -53,20 +53,20 @@ const priorityColors: Record<string, string> = {
 
 type CreateTicketForm = z.infer<typeof createTicketSchema>;
 
-interface CreateTicketForCustomerDialogProps {
+interface CreateTicketForContactDialogProps {
   brandId: string;
-  customer: {
+  contact: {
     name: string;
     email: string;
   };
   children?: React.ReactNode;
 }
 
-export function CreateTicketForCustomerDialog({
+export function CreateTicketForContactDialog({
   brandId,
-  customer,
+  contact,
   children,
-}: CreateTicketForCustomerDialogProps) {
+}: CreateTicketForContactDialogProps) {
   const [open, setOpen] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
   const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
@@ -113,8 +113,8 @@ export function CreateTicketForCustomerDialog({
         assigneeId: data.assigneeId === 'unassigned' ? undefined : data.assigneeId,
         source: 'web' as const,
         customFields: {
-          requesterName: customer.name,
-          requesterEmail: customer.email,
+          requesterName: contact.name,
+          requesterEmail: contact.email,
           ...customFieldValues,
         },
         notifyCustomer: data.notifyCustomer,
@@ -137,17 +137,17 @@ export function CreateTicketForCustomerDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create Ticket for {customer.name || customer.email}</DialogTitle>
+          <DialogTitle>Create Ticket for {contact.name || contact.email}</DialogTitle>
           <DialogDescription>
-            Create a new support ticket for this customer.
+            Create a new support ticket for this contact.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Customer info display */}
+            {/* Contact info display */}
             <div className="rounded-md border bg-muted/50 p-3 text-sm">
-              <div className="font-medium">{customer.name || 'No name'}</div>
-              <div className="text-muted-foreground">{customer.email}</div>
+              <div className="font-medium">{contact.name || 'No name'}</div>
+              <div className="text-muted-foreground">{contact.email}</div>
             </div>
 
             <FormField
@@ -260,9 +260,9 @@ export function CreateTicketForCustomerDialog({
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel>Notify customer</FormLabel>
+                    <FormLabel>Notify contact</FormLabel>
                     <FormDescription>
-                      Send a confirmation email to the customer about this ticket
+                      Send a confirmation email to the contact about this ticket
                     </FormDescription>
                   </div>
                 </FormItem>

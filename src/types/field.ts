@@ -9,7 +9,7 @@ export type FieldType =
   | 'array'
   | 'object';
 
-export type EntityType = 'ticket' | 'customer' | 'company';
+export type EntityType = 'ticket' | 'contact' | 'company';
 
 export interface FieldDefinition {
   key: string;
@@ -32,7 +32,7 @@ export interface FieldDefinition {
 
 export interface FieldDefinitions {
   ticket: FieldDefinition[];
-  customer: FieldDefinition[];
+  contact: FieldDefinition[];
   company: FieldDefinition[];
 }
 

@@ -1,4 +1,4 @@
-import { Customer } from './customer';
+import { Contact } from './contact';
 import { Category } from './category';
 import { Tag } from './tag';
 import { TicketStatusObject } from './status';
@@ -14,7 +14,7 @@ export type CloseReason = 'no_response' | 'out_of_scope' | 'customer_left' | 'du
 export const CLOSE_REASONS: { value: CloseReason; label: string }[] = [
   { value: 'no_response', label: 'No Response' },
   { value: 'out_of_scope', label: 'Out of Scope' },
-  { value: 'customer_left', label: 'Customer Left' },
+  { value: 'customer_left', label: 'Contact Left' },
   { value: 'duplicate', label: 'Duplicate' },
 ];
 
@@ -34,7 +34,7 @@ export interface Ticket {
   sourceData?: Record<string, unknown>;
   assigneeId?: string;
   customerId?: string;
-  customer?: Customer;
+  customer?: Contact;
   categoryId?: string | null;
   category?: Category | null;
   tags?: Tag[];

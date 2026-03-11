@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDateTime } from '@/lib/utils';
 import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -139,7 +140,7 @@ export function LinkOrderDialog({
                         <p className="text-xs text-muted-foreground truncate">
                           {order.customerName || order.customerEmail || 'Unknown customer'}
                           {order.platformCreatedAt &&
-                            ` \u00b7 ${new Date(order.platformCreatedAt).toLocaleDateString()}`}
+                            ` \u00b7 ${formatDateTime(order.platformCreatedAt)}`}
                         </p>
                       </div>
                     </CommandItem>

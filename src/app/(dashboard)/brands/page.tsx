@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useBrands, useCreateBrand, useUsage } from '@/lib/hooks';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 
@@ -34,6 +35,13 @@ export default function BrandsPage() {
   const createBrand = useCreateBrand();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState('');
+
+  // Auto-select when only one brand exists
+  useEffect(() => {
+    if (!isLoading && brands && brands.length === 1) {
+      router.replace(`/brands/${brands[0].id}/tickets`);
+    }
+  }, [isLoading, brands, router]);
 
   // Check if user is at their brand limit
   const isAtBrandLimit = usageData?.brandLimit !== null &&
@@ -141,7 +149,7 @@ export default function BrandsPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      Created {new Date(brand.createdAt).toLocaleDateString()}
+                      Created {formatDateTime(brand.createdAt)}
                     </p>
                   </CardContent>
                 </Card>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useStores, useCustomerOrders } from '@/lib/hooks';
+import { useStores, useContactOrders } from '@/lib/hooks';
 import { OrderStatusBadge } from './order-status-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,11 +12,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { formatDateTime } from '@/lib/utils';
 import { ExternalLink } from 'lucide-react';
 
-interface CustomerOrdersCardProps {
+interface ContactOrdersCardProps {
   brandId: string;
-  customerId: string;
+  contactId: string;
 }
 
 function formatCurrency(amount: string, currency: string): string {
@@ -26,14 +27,14 @@ function formatCurrency(amount: string, currency: string): string {
   }).format(parseFloat(amount));
 }
 
-export function CustomerOrdersCard({
+export function ContactOrdersCard({
   brandId,
-  customerId,
-}: CustomerOrdersCardProps) {
+  contactId,
+}: ContactOrdersCardProps) {
   const { data: stores, isLoading: storesLoading } = useStores(brandId);
-  const { data: orders, isLoading: ordersLoading } = useCustomerOrders(
+  const { data: orders, isLoading: ordersLoading } = useContactOrders(
     brandId,
-    customerId
+    contactId
   );
 
   const hasStores =
@@ -95,9 +96,7 @@ export function CustomerOrdersCard({
                     </TableCell>
                     <TableCell>
                       {order.platformCreatedAt
-                        ? new Date(
-                            order.platformCreatedAt
-                          ).toLocaleDateString()
+                        ? formatDateTime(order.platformCreatedAt)
                         : '—'}
                     </TableCell>
                     <TableCell>
@@ -119,7 +118,7 @@ export function CustomerOrdersCard({
           </Table>
         ) : (
           <p className="text-center text-muted-foreground py-8">
-            No orders found for this customer
+            No orders found for this contact
           </p>
         )}
       </CardContent>

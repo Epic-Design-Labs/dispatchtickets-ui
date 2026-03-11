@@ -41,7 +41,7 @@ import Link from 'next/link';
 const entityIcons: Record<string, React.ElementType> = {
   ticket: Ticket,
   comment: MessageSquare,
-  customer: User,
+  contact: User,
   attachment: Paperclip,
   tag: Tag,
   category: FolderOpen,
@@ -56,7 +56,7 @@ const eventColors: Record<string, string> = {
   'ticket.merged': 'bg-purple-500',
   'ticket.spam_marked': 'bg-orange-500',
   'comment.created': 'bg-green-400',
-  'customer.created': 'bg-green-400',
+  'contact.created': 'bg-green-400',
   default: 'bg-gray-500',
 };
 
@@ -366,7 +366,7 @@ export default function ActivityLogPage() {
             <SelectItem value="all">All types</SelectItem>
             <SelectItem value="ticket">Tickets</SelectItem>
             <SelectItem value="comment">Comments</SelectItem>
-            <SelectItem value="customer">Customers</SelectItem>
+            <SelectItem value="contact">Contacts</SelectItem>
             <SelectItem value="attachment">Attachments</SelectItem>
             <SelectItem value="category">Categories</SelectItem>
             <SelectItem value="tag">Tags</SelectItem>

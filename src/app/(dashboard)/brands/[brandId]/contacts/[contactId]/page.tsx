@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  useCustomer,
-  useUpdateCustomer,
-  useDeleteCustomer,
+  useContact,
+  useUpdateContact,
+  useDeleteContact,
   useTickets,
   useFieldsByEntity,
   useBulkAction,
@@ -33,16 +33,17 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { formatDateTime } from '@/lib/utils';
 import { ArrowLeft, Building2, Mail, Plus, Trash2, Bell } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { CreateTicketForCustomerDialog } from '@/components/tickets/create-ticket-for-customer-dialog';
-import { CustomerOrdersCard } from '@/components/ecommerce';
+import { CreateTicketForContactDialog } from '@/components/tickets/create-ticket-for-contact-dialog';
+import { ContactOrdersCard } from '@/components/ecommerce';
 
-export default function CustomerDetailPage() {
+export default function ContactDetailPage() {
   const params = useParams();
   const router = useRouter();
   const brandId = params.brandId as string;
-  const customerId = params.customerId as string;
+  const contactId = params.contactId as string;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -50,19 +51,19 @@ export default function CustomerDetailPage() {
   const [editCompanyName, setEditCompanyName] = useState<string | undefined>();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const { data: customer, isLoading } = useCustomer(brandId, customerId);
+  const { data: contact, isLoading } = useContact(brandId, contactId);
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, {
-    customerId,
+    customerId: contactId,
     limit: 100,
   });
-  const updateCustomer = useUpdateCustomer(brandId, customerId);
-  const deleteCustomer = useDeleteCustomer(brandId);
+  const updateContact = useUpdateContact(brandId, contactId);
+  const deleteContact = useDeleteContact(brandId);
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
   const { data: teamMembersData } = useTeamMembers({ brandId });
   const teamMembers = teamMembersData?.members;
   const bulkAction = useBulkAction(brandId);
 
-  const customerTickets = ticketsData?.data || [];
+  const contactTickets = ticketsData?.data || [];
 
   const handleBulkAction = async (
     action: BulkActionType,
@@ -92,39 +93,39 @@ export default function CustomerDetailPage() {
   };
 
   const startEditing = () => {
-    setEditName(customer?.name || '');
-    setEditCompanyId(customer?.companyId);
-    setEditCompanyName(customer?.company?.name);
+    setEditName(contact?.name || '');
+    setEditCompanyId(contact?.companyId);
+    setEditCompanyName(contact?.company?.name);
     setIsEditing(true);
   };
 
   const handleSave = async () => {
     try {
-      await updateCustomer.mutateAsync({
+      await updateContact.mutateAsync({
         name: editName || undefined,
         companyId: editCompanyId || undefined,
       });
-      toast.success('Customer updated');
+      toast.success('Contact updated');
       setIsEditing(false);
     } catch {
-      toast.error('Failed to update customer');
+      toast.error('Failed to update contact');
     }
   };
 
   const handleDelete = async () => {
     try {
-      await deleteCustomer.mutateAsync(customerId);
-      toast.success('Customer deleted');
-      router.push(`/brands/${brandId}/customers`);
+      await deleteContact.mutateAsync(contactId);
+      toast.success('Contact deleted');
+      router.push(`/brands/${brandId}/contacts`);
     } catch {
-      toast.error('Failed to delete customer');
+      toast.error('Failed to delete contact');
     }
   };
 
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <Header title="Customer" />
+        <Header title="Contact" />
         <div className="flex-1 p-4 md:p-6">
           <Skeleton className="h-8 w-64 mb-6" />
           <div className="grid gap-6 lg:grid-cols-3">
@@ -142,12 +143,12 @@ export default function CustomerDetailPage() {
     );
   }
 
-  if (!customer) {
+  if (!contact) {
     return (
       <div className="flex flex-col">
-        <Header title="Customer Not Found" />
+        <Header title="Contact Not Found" />
         <div className="flex flex-1 flex-col items-center justify-center p-6">
-          <p className="text-lg font-medium">Customer not found</p>
+          <p className="text-lg font-medium">Contact not found</p>
           <Button className="mt-4" onClick={() => router.back()}>
             Go Back
           </Button>
@@ -158,25 +159,25 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title={customer.name || customer.email} />
+      <Header title={contact.name || contact.email} />
       <div className="flex-1 p-4 md:p-6">
         {/* Breadcrumb */}
         <div className="mb-6">
           <Link
-            href={`/brands/${brandId}/customers`}
+            href={`/brands/${brandId}/contacts`}
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Customers
+            Back to Contacts
           </Link>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Customer Info */}
+          {/* Contact Info */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Customer Info</CardTitle>
+                <CardTitle>Contact Info</CardTitle>
                 {!isEditing ? (
                   <Button variant="outline" size="sm" onClick={startEditing}>
                     Edit
@@ -193,7 +194,7 @@ export default function CustomerDetailPage() {
                     <Button
                       size="sm"
                       onClick={handleSave}
-                      disabled={updateCustomer.isPending}
+                      disabled={updateContact.isPending}
                     >
                       Save
                     </Button>
@@ -205,10 +206,10 @@ export default function CustomerDetailPage() {
               {/* Avatar & Name */}
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={customer.avatarUrl || undefined} />
+                  <AvatarImage src={contact.avatarUrl || undefined} />
                   <AvatarFallback className="text-lg">
-                    {customer.name?.slice(0, 2).toUpperCase() ||
-                      customer.email.slice(0, 2).toUpperCase()}
+                    {contact.name?.slice(0, 2).toUpperCase() ||
+                      contact.email.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
@@ -219,16 +220,16 @@ export default function CustomerDetailPage() {
                         id="name"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        placeholder="Customer name"
+                        placeholder="Contact name"
                       />
                     </div>
                   ) : (
                     <>
                       <p className="text-lg font-medium">
-                        {customer.name || 'No name'}
+                        {contact.name || 'No name'}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {customer._count?.tickets || 0} tickets
+                        {contact._count?.tickets || 0} tickets
                       </p>
                     </>
                   )}
@@ -238,7 +239,7 @@ export default function CustomerDetailPage() {
               {/* Email */}
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{customer.email}</span>
+                <span>{contact.email}</span>
               </div>
 
               {/* Company */}
@@ -258,12 +259,12 @@ export default function CustomerDetailPage() {
                     }}
                     placeholder="Search or create company..."
                   />
-                ) : customer.company ? (
+                ) : contact.company ? (
                   <Link
-                    href={`/brands/${brandId}/companies/${customer.company.id}`}
+                    href={`/brands/${brandId}/companies/${contact.company.id}`}
                     className="text-primary hover:underline"
                   >
-                    {customer.company.name}
+                    {contact.company.name}
                   </Link>
                 ) : (
                   <p className="text-muted-foreground">No company assigned</p>
@@ -281,23 +282,23 @@ export default function CustomerDetailPage() {
                     Receive email updates for ticket activity
                   </p>
                   <Switch
-                    checked={customer.notifyEmail !== false}
+                    checked={contact.notifyEmail !== false}
                     onCheckedChange={async (checked) => {
                       try {
-                        await updateCustomer.mutateAsync({ notifyEmail: checked });
+                        await updateContact.mutateAsync({ notifyEmail: checked });
                         toast.success(checked ? 'Notifications enabled' : 'Notifications disabled');
                       } catch {
                         toast.error('Failed to update notification setting');
                       }
                     }}
-                    disabled={updateCustomer.isPending}
+                    disabled={updateContact.isPending}
                   />
                 </div>
               </div>
 
               {/* Created */}
               <div className="text-sm text-muted-foreground">
-                Customer since {new Date(customer.createdAt).toLocaleDateString()}
+                Contact since {formatDateTime(contact.createdAt)}
               </div>
 
               {/* Delete */}
@@ -308,7 +309,7 @@ export default function CustomerDetailPage() {
                 onClick={() => setShowDeleteDialog(true)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete Customer
+                Delete Contact
               </Button>
             </CardContent>
           </Card>
@@ -320,31 +321,31 @@ export default function CustomerDetailPage() {
                 <div>
                   <CardTitle>Tickets</CardTitle>
                   <CardDescription>
-                    All tickets from this customer
+                    All tickets from this contact
                   </CardDescription>
                 </div>
-                <CreateTicketForCustomerDialog
+                <CreateTicketForContactDialog
                   brandId={brandId}
-                  customer={{
-                    name: customer.name || '',
-                    email: customer.email,
+                  contact={{
+                    name: contact.name || '',
+                    email: contact.email,
                   }}
                 >
                   <Button size="sm">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Ticket
                   </Button>
-                </CreateTicketForCustomerDialog>
+                </CreateTicketForContactDialog>
               </div>
             </CardHeader>
             <CardContent>
-              {customerTickets.length === 0 && !ticketsLoading ? (
+              {contactTickets.length === 0 && !ticketsLoading ? (
                 <p className="text-center text-muted-foreground py-8">
-                  No tickets from this customer yet
+                  No tickets from this contact yet
                 </p>
               ) : (
                 <TicketTable
-                  tickets={customerTickets}
+                  tickets={contactTickets}
                   brandId={brandId}
                   isLoading={ticketsLoading}
                   customFields={ticketFields}
@@ -356,7 +357,7 @@ export default function CustomerDetailPage() {
           </Card>
 
           {/* Orders */}
-          <CustomerOrdersCard brandId={brandId} customerId={customerId} />
+          <ContactOrdersCard brandId={brandId} contactId={contactId} />
         </div>
       </div>
 
@@ -364,9 +365,9 @@ export default function CustomerDetailPage() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this customer? This will unlink them from all their tickets but won&apos;t delete the tickets themselves.
+              Are you sure you want to delete this contact? This will unlink them from all their tickets but won&apos;t delete the tickets themselves.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

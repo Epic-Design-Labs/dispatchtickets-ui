@@ -1,6 +1,7 @@
 'use client';
 
-import { Comment, Customer, TeamMember } from '@/types';
+import { Comment, Contact, TeamMember } from '@/types';
+import { formatDateTime } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MarkdownContent } from '@/components/ui/markdown-content';
@@ -10,7 +11,7 @@ interface CommentThreadProps {
   comments: Comment[];
   isLoading?: boolean;
   brandId?: string;
-  customer?: Customer;
+  customer?: Contact;
   teamMembers?: TeamMember[];
 }
 
@@ -96,7 +97,7 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
     // Use customer name or email if available
     if (customer?.name) return customer.name;
     if (customer?.email) return customer.email;
-    return comment.authorId || 'Customer';
+    return comment.authorId || 'Contact';
   };
 
   const getAuthorInitial = (comment: Comment) => {
@@ -154,7 +155,7 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
                 </span>
               )}
               <span className="text-xs text-muted-foreground">
-                {new Date(comment.createdAt).toLocaleString()}
+                {formatDateTime(comment.createdAt)}
               </span>
             </div>
             <MarkdownContent

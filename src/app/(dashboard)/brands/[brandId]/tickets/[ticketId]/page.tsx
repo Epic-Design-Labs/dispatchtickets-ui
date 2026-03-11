@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateCustomer, useTickets, useTicketNavigation, useTeamMembers, useCustomerTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls, useUploadAttachment, useDeleteAttachment } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateContact, useTickets, useTicketNavigation, useTeamMembers, useContactTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls, useUploadAttachment, useDeleteAttachment } from '@/lib/hooks';
 import { useStatuses } from '@/lib/hooks/use-statuses';
 import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers } from '@/components/tickets';
 import { TicketOrdersSection } from '@/components/ecommerce';
@@ -40,6 +40,7 @@ import {
 import { toast } from 'sonner';
 import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS, Comment } from '@/types';
 import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown, Paperclip, FileIcon, Download, ExternalLink, Upload, Loader2 } from 'lucide-react';
+import { formatDateTime } from '@/lib/utils';
 import { CustomFieldInput } from '@/components/fields';
 
 export default function TicketDetailPage() {
@@ -67,14 +68,14 @@ export default function TicketDetailPage() {
   const updateTicket = useUpdateTicket(brandId, ticketId);
   const deleteTicket = useDeleteTicket(brandId);
   const markAsSpam = useMarkAsSpam(brandId);
-  const updateCustomer = useUpdateCustomer(brandId, ticket?.customerId || '');
+  const updateContact = useUpdateContact(brandId, ticket?.customerId || '');
   const mergeTickets = useMergeTickets(brandId);
-  const { data: customerTicketsData, isLoading: customerTicketsLoading } = useCustomerTickets(
+  const { data: contactTicketsData, isLoading: contactTicketsLoading } = useContactTickets(
     brandId,
     ticket?.customerId,
     ticketId
   );
-  const otherTickets = customerTicketsData?.data || [];
+  const otherTickets = contactTicketsData?.data || [];
 
   // Categories, tags, and statuses
   const { data: categories } = useCategories(brandId);
@@ -335,10 +336,10 @@ export default function TicketDetailPage() {
   const handleCompanyChange = async (companyId: string | undefined) => {
     if (!ticket?.customerId) return;
     try {
-      await updateCustomer.mutateAsync({
+      await updateContact.mutateAsync({
         companyId: companyId,
       });
-      toast.success('Customer company updated');
+      toast.success('Contact company updated');
     } catch {
       toast.error('Failed to update company');
     }
@@ -586,7 +587,7 @@ export default function TicketDetailPage() {
                   <Clock className="h-3 md:h-3.5 w-3 md:w-3.5" />
                   <span>{getTicketAge()}</span>
                   <span className="hidden sm:inline">•</span>
-                  <span className="hidden sm:inline">{new Date(ticket.createdAt).toLocaleDateString()}</span>
+                  <span className="hidden sm:inline">{formatDateTime(ticket.createdAt)}</span>
                 </div>
 
                 {/* Source indicator */}
@@ -885,12 +886,12 @@ export default function TicketDetailPage() {
 
         {/* Right sidebar - Grey background (full width on mobile) */}
         <div className="w-full md:w-80 bg-gray-50 border-t md:border-t-0 md:border-l p-4 md:p-6 space-y-6 overflow-visible md:overflow-auto">
-          {/* Customer Section */}
+          {/* Contact Section */}
           {ticket.customer && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <User className="h-4 w-4" />
-                Customer
+                Contact
               </div>
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-medium">
@@ -898,7 +899,7 @@ export default function TicketDetailPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <Link
-                    href={`/brands/${brandId}/customers/${ticket.customer.id}`}
+                    href={`/brands/${brandId}/contacts/${ticket.customer.id}`}
                     className="font-medium hover:underline block truncate"
                   >
                     {ticket.customer.name || 'Unknown'}
@@ -914,7 +915,7 @@ export default function TicketDetailPage() {
                   value={ticket.customer.companyId}
                   companyName={ticket.customer.company?.name}
                   onChange={handleCompanyChange}
-                  disabled={updateCustomer.isPending}
+                  disabled={updateContact.isPending}
                   placeholder="Set company..."
                   variant="inline"
                 />
@@ -1173,12 +1174,12 @@ export default function TicketDetailPage() {
 
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Created</span>
-              <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
+              <span>{formatDateTime(ticket.createdAt)}</span>
             </div>
 
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Updated</span>
-              <span>{new Date(ticket.updatedAt).toLocaleDateString()}</span>
+              <span>{formatDateTime(ticket.updatedAt)}</span>
             </div>
 
             {ticket.status === 'closed' && ticket.closeReason && (
@@ -1221,7 +1222,7 @@ export default function TicketDetailPage() {
             </>
           )}
 
-          {/* Other tickets from this customer */}
+          {/* Other tickets from this contact */}
           {ticket.customer && otherTickets.length > 0 && (
             <>
               <Separator />
@@ -1243,7 +1244,7 @@ export default function TicketDetailPage() {
                     </Button>
                   )}
                 </div>
-                {customerTicketsLoading ? (
+                {contactTicketsLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-3/4" />
@@ -1266,16 +1267,16 @@ export default function TicketDetailPage() {
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium truncate">{t.title}</p>
                               <p className="text-xs text-muted-foreground">
-                                {new Date(t.createdAt).toLocaleDateString()}
+                                {formatDateTime(t.createdAt)}
                               </p>
                             </div>
                           </div>
                         </Link>
                       </div>
                     ))}
-                    {customerTicketsData?.pagination?.hasMore && (
+                    {contactTicketsData?.pagination?.hasMore && (
                       <Link
-                        href={`/brands/${brandId}/customers/${ticket.customer.id}`}
+                        href={`/brands/${brandId}/contacts/${ticket.customer.id}`}
                         className="block text-xs text-primary hover:underline pt-1"
                       >
                         View all tickets →

@@ -46,6 +46,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getGravatarUrl } from '@/lib/gravatar';
+import { formatTimeAgo, formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   Plus,
@@ -81,12 +82,14 @@ const DASHBOARD_COLUMNS: DashboardColumnDef[] = [
   { key: 'subject', label: 'Subject', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'priority', label: 'Priority', defaultVisible: true },
-  { key: 'customer', label: 'Customer', defaultVisible: true },
+  { key: 'customer', label: 'Contact', defaultVisible: true },
   { key: 'company', label: 'Company', defaultVisible: false },
   { key: 'assignee', label: 'Assignee', defaultVisible: false },
   { key: 'category', label: 'Category', defaultVisible: false },
   { key: 'created', label: 'Created', defaultVisible: true },
   { key: 'updated', label: 'Updated', defaultVisible: false },
+  { key: 'createdAge', label: 'Age', defaultVisible: false },
+  { key: 'updatedAge', label: 'Last Activity', defaultVisible: false },
 ];
 
 interface DashboardColumnSettings {
@@ -170,19 +173,9 @@ const DASHBOARD_COLUMN_TO_API_SORT: Record<string, string> = {
   category: 'category',
   created: 'createdAt',
   updated: 'updatedAt',
+  createdAge: 'createdAt',
+  updatedAge: 'updatedAt',
 };
-
-function formatTimeAgo(date: string) {
-  const now = new Date();
-  const then = new Date(date);
-  const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
-
-  if (seconds < 60) return 'just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-  return then.toLocaleDateString();
-}
 
 function formatDuration(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return '-';
@@ -703,6 +696,8 @@ export default function DashboardPage() {
                   : col.key === 'category' ? 'w-[120px]'
                   : col.key === 'created' ? 'w-[120px]'
                   : col.key === 'updated' ? 'w-[120px]'
+                  : col.key === 'createdAge' ? 'w-[100px]'
+                  : col.key === 'updatedAge' ? 'w-[120px]'
                   : '';
                 return (
                   <TableHead key={col.key} className={widthClass}>
@@ -838,6 +833,30 @@ export default function DashboardPage() {
                         <span className="text-sm text-muted-foreground">
                           {formatTimeAgo(ticket.updatedAt)}
                         </span>
+                      )}
+                      {col.key === 'createdAge' && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm text-muted-foreground">
+                                {formatTimeAgo(ticket.createdAt)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{formatDateTime(ticket.createdAt)}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {col.key === 'updatedAge' && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm text-muted-foreground">
+                                {formatTimeAgo(ticket.updatedAt)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{formatDateTime(ticket.updatedAt)}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </TableCell>
                   ))}

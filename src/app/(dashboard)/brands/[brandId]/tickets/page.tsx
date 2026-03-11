@@ -35,6 +35,8 @@ const COLUMN_TO_API_SORT: Record<string, string> = {
   category: 'category',
   created: 'createdAt',
   updated: 'updatedAt',
+  createdAge: 'createdAt',
+  updatedAge: 'updatedAt',
 };
 
 export default function BrandDashboardPage() {

@@ -260,9 +260,9 @@ export default function FieldsSettingsPage() {
             <Ticket className="h-4 w-4" />
             Ticket Fields
           </TabsTrigger>
-          <TabsTrigger value="customer-fields" className="gap-1.5">
+          <TabsTrigger value="contact-fields" className="gap-1.5">
             <Users className="h-4 w-4" />
-            Customer Fields
+            Contact Fields
           </TabsTrigger>
           <TabsTrigger value="company-fields" className="gap-1.5">
             <Building2 className="h-4 w-4" />
@@ -573,9 +573,9 @@ export default function FieldsSettingsPage() {
           <CustomFieldsList brandId={brandId} entityType="ticket" />
         </TabsContent>
 
-        {/* Customer Fields Tab */}
-        <TabsContent value="customer-fields" className="mt-6">
-          <CustomFieldsList brandId={brandId} entityType="customer" />
+        {/* Contact Fields Tab */}
+        <TabsContent value="contact-fields" className="mt-6">
+          <CustomFieldsList brandId={brandId} entityType="contact" />
         </TabsContent>
 
         {/* Company Fields Tab */}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatTimeAgo } from '@/lib/utils';
 import { useSupportPortal, SupportTicket } from '@/lib/hooks/use-support-portal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -68,22 +69,7 @@ export function SupportTicketList({ onSelectTicket }: SupportTicketListProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenLoading, statusFilter]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
+  const formatDate = formatTimeAgo;
 
   const getTicketNumber = (ticket: SupportTicket) => {
     const prefix = ticket.brand?.ticketPrefix || 'DT';

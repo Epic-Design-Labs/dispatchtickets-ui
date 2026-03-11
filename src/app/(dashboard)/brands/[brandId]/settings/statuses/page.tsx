@@ -194,7 +194,7 @@ export default function StatusesSettingsPage() {
             <p className="font-medium">About Ticket Statuses</p>
             <p className="mt-1 text-blue-700 dark:text-blue-300">
               System statuses (Open, Pending, Resolved, Closed) cannot be deleted but their colors and descriptions can be customized.
-              Create custom statuses to match your workflow, like &quot;In Progress&quot; or &quot;Waiting on Customer&quot;.
+              Create custom statuses to match your workflow, like &quot;In Progress&quot; or &quot;Waiting on Contact&quot;.
             </p>
           </div>
         </CardContent>

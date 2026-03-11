@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Search, Building2, Plus } from 'lucide-react';
 
@@ -96,7 +97,7 @@ export default function CompaniesPage() {
               <Building2 className="h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-medium">No companies yet</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Create companies to group customers from the same organization.
+                Create companies to group contacts from the same organization.
               </p>
             </CardContent>
           </Card>
@@ -122,10 +123,10 @@ export default function CompaniesPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className="text-sm font-medium">
-                          {company._count?.customers || 0} customers
+                          {company._count?.customers || 0} contacts
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(company.createdAt).toLocaleDateString()}
+                          {formatDateTime(company.createdAt)}
                         </p>
                       </div>
                       <Button variant="outline" size="sm" asChild>
@@ -148,7 +149,7 @@ export default function CompaniesPage() {
           <DialogHeader>
             <DialogTitle>Create Company</DialogTitle>
             <DialogDescription>
-              Add a company to group customers from the same organization.
+              Add a company to group contacts from the same organization.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -178,7 +179,7 @@ export default function CompaniesPage() {
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                Customers with this email domain will be automatically linked to this company.
+                Contacts with this email domain will be automatically linked to this company.
               </p>
             </div>
           </div>

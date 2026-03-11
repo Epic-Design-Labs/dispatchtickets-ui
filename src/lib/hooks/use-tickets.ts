@@ -99,13 +99,13 @@ export function useMarkAsSpam(brandId: string) {
   });
 }
 
-export function useCustomerTickets(
+export function useContactTickets(
   brandId: string,
   customerId: string | undefined,
   excludeTicketId?: string
 ) {
   return useQuery({
-    queryKey: ['customer-tickets', brandId, customerId, excludeTicketId],
+    queryKey: ['contact-tickets', brandId, customerId, excludeTicketId],
     queryFn: async () => {
       if (!customerId) return { data: [], pagination: { hasMore: false } };
       const result = await ticketsApi.list(brandId, {
@@ -136,7 +136,7 @@ export function useMergeTickets(brandId: string) {
     onSuccess: () => {
       // Invalidate all ticket queries since multiple tickets are affected
       queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
-      queryClient.invalidateQueries({ queryKey: ['customer-tickets', brandId] });
+      queryClient.invalidateQueries({ queryKey: ['contact-tickets', brandId] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-tickets'] });
     },
   });
@@ -162,7 +162,7 @@ export function useBulkAction(brandId: string) {
     onSuccess: () => {
       // Invalidate all ticket queries since multiple tickets are affected
       queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
-      queryClient.invalidateQueries({ queryKey: ['customer-tickets', brandId] });
+      queryClient.invalidateQueries({ queryKey: ['contact-tickets', brandId] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-tickets'] });
     },
   });

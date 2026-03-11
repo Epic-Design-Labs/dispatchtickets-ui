@@ -79,13 +79,13 @@ export const ecommerceApi = {
     return response.data;
   },
 
-  /** Get orders for a specific customer */
-  getOrdersByCustomer: async (
+  /** Get orders for a specific contact */
+  getOrdersByContact: async (
     brandId: string,
-    customerId: string
+    contactId: string
   ): Promise<EcommerceOrder[]> => {
     const response = await apiClient.get<EcommerceOrder[]>(
-      `/brands/${brandId}/ecommerce/orders/by-customer/${customerId}`
+      `/brands/${brandId}/ecommerce/orders/by-customer/${contactId}`
     );
     return response.data;
   },

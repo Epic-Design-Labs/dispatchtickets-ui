@@ -8,13 +8,13 @@ import {
   useCompany,
   useUpdateCompany,
   useDeleteCompany,
-  useCustomers,
+  useContacts,
   useTickets,
   useTeamMembers,
   useFieldsByEntity,
   useBulkAction,
   BulkActionType,
-  customerKeys,
+  contactKeys,
 } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { TicketTable } from '@/components/tickets';
@@ -36,9 +36,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { formatDateTime } from '@/lib/utils';
 import { ArrowLeft, Building2, Globe, Trash2, Users, Mail, Plus, FileText, Pencil, Check, X } from 'lucide-react';
-import { CreateCustomerDialog } from '@/components/customers/create-customer-dialog';
-import { LinkCustomerDialog } from '@/components/customers/link-customer-dialog';
+import { CreateContactDialog } from '@/components/contacts/create-contact-dialog';
+import { LinkContactDialog } from '@/components/contacts/link-contact-dialog';
 
 export default function CompanyDetailPage() {
   const params = useParams();
@@ -55,7 +56,7 @@ export default function CompanyDetailPage() {
   const [editNotes, setEditNotes] = useState('');
 
   const { data: company, isLoading } = useCompany(brandId, companyId);
-  const { data: customersData, isLoading: customersLoading } = useCustomers(brandId);
+  const { data: contactsData, isLoading: contactsLoading } = useContacts(brandId);
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, {});
   const { data: teamMembersData } = useTeamMembers({ brandId });
   const teamMembers = teamMembersData?.members;
@@ -64,12 +65,12 @@ export default function CompanyDetailPage() {
   const deleteCompany = useDeleteCompany(brandId);
   const bulkAction = useBulkAction(brandId);
 
-  // Filter customers belonging to this company
-  const companyCustomers = customersData?.data?.filter(
+  // Filter contacts belonging to this company
+  const companyContacts = contactsData?.data?.filter(
     (c) => c.companyId === companyId
   ) || [];
 
-  // Filter tickets from customers in this company
+  // Filter tickets from contacts in this company
   const companyTickets = ticketsData?.data?.filter(
     (t) => t.customer?.companyId === companyId
   ) || [];
@@ -259,7 +260,7 @@ export default function CompanyDetailPage() {
                     <>
                       <p className="text-lg font-medium">{company.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {company._count?.customers || companyCustomers.length} customers
+                        {company._count?.customers || companyContacts.length} contacts
                       </p>
                     </>
                   )}
@@ -280,7 +281,7 @@ export default function CompanyDetailPage() {
                       placeholder="e.g., acme.com"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Customers with this email domain will be auto-linked to this company.
+                      Contacts with this email domain will be auto-linked to this company.
                     </p>
                   </div>
                 ) : company.domain ? (
@@ -292,7 +293,7 @@ export default function CompanyDetailPage() {
 
               {/* Created */}
               <div className="text-sm text-muted-foreground">
-                Created {new Date(company.createdAt).toLocaleDateString()}
+                Created {formatDateTime(company.createdAt)}
               </div>
 
               {/* Delete */}
@@ -367,79 +368,79 @@ export default function CompanyDetailPage() {
           </Card>
           </div>
 
-          {/* Right Column: Customers + Tickets */}
+          {/* Right Column: Contacts + Tickets */}
           <div className="lg:col-span-2 space-y-6">
-          {/* Customers */}
+          {/* Contacts */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Customers
+                    Contacts
                   </CardTitle>
                   <CardDescription>
-                    All customers in this company
+                    All contacts in this company
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <LinkCustomerDialog
+                  <LinkContactDialog
                     brandId={brandId}
                     companyId={companyId}
                     companyName={company.name}
-                    onSuccess={() => queryClient.invalidateQueries({ queryKey: customerKeys.all(brandId) })}
+                    onSuccess={() => queryClient.invalidateQueries({ queryKey: contactKeys.all(brandId) })}
                   />
-                  <CreateCustomerDialog
+                  <CreateContactDialog
                     brandId={brandId}
                     defaultCompany={{ id: companyId, name: company.name }}
-                    onSuccess={() => queryClient.invalidateQueries({ queryKey: customerKeys.all(brandId) })}
+                    onSuccess={() => queryClient.invalidateQueries({ queryKey: contactKeys.all(brandId) })}
                   >
                     <Button size="sm">
                       <Plus className="mr-2 h-4 w-4" />
-                      Create Customer
+                      Create Contact
                     </Button>
-                  </CreateCustomerDialog>
+                  </CreateContactDialog>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {customersLoading ? (
+              {contactsLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
                     <Skeleton key={i} className="h-12 w-full" />
                   ))}
                 </div>
-              ) : companyCustomers.length === 0 ? (
+              ) : companyContacts.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  No customers in this company yet
+                  No contacts in this company yet
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {companyCustomers.map((customer) => (
+                  {companyContacts.map((contact) => (
                     <Link
-                      key={customer.id}
-                      href={`/brands/${brandId}/customers/${customer.id}`}
+                      key={contact.id}
+                      href={`/brands/${brandId}/contacts/${contact.id}`}
                       className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                     >
                       <Avatar className="h-10 w-10">
                         <AvatarFallback>
-                          {customer.name?.slice(0, 2).toUpperCase() ||
-                            customer.email.slice(0, 2).toUpperCase()}
+                          {contact.name?.slice(0, 2).toUpperCase() ||
+                            contact.email.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">
-                          {customer.name || customer.email}
+                          {contact.name || contact.email}
                         </p>
-                        {customer.name && (
+                        {contact.name && (
                           <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
                             <Mail className="h-3 w-3" />
-                            {customer.email}
+                            {contact.email}
                           </p>
                         )}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {customer._count?.tickets || 0} tickets
+                        {contact._count?.tickets || 0} tickets
                       </div>
                     </Link>
                   ))}
@@ -454,7 +455,7 @@ export default function CompanyDetailPage() {
               <div>
                 <CardTitle>Tickets</CardTitle>
                 <CardDescription>
-                  All tickets from customers in this company
+                  All tickets from contacts in this company
                 </CardDescription>
               </div>
             </CardHeader>
@@ -485,7 +486,7 @@ export default function CompanyDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Company</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this company? Customers in this company will be unlinked but not deleted.
+              Are you sure you want to delete this company? Contacts in this company will be unlinked but not deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

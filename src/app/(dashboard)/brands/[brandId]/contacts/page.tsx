@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useCustomers } from '@/lib/hooks';
+import { useContacts } from '@/lib/hooks';
 import { Header } from '@/components/layout';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,33 +17,34 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { formatDateTime } from '@/lib/utils';
 import { Search, Users } from 'lucide-react';
-import { CreateCustomerDialog } from '@/components/customers/create-customer-dialog';
+import { CreateContactDialog } from '@/components/contacts/create-contact-dialog';
 
-export default function CustomersPage() {
+export default function ContactsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const [search, setSearch] = useState('');
 
-  const { data, isLoading } = useCustomers(brandId, { search: search || undefined });
+  const { data, isLoading } = useContacts(brandId, { search: search || undefined });
 
-  const customers = data?.data || [];
+  const contacts = data?.data || [];
 
   return (
     <div className="flex flex-col">
-      <Header title="Customers" />
+      <Header title="Contacts" />
       <div className="flex-1 p-4 md:p-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search customers..."
+              placeholder="Search contacts..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
             />
           </div>
-          <CreateCustomerDialog brandId={brandId} />
+          <CreateContactDialog brandId={brandId} />
         </div>
 
         {isLoading ? (
@@ -51,7 +52,7 @@ export default function CustomersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer</TableHead>
+                  <TableHead>Contact</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead className="text-center">Tickets</TableHead>
                   <TableHead>Created</TableHead>
@@ -77,13 +78,13 @@ export default function CustomersPage() {
               </TableBody>
             </Table>
           </div>
-        ) : customers.length === 0 ? (
+        ) : contacts.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Users className="h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">No customers yet</h3>
+              <h3 className="mt-4 text-lg font-medium">No contacts yet</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Customers will be created automatically when tickets are submitted.
+                Contacts will be created automatically when tickets are submitted.
               </p>
             </CardContent>
           </Card>
@@ -92,50 +93,50 @@ export default function CustomersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer</TableHead>
+                  <TableHead>Contact</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead className="text-center">Tickets</TableHead>
                   <TableHead>Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customers.map((customer) => (
+                {contacts.map((contact) => (
                   <TableRow
-                    key={customer.id}
+                    key={contact.id}
                     className="cursor-pointer hover:bg-muted/50"
                   >
                     <TableCell>
                       <Link
-                        href={`/brands/${brandId}/customers/${customer.id}`}
+                        href={`/brands/${brandId}/contacts/${contact.id}`}
                         className="flex items-center gap-3"
                       >
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={customer.avatarUrl || undefined} />
+                          <AvatarImage src={contact.avatarUrl || undefined} />
                           <AvatarFallback className="text-xs">
-                            {customer.name?.slice(0, 2).toUpperCase() ||
-                              customer.email.slice(0, 2).toUpperCase()}
+                            {contact.name?.slice(0, 2).toUpperCase() ||
+                              contact.email.slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium text-sm">
-                            {customer.name || customer.email}
+                            {contact.name || contact.email}
                           </p>
-                          {customer.name && (
+                          {contact.name && (
                             <p className="text-xs text-muted-foreground">
-                              {customer.email}
+                              {contact.email}
                             </p>
                           )}
                         </div>
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {customer.company?.name || '-'}
+                      {contact.company?.name || '-'}
                     </TableCell>
                     <TableCell className="text-center text-sm">
-                      {customer._count?.tickets || 0}
+                      {contact._count?.tickets || 0}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {new Date(customer.createdAt).toLocaleDateString()}
+                      {formatDateTime(contact.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -38,7 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
 import { CustomFieldsFormSection, validateCustomFields } from '@/components/fields';
-import { CustomerCombobox } from '@/components/customers/customer-combobox';
+import { ContactCombobox } from '@/components/contacts/contact-combobox';
 import { Eye, Plus, X, Paperclip, Upload, FileIcon, Loader2 } from 'lucide-react';
 
 const createTicketSchema = z.object({
@@ -477,15 +477,15 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                 name="requesterName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Customer Name</FormLabel>
+                    <FormLabel>Contact Name</FormLabel>
                     {currentBrandId ? (
-                      <CustomerCombobox
+                      <ContactCombobox
                         brandId={currentBrandId}
                         value={field.value}
-                        onChange={(customer) => {
-                          if (customer) {
-                            field.onChange(customer.name);
-                            form.setValue('requesterEmail', customer.email);
+                        onChange={(contact) => {
+                          if (contact) {
+                            field.onChange(contact.name);
+                            form.setValue('requesterEmail', contact.email);
                           } else {
                             field.onChange('');
                           }
@@ -508,12 +508,12 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                 name="requesterEmail"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Customer Email</FormLabel>
+                    <FormLabel>Contact Email</FormLabel>
                     <FormControl>
                       <Input placeholder="john@example.com" {...field} />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      Auto-filled when selecting a customer
+                      Auto-filled when selecting a contact
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -534,9 +534,9 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>Notify customer</FormLabel>
+                      <FormLabel>Notify contact</FormLabel>
                       <FormDescription>
-                        Send a confirmation email to the customer about this ticket
+                        Send a confirmation email to the contact about this ticket
                       </FormDescription>
                     </div>
                   </FormItem>

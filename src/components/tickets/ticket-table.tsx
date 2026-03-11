@@ -58,6 +58,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatDateTime, formatTimeAgo } from '@/lib/utils';
 import { StatusBadge } from './status-badge';
 import { PriorityBadge } from './priority-badge';
 import { CloseTicketDialog } from './close-ticket-dialog';
@@ -69,7 +70,7 @@ import { getGravatarUrl } from '@/lib/gravatar';
 import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical } from 'lucide-react';
 
 // Column definitions - built-in columns use these keys
-type BuiltInColumnKey = 'ticketNumber' | 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated';
+type BuiltInColumnKey = 'ticketNumber' | 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated' | 'createdAge' | 'updatedAge';
 
 interface ColumnDef {
   key: string; // Can be built-in key or custom field key prefixed with 'cf_'
@@ -84,12 +85,14 @@ const BUILT_IN_COLUMNS: ColumnDef[] = [
   { key: 'subject', label: 'Subject', defaultVisible: true, sortable: true },
   { key: 'status', label: 'Status', defaultVisible: true, sortable: true },
   { key: 'priority', label: 'Priority', defaultVisible: true, sortable: true },
-  { key: 'customer', label: 'Customer', defaultVisible: true, sortable: true },
+  { key: 'customer', label: 'Contact', defaultVisible: true, sortable: true },
   { key: 'company', label: 'Company', defaultVisible: false, sortable: true },
   { key: 'assignee', label: 'Assignee', defaultVisible: false, sortable: true },
   { key: 'category', label: 'Category', defaultVisible: false, sortable: true },
   { key: 'created', label: 'Created', defaultVisible: true, sortable: true },
   { key: 'updated', label: 'Updated', defaultVisible: false, sortable: true },
+  { key: 'createdAge', label: 'Age', defaultVisible: false, sortable: true },
+  { key: 'updatedAge', label: 'Last Activity', defaultVisible: false, sortable: true },
 ];
 
 const STORAGE_KEY = 'dispatch-ticket-columns-v2'; // v2 to support new format with order
@@ -506,10 +509,12 @@ export function TicketTable({
             bVal = b.category?.name?.toLowerCase() || '';
             break;
           case 'created':
+          case 'createdAge':
             aVal = new Date(a.createdAt).getTime();
             bVal = new Date(b.createdAt).getTime();
             break;
           case 'updated':
+          case 'updatedAge':
             aVal = new Date(a.updatedAt).getTime();
             bVal = new Date(b.updatedAt).getTime();
             break;
@@ -673,7 +678,7 @@ export function TicketTable({
       }
       // Check if it's a date string
       if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-        return new Date(value).toLocaleDateString();
+        return formatDateTime(value);
       }
       return String(value);
     }
@@ -751,9 +756,31 @@ export function TicketTable({
           <span className="text-muted-foreground">-</span>
         );
       case 'created':
-        return <span className="text-muted-foreground">{new Date(ticket.createdAt).toLocaleDateString()}</span>;
+        return <span className="text-muted-foreground">{formatDateTime(ticket.createdAt)}</span>;
       case 'updated':
-        return <span className="text-muted-foreground">{new Date(ticket.updatedAt).toLocaleDateString()}</span>;
+        return <span className="text-muted-foreground">{formatDateTime(ticket.updatedAt)}</span>;
+      case 'createdAge':
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-muted-foreground">{formatTimeAgo(ticket.createdAt)}</span>
+              </TooltipTrigger>
+              <TooltipContent>{formatDateTime(ticket.createdAt)}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      case 'updatedAge':
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-muted-foreground">{formatTimeAgo(ticket.updatedAt)}</span>
+              </TooltipTrigger>
+              <TooltipContent>{formatDateTime(ticket.updatedAt)}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
       default:
         return <span className="text-muted-foreground">-</span>;
     }
@@ -769,7 +796,7 @@ export function TicketTable({
               <TableHead>Subject</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Priority</TableHead>
-              <TableHead>Customer</TableHead>
+              <TableHead>Contact</TableHead>
               <TableHead>Created</TableHead>
             </TableRow>
           </TableHeader>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDateTime } from '@/lib/utils';
 import {
   useFeatureRequests,
   useFeatureActivity,
@@ -284,7 +285,7 @@ export default function FeatureRequestsPage() {
                           </Badge>
                         )}
                         <p className="mt-2 text-xs text-muted-foreground">
-                          {new Date(request.createdAt).toLocaleDateString()}
+                          {formatDateTime(request.createdAt)}
                         </p>
                       </div>
                     </div>

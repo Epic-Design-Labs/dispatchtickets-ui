@@ -3,7 +3,7 @@ export { PriorityBadge } from './priority-badge';
 export { TicketFilters } from './ticket-filters';
 export { TicketTable } from './ticket-table';
 export { CreateTicketDialog } from './create-ticket-dialog';
-export { CreateTicketForCustomerDialog } from './create-ticket-for-customer-dialog';
+export { CreateTicketForContactDialog } from './create-ticket-for-contact-dialog';
 export { CloseTicketDialog } from './close-ticket-dialog';
 export { TicketHistory } from './ticket-history';
 export { TicketWatchers } from './ticket-watchers';

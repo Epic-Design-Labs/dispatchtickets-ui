@@ -1,4 +1,4 @@
-export interface Customer {
+export interface Contact {
   id: string;
   brandId: string;
   email: string;
@@ -23,13 +23,13 @@ export interface Company {
   metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
-  customers?: Customer[];
+  customers?: Contact[];
   _count?: {
     customers: number;
   };
 }
 
-export interface CreateCustomerInput {
+export interface CreateContactInput {
   email: string;
   name?: string;
   avatarUrl?: string;
@@ -38,7 +38,7 @@ export interface CreateCustomerInput {
   notifyEmail?: boolean;
 }
 
-export interface UpdateCustomerInput {
+export interface UpdateContactInput {
   email?: string;
   name?: string;
   avatarUrl?: string;
@@ -59,7 +59,7 @@ export interface UpdateCompanyInput {
   metadata?: Record<string, unknown>;
 }
 
-export interface CustomerSearchResult {
+export interface ContactSearchResult {
   id: string;
   email: string;
   name?: string;

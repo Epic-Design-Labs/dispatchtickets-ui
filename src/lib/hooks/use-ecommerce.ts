@@ -80,11 +80,11 @@ export function useOrders(brandId: string, params?: ListOrdersParams) {
   });
 }
 
-export function useCustomerOrders(brandId: string, customerId: string) {
+export function useContactOrders(brandId: string, contactId: string) {
   return useQuery({
-    queryKey: ecommerceKeys.customerOrders(brandId, customerId),
-    queryFn: () => ecommerceApi.getOrdersByCustomer(brandId, customerId),
-    enabled: !!brandId && !!customerId,
+    queryKey: ecommerceKeys.customerOrders(brandId, contactId),
+    queryFn: () => ecommerceApi.getOrdersByContact(brandId, contactId),
+    enabled: !!brandId && !!contactId,
   });
 }
 

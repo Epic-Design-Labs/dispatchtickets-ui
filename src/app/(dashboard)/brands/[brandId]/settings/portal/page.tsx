@@ -111,9 +111,9 @@ export default function PortalSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Customer Portal</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Contact Portal</h2>
         <p className="text-muted-foreground">
-          Configure the customer-facing portal for this brand
+          Configure the contact-facing portal for this brand
         </p>
       </div>
 
@@ -125,7 +125,7 @@ export default function PortalSettingsPage() {
             <div>
               <CardTitle>Allowed Origins</CardTitle>
               <CardDescription>
-                Domains that can embed the customer portal and access the portal API
+                Domains that can embed the contact portal and access the portal API
               </CardDescription>
             </div>
           </div>
@@ -201,12 +201,12 @@ export default function PortalSettingsPage() {
         <CardHeader>
           <CardTitle>Portal Integration</CardTitle>
           <CardDescription>
-            Learn how to integrate the customer portal into your application
+            Learn how to integrate the contact portal into your application
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            The customer portal allows your users to view and respond to their support tickets
+            The contact portal allows your users to view and respond to their support tickets
             directly from your website. Use our SDK or REST API to generate portal tokens and
             embed the portal experience.
           </p>

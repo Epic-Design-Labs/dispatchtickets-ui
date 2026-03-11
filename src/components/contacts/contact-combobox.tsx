@@ -16,31 +16,31 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { useCustomerSearch } from '@/lib/hooks';
+import { useContactSearch } from '@/lib/hooks';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 
-interface CustomerComboboxProps {
+interface ContactComboboxProps {
   brandId: string;
-  value?: string; // customer name
-  onChange: (customer: { name: string; email: string } | null) => void;
+  value?: string; // contact name
+  onChange: (contact: { name: string; email: string } | null) => void;
   disabled?: boolean;
   placeholder?: string;
 }
 
-export function CustomerCombobox({
+export function ContactCombobox({
   brandId,
   value,
   onChange,
   disabled,
-  placeholder = 'Search or enter customer name...',
-}: CustomerComboboxProps) {
+  placeholder = 'Search or enter contact name...',
+}: ContactComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value || '');
   const debouncedSearch = useDebounce(search, 300);
 
-  // Search for customers
-  const { data: searchResults, isLoading } = useCustomerSearch(brandId, debouncedSearch);
-  const customers = searchResults || [];
+  // Search for contacts
+  const { data: searchResults, isLoading } = useContactSearch(brandId, debouncedSearch);
+  const contacts = searchResults || [];
 
   // Update search when value changes externally
   useEffect(() => {
@@ -49,9 +49,9 @@ export function CustomerCombobox({
     }
   }, [value]);
 
-  const handleSelect = useCallback((customer: { id: string; name?: string | null; email: string }) => {
-    const name = customer.name || customer.email.split('@')[0];
-    onChange({ name, email: customer.email });
+  const handleSelect = useCallback((contact: { id: string; name?: string | null; email: string }) => {
+    const name = contact.name || contact.email.split('@')[0];
+    onChange({ name, email: contact.email });
     setSearch(name);
     setOpen(false);
   }, [onChange]);
@@ -68,8 +68,8 @@ export function CustomerCombobox({
     setSearch(newValue);
   }, []);
 
-  // Check if the search matches any existing customer exactly
-  const exactMatch = customers.some(
+  // Check if the search matches any existing contact exactly
+  const exactMatch = contacts.some(
     (c) => c.name?.toLowerCase() === search.toLowerCase() || c.email.toLowerCase() === search.toLowerCase()
   );
 
@@ -90,7 +90,7 @@ export function CustomerCombobox({
       <PopoverContent className="w-[300px] p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Search customers by name or email..."
+            placeholder="Search contacts by name or email..."
             value={search}
             onValueChange={handleInputChange}
           />
@@ -105,24 +105,24 @@ export function CustomerCombobox({
                 Type at least 2 characters to search...
               </div>
             )}
-            {customers.length > 0 && (
-              <CommandGroup heading="Existing Customers">
-                {customers.map((customer) => (
+            {contacts.length > 0 && (
+              <CommandGroup heading="Existing Contacts">
+                {contacts.map((contact) => (
                   <CommandItem
-                    key={customer.id}
-                    value={customer.id}
-                    onSelect={() => handleSelect(customer)}
+                    key={contact.id}
+                    value={contact.id}
+                    onSelect={() => handleSelect(contact)}
                   >
                     <User className="mr-2 h-4 w-4 text-muted-foreground" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">
-                        {customer.name || customer.email.split('@')[0]}
+                        {contact.name || contact.email.split('@')[0]}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {customer.email}
+                        {contact.email}
                       </p>
                     </div>
-                    {value === (customer.name || customer.email.split('@')[0]) && (
+                    {value === (contact.name || contact.email.split('@')[0]) && (
                       <Check className="ml-2 h-4 w-4 text-primary" />
                     )}
                   </CommandItem>
@@ -132,8 +132,8 @@ export function CustomerCombobox({
             {/* Show "Create new" option when search has content and doesn't exactly match */}
             {!isLoading && debouncedSearch.length >= 2 && search.trim() && !exactMatch && (
               <>
-                {customers.length > 0 && <CommandSeparator />}
-                <CommandGroup heading="New Customer">
+                {contacts.length > 0 && <CommandSeparator />}
+                <CommandGroup heading="New Contact">
                   <CommandItem
                     value={`create-${search}`}
                     onSelect={handleCreateNew}
@@ -151,9 +151,9 @@ export function CustomerCombobox({
               </>
             )}
             {/* Message when no results and no search */}
-            {!isLoading && debouncedSearch.length >= 2 && customers.length === 0 && !search.trim() && (
+            {!isLoading && debouncedSearch.length >= 2 && contacts.length === 0 && !search.trim() && (
               <div className="py-6 text-center text-sm text-muted-foreground">
-                No customers found.
+                No contacts found.
               </div>
             )}
           </CommandList>

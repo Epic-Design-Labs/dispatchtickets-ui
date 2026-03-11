@@ -1,6 +1,7 @@
 'use client';
 
 import { useStores, useTicketOrders, useUnlinkOrder } from '@/lib/hooks';
+import { formatDateTime } from '@/lib/utils';
 import { OrderStatusBadge } from './order-status-badge';
 import { LinkOrderDialog } from './link-order-dialog';
 import { Separator } from '@/components/ui/separator';
@@ -90,7 +91,7 @@ export function TicketOrdersSection({
                       <>
                         <span>&middot;</span>
                         <span>
-                          {new Date(order.platformCreatedAt).toLocaleDateString()}
+                          {formatDateTime(order.platformCreatedAt)}
                         </span>
                       </>
                     )}

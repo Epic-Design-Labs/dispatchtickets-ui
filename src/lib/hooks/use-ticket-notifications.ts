@@ -150,7 +150,7 @@ export function useTicketNotifications(brandId: string | undefined) {
               const latestComment = comments[comments.length - 1];
               // Only notify for customer comments (external), not agent comments (internal)
               if (latestComment.authorType === 'CUSTOMER') {
-                const authorName = (latestComment.metadata as { authorName?: string })?.authorName || 'Customer';
+                const authorName = (latestComment.metadata as { authorName?: string })?.authorName || 'Contact';
                 const notifTitle = `${ticketLabel} reply from ${authorName}`;
                 toast.info(notifTitle, {
                   description: ticket.title,

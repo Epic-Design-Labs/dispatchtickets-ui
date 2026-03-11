@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
+import { formatDateTime } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -420,7 +421,7 @@ Content-Type: application/json`}
                           {form.submissionCount} submissions
                           {form.lastSubmissionAt && (
                             <span className="text-muted-foreground">
-                              {' '}· Last: {new Date(form.lastSubmissionAt).toLocaleDateString()}
+                              {' '}· Last: {formatDateTime(form.lastSubmissionAt)}
                             </span>
                           )}
                         </span>

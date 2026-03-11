@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatDateTime } from '@/lib/utils';
 import { useSupportPortal, SupportTicket, SupportComment, SupportAttachment } from '@/lib/hooks/use-support-portal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -115,15 +116,7 @@ export function SupportTicketDetail({ ticketId, onBack }: SupportTicketDetailPro
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = formatDateTime;
 
   const getTicketNumber = (t: SupportTicket) => {
     const prefix = t.brand?.ticketPrefix || 'DT';

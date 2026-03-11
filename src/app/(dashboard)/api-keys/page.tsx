@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDateTime } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Key, Plus, Trash2, Copy, Check, Shield, Globe, ShieldX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -46,11 +47,7 @@ import { Header } from '@/components/layout';
 
 function formatDate(date: string | null) {
   if (!date) return 'Never';
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatDateTime(date);
 }
 
 function CopyButton({ value }: { value: string }) {

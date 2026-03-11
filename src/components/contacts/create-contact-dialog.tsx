@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateCustomer } from '@/lib/hooks';
+import { useCreateContact } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -28,31 +28,31 @@ import { toast } from 'sonner';
 import { CompanyCombobox } from '@/components/companies/company-combobox';
 import { Plus } from 'lucide-react';
 
-const createCustomerSchema = z.object({
+const createContactSchema = z.object({
   email: z.string().email('Valid email is required'),
   name: z.string().optional(),
   companyId: z.string().optional(),
 });
 
-type CreateCustomerForm = z.infer<typeof createCustomerSchema>;
+type CreateContactForm = z.infer<typeof createContactSchema>;
 
-interface CreateCustomerDialogProps {
+interface CreateContactDialogProps {
   brandId: string;
   children?: React.ReactNode;
-  onSuccess?: (customer: { id: string; email: string; name?: string }) => void;
+  onSuccess?: (contact: { id: string; email: string; name?: string }) => void;
   defaultCompany?: {
     id: string;
     name: string;
   };
 }
 
-export function CreateCustomerDialog({ brandId, children, onSuccess, defaultCompany }: CreateCustomerDialogProps) {
+export function CreateContactDialog({ brandId, children, onSuccess, defaultCompany }: CreateContactDialogProps) {
   const [open, setOpen] = useState(false);
   const [companyName, setCompanyName] = useState<string | undefined>(defaultCompany?.name);
-  const createCustomer = useCreateCustomer(brandId);
+  const createContact = useCreateContact(brandId);
 
-  const form = useForm<CreateCustomerForm>({
-    resolver: zodResolver(createCustomerSchema),
+  const form = useForm<CreateContactForm>({
+    resolver: zodResolver(createContactSchema),
     defaultValues: {
       email: '',
       name: '',
@@ -60,14 +60,14 @@ export function CreateCustomerDialog({ brandId, children, onSuccess, defaultComp
     },
   });
 
-  const onSubmit = async (data: CreateCustomerForm) => {
+  const onSubmit = async (data: CreateContactForm) => {
     try {
-      const customer = await createCustomer.mutateAsync({
+      const contact = await createContact.mutateAsync({
         email: data.email,
         name: data.name || undefined,
         companyId: data.companyId || undefined,
       });
-      toast.success('Customer created successfully');
+      toast.success('Contact created successfully');
       setOpen(false);
       form.reset({
         email: '',
@@ -75,9 +75,9 @@ export function CreateCustomerDialog({ brandId, children, onSuccess, defaultComp
         companyId: defaultCompany?.id || '',
       });
       setCompanyName(defaultCompany?.name);
-      onSuccess?.(customer);
+      onSuccess?.(contact);
     } catch {
-      toast.error('Failed to create customer');
+      toast.error('Failed to create contact');
     }
   };
 
@@ -87,15 +87,15 @@ export function CreateCustomerDialog({ brandId, children, onSuccess, defaultComp
         {children || (
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Create Customer
+            Create Contact
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create Customer</DialogTitle>
+          <DialogTitle>Create Contact</DialogTitle>
           <DialogDescription>
-            Add a new customer to this brand.
+            Add a new contact to this brand.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -157,8 +157,8 @@ export function CreateCustomerDialog({ brandId, children, onSuccess, defaultComp
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createCustomer.isPending}>
-                {createCustomer.isPending ? 'Creating...' : 'Create Customer'}
+              <Button type="submit" disabled={createContact.isPending}>
+                {createContact.isPending ? 'Creating...' : 'Create Contact'}
               </Button>
             </DialogFooter>
           </form>

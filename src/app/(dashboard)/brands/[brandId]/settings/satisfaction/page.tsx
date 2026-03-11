@@ -101,7 +101,7 @@ export default function SatisfactionSettingsPage() {
             Customer Satisfaction (CSAT) Surveys
           </CardTitle>
           <CardDescription>
-            Automatically request feedback from customers after their tickets are resolved
+            Automatically request feedback from contacts after their tickets are resolved
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -282,7 +282,7 @@ export default function SatisfactionSettingsPage() {
           <CardHeader>
             <CardTitle className="text-lg">Email Preview</CardTitle>
             <CardDescription>
-              This is how the survey email will appear to customers
+              This is how the survey email will appear to contacts
             </CardDescription>
           </CardHeader>
           <CardContent>

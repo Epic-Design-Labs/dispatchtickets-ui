@@ -193,7 +193,7 @@ export function useGlobalTicketNotifications() {
               const latestComment = comments[comments.length - 1];
               // Only notify for customer comments
               if (latestComment.authorType === 'CUSTOMER') {
-                const authorName = (latestComment.metadata as { authorName?: string })?.authorName || 'Customer';
+                const authorName = (latestComment.metadata as { authorName?: string })?.authorName || 'Contact';
                 const notifTitle = `${prefix}${ticketLabel} reply from ${authorName}`;
                 toast.info(notifTitle, {
                   description: ticket.title,

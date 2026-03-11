@@ -70,7 +70,7 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
 
 const ENTITY_LABELS: Record<EntityType, string> = {
   ticket: 'Ticket',
-  customer: 'Customer',
+  contact: 'Contact',
   company: 'Company',
 };
 
