@@ -297,6 +297,11 @@ export default function BillingPage() {
       features.push('Custom email domains');
     }
 
+    // Recurring tickets (all paid plans)
+    if (baseName !== 'Free') {
+      features.push('Recurring tickets');
+    }
+
     // Support level
     features.push(details.support);
 
