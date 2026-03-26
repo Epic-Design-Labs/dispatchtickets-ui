@@ -985,6 +985,70 @@ export default function TicketDetailPage() {
 
           <Separator />
 
+          {/* Due Date Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              Due Date
+            </div>
+            {ticket.dueAt ? (() => {
+              const isOverdue = new Date(ticket.dueAt) < new Date();
+              const isDueSoon = !isOverdue && new Date(ticket.dueAt).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+              return (
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-md border ${
+                  isOverdue ? 'bg-red-50 border-red-200' : isDueSoon ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
+                }`}>
+                  <Clock className={`h-4 w-4 ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-amber-600' : 'text-green-600'}`} />
+                  <div>
+                    <span className={`text-sm font-medium ${isOverdue ? 'text-red-700' : isDueSoon ? 'text-amber-700' : 'text-green-700'}`}>
+                      {isOverdue ? 'Overdue' : isDueSoon ? 'Due soon' : 'On track'}
+                    </span>
+                    <p className="text-xs text-muted-foreground">{formatDateTime(ticket.dueAt)}</p>
+                  </div>
+                </div>
+              );
+            })() : (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="text-sm">No due date</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Input
+                type="datetime-local"
+                className="h-8 text-xs"
+                value={ticket.dueAt ? new Date(ticket.dueAt).toISOString().slice(0, 16) : ''}
+                onChange={async (e) => {
+                  try {
+                    const dueAt = e.target.value ? new Date(e.target.value).toISOString() : null;
+                    await updateTicket.mutateAsync({ dueAt });
+                    toast.success(dueAt ? 'Due date updated' : 'Due date cleared');
+                  } catch {
+                    toast.error('Failed to update due date');
+                  }
+                }}
+              />
+              {ticket.dueAt && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={async () => {
+                    try {
+                      await updateTicket.mutateAsync({ dueAt: null } as any);
+                      toast.success('Due date cleared');
+                    } catch {
+                      toast.error('Failed to clear due date');
+                    }
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Watchers Section */}
           <TicketWatchers brandId={brandId} ticketId={ticketId} />
 

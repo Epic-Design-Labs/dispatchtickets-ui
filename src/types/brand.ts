@@ -28,6 +28,11 @@ export interface Brand {
   csatDelayMinutes?: number;
   csatEmailSubject?: string | null;
   csatEmailBody?: string | null;
+  // SLA settings
+  slaEnabled?: boolean;
+  slaDefaultHours?: number | null;
+  slaByPriority?: Record<string, number>;
+  slaNotifyOverdue?: boolean;
   // Portal settings
   portalOrigins?: string[];
   createdAt: string;
@@ -63,6 +68,11 @@ export interface UpdateBrandInput {
   csatDelayMinutes?: number;
   csatEmailSubject?: string | null;
   csatEmailBody?: string | null;
+  // SLA settings
+  slaEnabled?: boolean;
+  slaDefaultHours?: number | null;
+  slaByPriority?: Record<string, number>;
+  slaNotifyOverdue?: boolean;
   // Portal settings
   portalOrigins?: string[];
 }

@@ -175,6 +175,7 @@ const DASHBOARD_COLUMN_TO_API_SORT: Record<string, string> = {
   updated: 'updatedAt',
   createdAge: 'createdAt',
   updatedAge: 'updatedAt',
+  dueAt: 'dueAt',
 };
 
 function formatDuration(minutes: number | null | undefined): string {

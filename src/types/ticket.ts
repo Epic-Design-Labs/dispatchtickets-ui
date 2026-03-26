@@ -44,6 +44,7 @@ export interface Ticket {
   createdBy?: string;
   commentCount?: number;
   attachmentCount?: number;
+  dueAt?: string | null;
   isSpam?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -64,6 +65,7 @@ export interface CreateTicketInput {
   assigneeId?: string;
   customFields?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
+  dueAt?: string;
   notifyCustomer?: boolean;
   watchers?: WatcherInput[];
   attachmentIds?: string[];
@@ -79,6 +81,7 @@ export interface UpdateTicketInput {
   categoryId?: string | null;
   tags?: string[];
   customFields?: Record<string, unknown>;
+  dueAt?: string | null;
   isSpam?: boolean;
 }
 

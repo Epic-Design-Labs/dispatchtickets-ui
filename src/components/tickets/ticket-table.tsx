@@ -70,7 +70,7 @@ import { getGravatarUrl } from '@/lib/gravatar';
 import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical } from 'lucide-react';
 
 // Column definitions - built-in columns use these keys
-type BuiltInColumnKey = 'ticketNumber' | 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated' | 'createdAge' | 'updatedAge';
+type BuiltInColumnKey = 'ticketNumber' | 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated' | 'createdAge' | 'updatedAge' | 'dueAt';
 
 interface ColumnDef {
   key: string; // Can be built-in key or custom field key prefixed with 'cf_'
@@ -93,6 +93,7 @@ const BUILT_IN_COLUMNS: ColumnDef[] = [
   { key: 'updated', label: 'Updated', defaultVisible: false, sortable: true },
   { key: 'createdAge', label: 'Age', defaultVisible: false, sortable: true },
   { key: 'updatedAge', label: 'Last Activity', defaultVisible: false, sortable: true },
+  { key: 'dueAt', label: 'Due', defaultVisible: false, sortable: true },
 ];
 
 const STORAGE_KEY = 'dispatch-ticket-columns-v2'; // v2 to support new format with order
@@ -518,6 +519,10 @@ export function TicketTable({
             aVal = new Date(a.updatedAt).getTime();
             bVal = new Date(b.updatedAt).getTime();
             break;
+          case 'dueAt':
+            aVal = a.dueAt ? new Date(a.dueAt).getTime() : Infinity;
+            bVal = b.dueAt ? new Date(b.dueAt).getTime() : Infinity;
+            break;
         }
       }
 
@@ -781,6 +786,23 @@ export function TicketTable({
             </Tooltip>
           </TooltipProvider>
         );
+      case 'dueAt': {
+        if (!ticket.dueAt) return <span className="text-muted-foreground">-</span>;
+        const isOverdue = new Date(ticket.dueAt) < new Date();
+        const isDueSoon = !isOverdue && new Date(ticket.dueAt).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={isOverdue ? 'text-red-600 font-medium' : isDueSoon ? 'text-amber-600' : 'text-muted-foreground'}>
+                  {formatTimeAgo(ticket.dueAt)}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{formatDateTime(ticket.dueAt)}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
       default:
         return <span className="text-muted-foreground">-</span>;
     }
