@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   DndContext,
   closestCenter,
@@ -67,7 +68,7 @@ import { Category } from '@/lib/api/categories';
 import { Tag } from '@/lib/api/tags';
 import { BulkActionType } from '@/lib/hooks/use-tickets';
 import { getGravatarUrl } from '@/lib/gravatar';
-import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical } from 'lucide-react';
+import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical, MoreVertical, Eye, ExternalLink, UserCheck } from 'lucide-react';
 
 // Column definitions - built-in columns use these keys
 type BuiltInColumnKey = 'ticketNumber' | 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated' | 'createdAge' | 'updatedAge' | 'dueAt';
@@ -186,7 +187,11 @@ interface TicketTableProps {
   sortState?: SortState;
   /** Callback for sort changes in controlled mode */
   onSortChange?: (sort: SortState) => void;
+  /** Callback for row-level actions (triple dot menu) */
+  onTicketAction?: (action: TicketRowAction, ticket: Ticket, options?: { assigneeId?: string }) => void;
 }
+
+export type TicketRowAction = 'view' | 'resolve' | 'pending' | 'assign' | 'openNewTab' | 'delete';
 
 export function TicketTable({
   tickets,
@@ -202,7 +207,9 @@ export function TicketTable({
   columnsPortalElement,
   sortState: controlledSortState,
   onSortChange,
+  onTicketAction,
 }: TicketTableProps) {
+  const router = useRouter();
   const isControlledSort = !!onSortChange;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1145,8 +1152,74 @@ export function TicketTable({
                       </TableCell>
                     );
                   })}
-                  <TableCell>
+                  <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
                     {renderActions?.(ticket)}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => router.push(`/brands/${brandId}/tickets/${ticket.id}`)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-green-600"
+                          onClick={() => onTicketAction?.('resolve', ticket)}
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Mark as Resolved
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-amber-600"
+                          onClick={() => onTicketAction?.('pending', ticket)}
+                        >
+                          <Clock className="mr-2 h-4 w-4" />
+                          Mark as Pending
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {teamMembers.length > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <UserCheck className="mr-2 h-4 w-4" />
+                                Assign To...
+                                <ChevronDown className="ml-auto h-3 w-3" />
+                              </DropdownMenuItem>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent side="left" className="w-48">
+                              {teamMembers.map((member) => (
+                                <DropdownMenuItem
+                                  key={member.id}
+                                  onClick={() => onTicketAction?.('assign', ticket, { assigneeId: member.id })}
+                                >
+                                  {member.firstName || member.lastName
+                                    ? [member.firstName, member.lastName].filter(Boolean).join(' ')
+                                    : member.email}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => window.open(`/brands/${brandId}/tickets/${ticket.id}`, '_blank')}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Open in New Tab
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={() => onTicketAction?.('delete', ticket)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               );

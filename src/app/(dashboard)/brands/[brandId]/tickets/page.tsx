@@ -8,11 +8,12 @@ import { toast } from 'sonner';
 import { RefreshCw, MessageSquare, Timer } from 'lucide-react';
 import { Header } from '@/components/layout';
 import { TicketFilters, TicketTable, CreateTicketDialog } from '@/components/tickets';
+import { ticketsApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { TicketFilters as TicketFiltersType } from '@/types';
-import type { SortState } from '@/components/tickets/ticket-table';
+import type { SortState, TicketRowAction } from '@/components/tickets/ticket-table';
 
 function formatDuration(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return '-';
@@ -134,6 +135,36 @@ export default function BrandDashboardPage() {
       toast.error(hasActiveEmailConnection ? 'Failed to sync emails' : 'Failed to refresh');
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleTicketAction = async (action: TicketRowAction, ticket: { id: string; title: string }, options?: { assigneeId?: string }) => {
+    try {
+      switch (action) {
+        case 'resolve':
+          await ticketsApi.update(brandId, ticket.id, { status: 'resolved' });
+          toast.success('Ticket resolved');
+          break;
+        case 'pending':
+          await ticketsApi.update(brandId, ticket.id, { status: 'pending' });
+          toast.success('Ticket marked as pending');
+          break;
+        case 'assign':
+          if (options?.assigneeId) {
+            await ticketsApi.update(brandId, ticket.id, { assigneeId: options.assigneeId });
+            toast.success('Ticket assigned');
+          }
+          break;
+        case 'delete':
+          if (confirm(`Delete "${ticket.title}"? This cannot be undone.`)) {
+            await ticketsApi.delete(brandId, ticket.id);
+            toast.success('Ticket deleted');
+          }
+          break;
+      }
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
+    } catch {
+      toast.error(`Failed to ${action} ticket`);
     }
   };
 
@@ -386,6 +417,7 @@ export default function BrandDashboardPage() {
           isLoading={ticketsLoading}
           onBulkAction={handleBulkAction}
           onMerge={handleMerge}
+          onTicketAction={handleTicketAction}
           teamMembers={teamMembers}
           categories={categories}
           tags={tags}
