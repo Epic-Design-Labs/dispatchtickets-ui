@@ -33,6 +33,8 @@ export interface Brand {
   slaDefaultHours?: number | null;
   slaByPriority?: Record<string, number>;
   slaNotifyOverdue?: boolean;
+  slaBusinessHoursOnly?: boolean;
+  slaBusinessHours?: { start: string; end: string; days: number[]; timezone: string };
   // Portal settings
   portalOrigins?: string[];
   createdAt: string;
@@ -73,6 +75,8 @@ export interface UpdateBrandInput {
   slaDefaultHours?: number | null;
   slaByPriority?: Record<string, number>;
   slaNotifyOverdue?: boolean;
+  slaBusinessHoursOnly?: boolean;
+  slaBusinessHours?: { start: string; end: string; days: number[]; timezone: string };
   // Portal settings
   portalOrigins?: string[];
 }

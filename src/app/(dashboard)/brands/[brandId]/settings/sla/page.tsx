@@ -41,6 +41,11 @@ export default function SlaSettingsPage() {
     low: '168',
   });
   const [slaNotifyOverdue, setSlaNotifyOverdue] = useState(true);
+  const [slaBusinessHoursOnly, setSlaBusinessHoursOnly] = useState(false);
+  const [bhStart, setBhStart] = useState('09:00');
+  const [bhEnd, setBhEnd] = useState('17:00');
+  const [bhDays, setBhDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [bhTimezone, setBhTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [isDirty, setIsDirty] = useState(false);
 
   // Sync from brand data
@@ -55,6 +60,13 @@ export default function SlaSettingsPage() {
           mapped[p] = String(brand.slaByPriority[p] ?? DEFAULT_SLA_BY_PRIORITY[p]);
         }
         setSlaByPriority(mapped);
+      }
+      setSlaBusinessHoursOnly(brand.slaBusinessHoursOnly ?? false);
+      if (brand.slaBusinessHours) {
+        setBhStart(brand.slaBusinessHours.start || '09:00');
+        setBhEnd(brand.slaBusinessHours.end || '17:00');
+        setBhDays(brand.slaBusinessHours.days || [1, 2, 3, 4, 5]);
+        setBhTimezone(brand.slaBusinessHours.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
       }
       setIsDirty(false);
     }
@@ -75,6 +87,8 @@ export default function SlaSettingsPage() {
         slaDefaultHours: !isNaN(defaultHours) && defaultHours > 0 ? defaultHours : undefined,
         slaByPriority: byPriority,
         slaNotifyOverdue,
+        slaBusinessHoursOnly,
+        slaBusinessHours: { start: bhStart, end: bhEnd, days: bhDays, timezone: bhTimezone },
       });
       toast.success('SLA settings saved');
       setIsDirty(false);
@@ -164,6 +178,77 @@ export default function SlaSettingsPage() {
                   onCheckedChange={(v) => { setSlaNotifyOverdue(v); markDirty(); }}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base">Business Hours Only</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Only count business hours toward SLA deadlines (e.g. 24h SLA = 3 business days)
+                  </p>
+                </div>
+                <Switch
+                  checked={slaBusinessHoursOnly}
+                  onCheckedChange={(v) => { setSlaBusinessHoursOnly(v); markDirty(); }}
+                />
+              </div>
+
+              {slaBusinessHoursOnly && (
+                <div className="space-y-4 rounded-lg border p-4">
+                  <h4 className="text-sm font-medium">Business Hours</h4>
+                  <div className="grid grid-cols-3 gap-4 max-w-md">
+                    <div>
+                      <Label className="text-xs">Start</Label>
+                      <Input
+                        type="time"
+                        value={bhStart}
+                        onChange={(e) => { setBhStart(e.target.value); markDirty(); }}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">End</Label>
+                      <Input
+                        type="time"
+                        value={bhEnd}
+                        onChange={(e) => { setBhEnd(e.target.value); markDirty(); }}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Timezone</Label>
+                      <Input
+                        value={bhTimezone}
+                        onChange={(e) => { setBhTimezone(e.target.value); markDirty(); }}
+                        placeholder="America/New_York"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-2 block">Working Days</Label>
+                    <div className="flex gap-2">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                        <button
+                          key={day}
+                          type="button"
+                          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                            bhDays.includes(i)
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          }`}
+                          onClick={() => {
+                            setBhDays((prev) =>
+                              prev.includes(i)
+                                ? prev.filter((d) => d !== i)
+                                : [...prev, i].sort()
+                            );
+                            markDirty();
+                          }}
+                        >
+                          {day}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
 

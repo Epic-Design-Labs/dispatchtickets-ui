@@ -261,12 +261,12 @@ export default function BrandDashboardPage() {
             <button
               className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'active'
-                  ? 'bg-violet-500 text-white'
+                  ? 'bg-amber-400 text-white border border-amber-400'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('active')}
             >
-              <span className={`h-2 w-2 rounded-full ${filters.status === 'active' ? 'bg-blue-300' : 'bg-blue-500'}`} />
+              <span className={`h-2 w-2 rounded-full ${filters.status === 'active' ? 'bg-white' : 'bg-amber-400'}`} />
               <span>Active</span>
               <span className="font-bold text-lg ml-2">{stats.active}</span>
             </button>
@@ -274,12 +274,12 @@ export default function BrandDashboardPage() {
             <button
               className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'all'
-                  ? 'bg-white border-2 border-blue-500'
+                  ? 'bg-gray-100 border-2 border-gray-400'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('all')}
             >
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              <span className="h-2 w-2 rounded-full bg-gray-400" />
               <span>All</span>
               <span className="font-bold text-lg ml-2">{stats.total}</span>
             </button>
@@ -287,12 +287,12 @@ export default function BrandDashboardPage() {
             <button
               className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'open'
-                  ? 'bg-blue-50 border-2 border-blue-400 text-blue-700'
+                  ? 'bg-blue-500 text-white border border-blue-500'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('open')}
             >
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
+              <span className={`h-2 w-2 rounded-full ${filters.status === 'open' ? 'bg-white' : 'bg-blue-500'}`} />
               <span>Open</span>
               <span className="font-bold text-lg ml-2">{stats.open}</span>
             </button>
@@ -300,12 +300,12 @@ export default function BrandDashboardPage() {
             <button
               className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'pending'
-                  ? 'bg-amber-50 border-2 border-amber-400 text-amber-700'
+                  ? 'bg-amber-500 text-white border border-amber-500'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('pending')}
             >
-              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <span className={`h-2 w-2 rounded-full ${filters.status === 'pending' ? 'bg-white' : 'bg-amber-500'}`} />
               <span>Pending</span>
               <span className="font-bold text-lg ml-2">{stats.pending}</span>
             </button>
@@ -313,12 +313,12 @@ export default function BrandDashboardPage() {
             <button
               className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'resolved'
-                  ? 'bg-green-50 border-2 border-green-400 text-green-700'
+                  ? 'bg-green-500 text-white border border-green-500'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('resolved')}
             >
-              <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span className={`h-2 w-2 rounded-full ${filters.status === 'resolved' ? 'bg-white' : 'bg-green-500'}`} />
               <span>Resolved</span>
               <span className="font-bold text-lg ml-2">{stats.resolved}</span>
             </button>
@@ -326,12 +326,12 @@ export default function BrandDashboardPage() {
             <button
               className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 filters.status === 'closed'
-                  ? 'bg-green-50 border-2 border-green-400 text-green-700'
+                  ? 'bg-gray-500 text-white border border-gray-500'
                   : 'bg-white border border-gray-200 hover:bg-gray-50'
               }`}
               onClick={() => handleStatClick('closed')}
             >
-              <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span className={`h-2 w-2 rounded-full ${filters.status === 'closed' ? 'bg-white' : 'bg-gray-500'}`} />
               <span>Closed</span>
               <span className="font-bold text-lg ml-2">{stats.closed}</span>
             </button>
