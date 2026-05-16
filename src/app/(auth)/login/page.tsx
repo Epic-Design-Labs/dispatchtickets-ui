@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Mail, ArrowLeft, UserPlus } from 'lucide-react';
+import { SignIn } from '@clerk/nextjs';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -156,6 +157,22 @@ export default function LoginPage() {
           <p className="mt-4 text-center text-xs text-muted-foreground">
             We&apos;ll send you an email with a link to sign in. No password required.
           </p>
+
+          {/* Phase 1c: Clerk SignIn for users who signed up via the marketing site. */}
+          <div className="mt-8 flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground uppercase tracking-wide">
+              or
+            </span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+          <div className="mt-6 flex justify-center">
+            <SignIn
+              routing="hash"
+              signUpUrl="https://dispatchtickets.com/signup/"
+              forceRedirectUrl="/"
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

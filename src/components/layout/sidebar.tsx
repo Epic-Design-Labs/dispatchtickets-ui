@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import { useAuth } from '@/providers';
 import { useProfile, useBrands, useDashboardStats, useDashboardTickets, useSetupStatus } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
@@ -392,8 +393,21 @@ export function Sidebar({ brandId }: SidebarProps) {
         <OrgSwitcher />
       </div>
 
-      {/* Profile section */}
+      {/* Profile section — Clerk users see <UserButton />; Stackbe users see
+          the legacy dropdown. Clerk's <SignedOut> treats Stackbe-authenticated
+          sessions as "signed-out" since Clerk has no session for them, which is
+          exactly the routing we want during the parallel-mode period. */}
       <div className="border-t p-3">
+        <SignedIn>
+          <div className="flex items-center gap-2 px-2">
+            <UserButton
+              appearance={{ elements: { rootBox: 'flex items-center' } }}
+              afterSignOutUrl="/login"
+            />
+            <span className="truncate text-sm">{displayName}</span>
+          </div>
+        </SignedIn>
+        <SignedOut>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start gap-2">
@@ -449,6 +463,7 @@ export function Sidebar({ brandId }: SidebarProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </SignedOut>
       </div>
     </div>
   );

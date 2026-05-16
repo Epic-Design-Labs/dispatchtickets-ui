@@ -7,7 +7,21 @@ const SESSION_TOKEN_KEY = 'dispatch_session_token';
 // Flag to prevent multiple simultaneous redirects on 401
 let isRedirecting = false;
 
-function getSessionToken(): string | null {
+/**
+ * Module-level slot for Clerk's async getToken. The ClerkTokenBridge component
+ * calls setClerkTokenGetter once Clerk is ready. Until then, this is null and
+ * we fall back to Stackbe-only auth (existing behavior preserved for current
+ * customers).
+ */
+let clerkTokenGetter: (() => Promise<string | null>) | null = null;
+
+export function setClerkTokenGetter(
+  fn: (() => Promise<string | null>) | null,
+): void {
+  clerkTokenGetter = fn;
+}
+
+function getStackbeToken(): string | null {
   if (typeof window !== 'undefined') {
     return localStorage.getItem(SESSION_TOKEN_KEY);
   }
@@ -22,18 +36,25 @@ function createApiClient(): AxiosInstance {
     },
   });
 
-  // Request interceptor to add auth header
+  // Request interceptor — Stackbe session token wins (existing customers
+  // unaffected); Clerk JWT used as fallback for users who signed up via
+  // the marketing site Clerk flow (Phase 1b).
   client.interceptors.request.use(
-    (config) => {
+    async (config) => {
       if (typeof window !== 'undefined') {
-        const sessionToken = getSessionToken();
-        if (sessionToken) {
-          config.headers.Authorization = `Bearer ${sessionToken}`;
+        const stackbeToken = getStackbeToken();
+        if (stackbeToken) {
+          config.headers.Authorization = `Bearer ${stackbeToken}`;
+        } else if (clerkTokenGetter) {
+          const clerkToken = await clerkTokenGetter();
+          if (clerkToken) {
+            config.headers.Authorization = `Bearer ${clerkToken}`;
+          }
         }
       }
       return config;
     },
-    (error) => Promise.reject(error)
+    (error) => Promise.reject(error),
   );
 
   // Response interceptor for error handling
@@ -41,7 +62,10 @@ function createApiClient(): AxiosInstance {
     (response) => response,
     (error: AxiosError<ApiError>) => {
       if (error.response?.status === 401) {
-        // Clear stored token and redirect to login (only once)
+        // Clear stored token and redirect to login (only once).
+        // Note: only the Stackbe token is cleared from localStorage. Clerk
+        // session is managed by Clerk's SDK; redirecting to /login lets
+        // Clerk's UI handle re-auth for those users.
         if (typeof window !== 'undefined' && !isRedirecting) {
           isRedirecting = true;
           localStorage.removeItem(SESSION_TOKEN_KEY);
@@ -49,7 +73,7 @@ function createApiClient(): AxiosInstance {
         }
       }
       return Promise.reject(error);
-    }
+    },
   );
 
   return client;
