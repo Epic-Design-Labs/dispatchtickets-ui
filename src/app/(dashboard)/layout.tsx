@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useAuth } from '@/providers';
+import { useAuth as useStackbeAuth } from '@/providers';
+import { useAuth as useClerkAuth } from '@clerk/nextjs';
 import { Sidebar, NotificationBell } from '@/components/layout';
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
 import { ConnectionWarningBanner } from '@/components/connection-warning-banner';
@@ -48,7 +49,14 @@ export default function DashboardLayout({
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
-  const { isAuthenticated, isConnected, isLoading } = useAuth();
+  const stackbe = useStackbeAuth();
+  const clerk = useClerkAuth();
+  // Clerk-signed-in users count as authenticated AND connected (their identity
+  // is fully wired via Clerk + the migration's users-table linking). Stackbe
+  // path continues to work for legacy customers who haven't migrated yet.
+  const isLoading = !clerk.isLoaded || (clerk.isSignedIn === false && stackbe.isLoading);
+  const isAuthenticated = clerk.isSignedIn === true || stackbe.isAuthenticated;
+  const isConnected = clerk.isSignedIn === true ? true : stackbe.isConnected;
   const brandId = params.brandId as string | undefined;
   const { data: brands, isLoading: brandsLoading } = useBrands();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
