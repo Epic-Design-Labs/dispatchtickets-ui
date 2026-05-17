@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { SignedIn, SignedOut, UserButton, OrganizationSwitcher } from '@clerk/nextjs';
 import { useAuth } from '@/providers';
 import { useProfile, useBrands, useDashboardStats, useDashboardTickets, useSetupStatus } from '@/lib/hooks';
 import { BrandSwitcher } from './brand-switcher';
@@ -388,9 +388,28 @@ export function Sidebar({ brandId }: SidebarProps) {
         </nav>
       </div>
 
-      {/* Org switcher - only visible for multi-org users */}
+      {/* Org switcher.
+          • Clerk users: Clerk's <OrganizationSwitcher /> (drives the JWT's
+            org_id claim — the API uses that to scope data).
+          • Stackbe users: the legacy OrgSwitcher (Stackbe API + session). */}
       <div className="border-t px-3 pt-2">
-        <OrgSwitcher />
+        <SignedIn>
+          <OrganizationSwitcher
+            hidePersonal
+            afterSelectOrganizationUrl="/"
+            afterCreateOrganizationUrl="/"
+            appearance={{
+              elements: {
+                rootBox: 'w-full',
+                organizationSwitcherTrigger:
+                  'w-full justify-between text-xs h-8 px-2',
+              },
+            }}
+          />
+        </SignedIn>
+        <SignedOut>
+          <OrgSwitcher />
+        </SignedOut>
       </div>
 
       {/* Profile section — Clerk users see <UserButton />; Stackbe users see
