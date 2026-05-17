@@ -2,11 +2,20 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/providers';
+import { useAuth as useStackbeAuth } from '@/providers';
+import { useAuth as useClerkAuth } from '@clerk/nextjs';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const stackbe = useStackbeAuth();
+  const clerk = useClerkAuth();
+
+  // Treat Clerk-signed-in users as authenticated. Wait for Clerk to finish
+  // loading before deciding — otherwise we redirect to /login while Clerk
+  // is still hydrating its session cookie and we get a loop.
+  const clerkReady = clerk.isLoaded;
+  const isAuthenticated = clerk.isSignedIn === true || stackbe.isAuthenticated;
+  const isLoading = !clerkReady || (clerk.isSignedIn === false && stackbe.isLoading);
 
   useEffect(() => {
     if (!isLoading) {
