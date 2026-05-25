@@ -89,6 +89,14 @@ function createApiClient(): AxiosInstance {
 
 export const apiClient = createApiClient();
 
+export async function getAuthToken(): Promise<string | null> {
+  const stackbeToken = getStackbeToken();
+  if (stackbeToken) return stackbeToken;
+  if (!clerkTokenGetter) await waitForClerkReady();
+  if (clerkTokenGetter) return clerkTokenGetter();
+  return null;
+}
+
 // Legacy helpers preserved for backwards compatibility with code that still
 // expects a Stackbe-style session token in localStorage. Safe to delete in
 // Phase 1e cleanup once nothing references them.

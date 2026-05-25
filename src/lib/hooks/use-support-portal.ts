@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getSessionToken } from '@/providers/auth-provider';
+import { getAuthToken } from '@/lib/api/client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
 
@@ -74,16 +74,16 @@ export function useSupportPortal() {
 
   // Fetch portal token from our backend API route
   const fetchToken = useCallback(async () => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) {
-      setError('Not authenticated');
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
       setError(null);
+
+      const sessionToken = await getAuthToken();
+      if (!sessionToken) {
+        setError('Not authenticated');
+        setLoading(false);
+        return;
+      }
 
       const response = await fetch('/api/support/token', {
         headers: {
