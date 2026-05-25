@@ -423,7 +423,9 @@ export function Sidebar({ brandId }: SidebarProps) {
               appearance={{ elements: { rootBox: 'flex items-center' } }}
               afterSignOutUrl="/login"
             />
-            <span className="truncate text-sm">{displayName}</span>
+            <Link href="/profile" className="truncate text-sm hover:underline">
+              {displayName}
+            </Link>
           </div>
         </SignedIn>
         <SignedOut>
