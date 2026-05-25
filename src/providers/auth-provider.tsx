@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { getAuthToken } from '@/lib/api/client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
 
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
-    const token = getSessionToken();
+    const token = getSessionToken() || await getAuthToken();
     if (!token) {
       setSession(null);
       setIsLoading(false);
