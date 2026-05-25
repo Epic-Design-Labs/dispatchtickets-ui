@@ -37,6 +37,7 @@ import {
   useUpdateDomain,
   useRemoveDomain,
   useSubscription,
+  useUsage,
 } from '@/lib/hooks';
 import { OutboundReplyMode } from '@/lib/api/domains';
 import { toast } from 'sonner';
@@ -60,9 +61,14 @@ export default function EmailSettingsPage() {
   const updateBrand = useUpdateBrand(brandId);
   const { data: domains, isLoading: domainsLoading } = useDomains(brandId);
   const { data: subscriptionData } = useSubscription();
+  const { data: usageData } = useUsage();
 
   // Check if user has custom domain access (paid plans only)
-  const hasCustomDomainAccess = subscriptionData?.subscription && subscriptionData.subscription.planPrice > 0;
+  // Subscription check works for Stackbe users; usage-based check works for Clerk users
+  // (where subscription is null but usage endpoint reflects the local Account plan)
+  const hasCustomDomainAccess =
+    (subscriptionData?.subscription && subscriptionData.subscription.planPrice > 0) ||
+    (usageData?.brandLimit !== null && usageData?.brandLimit !== 1);
 
   // Domain mutations
   const addDomain = useAddDomain();

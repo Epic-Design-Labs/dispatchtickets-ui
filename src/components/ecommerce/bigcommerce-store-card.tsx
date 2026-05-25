@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useStores, useConnectStore, useDisconnectStore, useTriggerSync, useSubscription } from '@/lib/hooks';
+import { useStores, useConnectStore, useDisconnectStore, useTriggerSync, useSubscription, useUsage } from '@/lib/hooks';
 import { EcommerceStore, EcommerceStoreStatus } from '@/types';
 import { toast } from 'sonner';
 import { RefreshCw, Unplug, Loader2, Lock } from 'lucide-react';
@@ -177,7 +177,10 @@ export function BigCommerceStoreCard({ brandId }: BigCommerceStoreCardProps) {
   const [storeHash, setStoreHash] = useState('');
   const [apiToken, setApiToken] = useState('');
 
-  const isPaid = subscriptionData?.subscription && subscriptionData.subscription.planPrice > 0;
+  const { data: usageData } = useUsage();
+  const isPaid =
+    (subscriptionData?.subscription && subscriptionData.subscription.planPrice > 0) ||
+    (usageData?.brandLimit !== null && usageData?.brandLimit !== 1);
 
   const bcStores = (stores || []).filter((s) => s.platform === 'BIGCOMMERCE');
   const connectedStore = bcStores.find(
