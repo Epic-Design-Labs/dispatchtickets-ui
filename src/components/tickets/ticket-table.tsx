@@ -71,7 +71,7 @@ import { getGravatarUrl } from '@/lib/gravatar';
 import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical, MoreVertical, Eye, ExternalLink, UserCheck } from 'lucide-react';
 
 // Column definitions - built-in columns use these keys
-type BuiltInColumnKey = 'ticketNumber' | 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'updated' | 'createdAge' | 'updatedAge' | 'dueAt';
+type BuiltInColumnKey = 'ticketNumber' | 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'createdBy' | 'updated' | 'createdAge' | 'updatedAge' | 'dueAt';
 
 interface ColumnDef {
   key: string; // Can be built-in key or custom field key prefixed with 'cf_'
@@ -91,6 +91,7 @@ const BUILT_IN_COLUMNS: ColumnDef[] = [
   { key: 'assignee', label: 'Assignee', defaultVisible: false, sortable: true },
   { key: 'category', label: 'Category', defaultVisible: false, sortable: true },
   { key: 'created', label: 'Created', defaultVisible: true, sortable: true },
+  { key: 'createdBy', label: 'Created By', defaultVisible: false, sortable: false },
   { key: 'updated', label: 'Updated', defaultVisible: false, sortable: true },
   { key: 'createdAge', label: 'Age', defaultVisible: false, sortable: true },
   { key: 'updatedAge', label: 'Last Activity', defaultVisible: false, sortable: true },
@@ -655,6 +656,25 @@ export function TicketTable({
     return info ? info.name : '-';
   };
 
+  // Resolve a ticket's `createdBy` (stored as the agent's email or member id) to a
+  // team member, matching by id or email so it works regardless of which was stored.
+  const getCreatorInfo = (createdBy: string | null | undefined) => {
+    if (!createdBy) return null;
+    const member = teamMembers.find(
+      (m) => m.id === createdBy || m.email.toLowerCase() === createdBy.toLowerCase()
+    );
+    if (!member) return null;
+    const name = [member.firstName, member.lastName].filter(Boolean).join(' ');
+    return {
+      name: name || member.email,
+      email: member.email,
+      initials: name
+        ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+        : member.email.slice(0, 2).toUpperCase(),
+      avatarUrl: member.avatarUrl,
+    };
+  };
+
   // Render sort icon
   const SortIcon = ({ column }: { column: string }) => {
     if (sortState.column !== column) {
@@ -769,6 +789,36 @@ export function TicketTable({
         );
       case 'created':
         return <span className="text-muted-foreground">{formatDateTime(ticket.createdAt)}</span>;
+      case 'createdBy': {
+        // 1. Created by an agent (team member) — show their avatar + name.
+        const creator = getCreatorInfo(ticket.createdBy);
+        if (creator) {
+          return (
+            <div className="flex items-center gap-2">
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={creator.avatarUrl || getGravatarUrl(creator.email)} alt={creator.name} />
+                <AvatarFallback className="text-xs">{creator.initials}</AvatarFallback>
+              </Avatar>
+              <span className="truncate max-w-[160px]" title={creator.name}>{creator.name}</span>
+            </div>
+          );
+        }
+        // 2. A non-member creator string (e.g. an external email passed via the API).
+        //    Skip opaque auth IDs like "user_xxx".
+        if (ticket.createdBy && !ticket.createdBy.startsWith('user_')) {
+          return (
+            <span className="text-muted-foreground truncate max-w-[160px] inline-block align-middle" title={ticket.createdBy}>
+              {ticket.createdBy}
+            </span>
+          );
+        }
+        // 3. Channel-origin ticket (email/web/api) — the requesting contact created it.
+        if (customerName || customerEmail) {
+          return <span className="text-muted-foreground">{customerName || customerEmail}</span>;
+        }
+        // 4. Fall back to the source channel.
+        return <span className="text-muted-foreground capitalize">{ticket.source || '-'}</span>;
+      }
       case 'updated':
         return <span className="text-muted-foreground">{formatDateTime(ticket.updatedAt)}</span>;
       case 'createdAge':
