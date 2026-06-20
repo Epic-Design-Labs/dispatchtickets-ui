@@ -1,14 +1,23 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { billingApi, UpgradeRequest, CancelRequest, DeleteAccountRequest } from '@/lib/api/billing';
+import { billingApi, UpgradeRequest, CancelRequest, DeleteAccountRequest, ConfirmCheckoutRequest } from '@/lib/api/billing';
 
 export const billingKeys = {
   plans: ['plans'] as const,
   subscription: ['subscription'] as const,
   usage: ['usage'] as const,
   invoices: ['invoices'] as const,
+  config: ['billingConfig'] as const,
 };
+
+export function useBillingConfig() {
+  return useQuery({
+    queryKey: billingKeys.config,
+    queryFn: billingApi.getBillingConfig,
+    staleTime: 1000 * 60 * 60, // 1 hour — provider doesn't change at runtime
+  });
+}
 
 export function usePlans() {
   return useQuery({
@@ -70,6 +79,16 @@ export function useInvoices(limit?: number) {
     queryKey: [...billingKeys.invoices, limit],
     queryFn: () => billingApi.getInvoices(limit),
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+export function useConfirmCheckout() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ConfirmCheckoutRequest) => billingApi.confirmCheckout(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.subscription });
+    },
   });
 }
 

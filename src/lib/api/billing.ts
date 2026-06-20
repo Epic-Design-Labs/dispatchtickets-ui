@@ -90,6 +90,41 @@ export interface DeleteAccountResponse {
   deletedBrandsCount: number;
 }
 
+export interface BillingConfigResponse {
+  provider: 'stackbe' | 'throttle';
+  checkoutMode: 'redirect' | 'embed';
+}
+
+export interface EmbedPayload {
+  embedToken: string;
+  checkoutSessionId: string;
+  merchantAccountId: string;
+  environment: 'sandbox' | 'production';
+}
+
+// Union return type for upgrade: redirect returns { url }, embed returns EmbedPayload
+export type UpgradeResponseUnion = UpgradeResponse | EmbedPayload;
+
+export interface ConfirmCheckoutRequest {
+  checkoutSessionId: string;
+  planRef?: string;
+}
+
+export interface ConfirmCheckoutResponse {
+  subscription: {
+    id: string;
+    planRef: string;
+    planName: string;
+    planPrice: number;
+    planInterval: string;
+    planCurrency: string;
+    status: string;
+    currentPeriodStart: string | null;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+  };
+}
+
 export const billingApi = {
   getPlans: async (): Promise<PlansResponse> => {
     const response = await apiClient.get<PlansResponse>('/auth/plans');
@@ -106,8 +141,18 @@ export const billingApi = {
     return response.data;
   },
 
-  upgrade: async (data: UpgradeRequest): Promise<UpgradeResponse> => {
-    const response = await apiClient.post<UpgradeResponse>('/auth/subscription/upgrade', data);
+  getBillingConfig: async (): Promise<BillingConfigResponse> => {
+    const response = await apiClient.get<BillingConfigResponse>('/billing/config');
+    return response.data;
+  },
+
+  upgrade: async (data: UpgradeRequest): Promise<UpgradeResponseUnion> => {
+    const response = await apiClient.post<UpgradeResponseUnion>('/auth/subscription/upgrade', data);
+    return response.data;
+  },
+
+  confirmCheckout: async (data: ConfirmCheckoutRequest): Promise<ConfirmCheckoutResponse> => {
+    const response = await apiClient.post<ConfirmCheckoutResponse>('/auth/subscription/confirm', data);
     return response.data;
   },
 

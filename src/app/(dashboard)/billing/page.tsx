@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
-import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useInvoices, useDeleteAccount } from '@/lib/hooks';
+import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useInvoices, useDeleteAccount, useBillingConfig, useConfirmCheckout } from '@/lib/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -28,9 +34,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Plan, Invoice } from '@/lib/api/billing';
+import { Plan, Invoice, EmbedPayload } from '@/lib/api/billing';
 import { Input } from '@/components/ui/input';
 import { FileText, Download, ExternalLink, AlertTriangle } from 'lucide-react';
+import { ThrottleCheckout } from '@usethrottle/checkout-sdk';
 
 // Plan group types
 interface PlanGroup {
@@ -48,6 +55,7 @@ export default function BillingPage() {
   const { data: plansData, isLoading: plansLoading } = usePlans();
   const { data: usageData, isLoading: usageLoading } = useUsage();
   const { data: invoicesData, isLoading: invoicesLoading } = useInvoices(10);
+  const { data: billingConfig } = useBillingConfig();
 
   // Handle upgrade success URL param
   useEffect(() => {
@@ -64,6 +72,7 @@ export default function BillingPage() {
   const cancelSubscription = useCancelSubscription();
   const reactivateSubscription = useReactivateSubscription();
   const upgradeSubscription = useUpgradeSubscription();
+  const confirmCheckout = useConfirmCheckout();
   const deleteAccount = useDeleteAccount();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
@@ -73,6 +82,10 @@ export default function BillingPage() {
   const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
   const [couponCode, setCouponCode] = useState('');
+  // Embed checkout state (Throttle provider only)
+  const [embedPayload, setEmbedPayload] = useState<EmbedPayload | null>(null);
+  const [embedPlanRef, setEmbedPlanRef] = useState<string | null>(null);
+  const [embedError, setEmbedError] = useState<string | null>(null);
 
   const subscription = subscriptionData?.subscription;
   const allPlans = plansData?.plans || [];
@@ -146,7 +159,7 @@ export default function BillingPage() {
     }
   };
 
-  const handleUpgrade = async (planId: string) => {
+  const handleUpgrade = async (planId: string, planRef?: string) => {
     setUpgradingPlanId(planId);
     try {
       const result = await upgradeSubscription.mutateAsync({
@@ -155,11 +168,18 @@ export default function BillingPage() {
         cancelUrl: `${window.location.origin}/billing`,
         ...(couponCode.trim() && { couponCode: couponCode.trim() }),
       });
-      // Redirect to Stripe checkout
-      window.location.href = result.url;
+      if ('embedToken' in result) {
+        // Embed mode (Throttle provider): show the in-page checkout
+        setEmbedPayload(result as EmbedPayload);
+        setEmbedPlanRef(planRef ?? planId);
+        setEmbedError(null);
+        setUpgradingPlanId(null);
+      } else {
+        // Redirect mode (Stackbe default): navigate to checkout URL
+        window.location.href = result.url;
+      }
     } catch (error: unknown) {
       console.error('Upgrade error:', error);
-      // Extract message from axios error response
       const axiosError = error as { response?: { data?: { message?: string } } };
       const message = axiosError.response?.data?.message
         || (error instanceof Error ? error.message : 'Unknown error');
@@ -357,11 +377,18 @@ export default function BillingPage() {
         successUrl: `${window.location.origin}/billing?upgraded=true`,
         cancelUrl: `${window.location.origin}/billing`,
       });
-      // For free plan, no checkout redirect - just refresh
+      // For free plan, no checkout step — just refresh
       if (selectedDowngradePlan.price === 0) {
         toast.success('Downgraded to free plan');
         refetch();
         setDowngradeDialogOpen(false);
+        setSelectedDowngradePlan(null);
+      } else if ('embedToken' in result) {
+        // Embed mode: close downgrade dialog and open embed checkout
+        setDowngradeDialogOpen(false);
+        setEmbedPayload(result as EmbedPayload);
+        setEmbedPlanRef(selectedDowngradePlan.id);
+        setEmbedError(null);
         setSelectedDowngradePlan(null);
       } else {
         window.location.href = result.url;
@@ -619,7 +646,7 @@ export default function BillingPage() {
                               variant={isUpgradeAction ? 'default' : 'outline'}
                               onClick={() => {
                                 if (isUpgradeAction) {
-                                  handleUpgrade(plan.id);
+                                  handleUpgrade(plan.id, plan.slug);
                                 } else {
                                   handleDowngrade(plan);
                                 }
@@ -846,6 +873,63 @@ export default function BillingPage() {
           </div>
         )}
       </div>
+
+      {/* Embed Checkout Modal (Throttle provider only) */}
+      <Dialog
+        open={!!embedPayload}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEmbedPayload(null);
+            setEmbedPlanRef(null);
+            setEmbedError(null);
+            setUpgradingPlanId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Complete Payment</DialogTitle>
+          </DialogHeader>
+          {embedError && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+              {embedError}
+            </div>
+          )}
+          {embedPayload && (
+            <ThrottleCheckout
+              sessionId={embedPayload.checkoutSessionId}
+              parentOrigin={typeof window !== 'undefined' ? window.location.origin : ''}
+              onSucceeded={async () => {
+                try {
+                  await confirmCheckout.mutateAsync({
+                    checkoutSessionId: embedPayload.checkoutSessionId,
+                    planRef: embedPlanRef ?? undefined,
+                  });
+                  setEmbedPayload(null);
+                  setEmbedPlanRef(null);
+                  setEmbedError(null);
+                  toast.success('Subscription updated successfully');
+                  refetch();
+                } catch (err: unknown) {
+                  const axiosError = err as { response?: { data?: { message?: string } } };
+                  const msg = axiosError.response?.data?.message
+                    || (err instanceof Error ? err.message : 'Failed to confirm subscription');
+                  setEmbedError(msg);
+                }
+              }}
+              onFailed={({ message }) => {
+                setEmbedError(message || 'Payment failed. Please try again.');
+              }}
+              onCancelled={() => {
+                setEmbedPayload(null);
+                setEmbedPlanRef(null);
+                setEmbedError(null);
+                setUpgradingPlanId(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Cancel Subscription Dialog */}
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
