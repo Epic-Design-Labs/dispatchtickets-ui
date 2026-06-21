@@ -98,8 +98,9 @@ export default function BillingPage() {
       // Skip free plan from the upgrade grid - it shows in Current Plan section
       if (plan.price === 0) return;
 
-      // Extract base name (remove "Monthly" or "Annual" suffix)
-      const baseName = plan.name.replace(/ (Monthly|Annual)$/i, '');
+      // Extract base name (remove "Monthly"/"Annual" suffix, parenthesized or not:
+      // handles both "Pro Annual" and "Pro (Annual)" so it maps to planDetails keys).
+      const baseName = plan.name.replace(/\s*\(?(?:Monthly|Annual)\)?$/i, '');
 
       if (!groups[baseName]) {
         groups[baseName] = { baseName, monthly: null, annual: null };
@@ -473,7 +474,7 @@ export default function BillingPage() {
                     {/* Plan Entitlements */}
                     {currentPlan && (
                       <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm py-3 border-y">
-                        {getPlanFeatures(currentPlan, subscription.planName.replace(/ (Monthly|Annual)$/, '')).map((feature, i) => (
+                        {getPlanFeatures(currentPlan, subscription.planName.replace(/\s*\(?(?:Monthly|Annual)\)?$/i, '')).map((feature, i) => (
                           <div key={i} className="flex items-center gap-2">
                             <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
