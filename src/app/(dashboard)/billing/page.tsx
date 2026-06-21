@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
-import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useInvoices, useDeleteAccount, useBillingConfig, useConfirmCheckout } from '@/lib/hooks';
+import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useInvoices, useDeleteAccount, useConfirmCheckout } from '@/lib/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,7 +55,6 @@ export default function BillingPage() {
   const { data: plansData, isLoading: plansLoading } = usePlans();
   const { data: usageData, isLoading: usageLoading } = useUsage();
   const { data: invoicesData, isLoading: invoicesLoading } = useInvoices(10);
-  const { data: billingConfig } = useBillingConfig();
 
   // Handle upgrade success URL param
   useEffect(() => {
@@ -387,7 +386,7 @@ export default function BillingPage() {
         // Embed mode: close downgrade dialog and open embed checkout
         setDowngradeDialogOpen(false);
         setEmbedPayload(result as EmbedPayload);
-        setEmbedPlanRef(selectedDowngradePlan.id);
+        setEmbedPlanRef(selectedDowngradePlan.slug);
         setEmbedError(null);
         setSelectedDowngradePlan(null);
       } else {
@@ -898,7 +897,7 @@ export default function BillingPage() {
           {embedPayload && (
             <ThrottleCheckout
               sessionId={embedPayload.checkoutSessionId}
-              parentOrigin={typeof window !== 'undefined' ? window.location.origin : ''}
+              parentOrigin={window.location.origin}
               onSucceeded={async () => {
                 try {
                   await confirmCheckout.mutateAsync({

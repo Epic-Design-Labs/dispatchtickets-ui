@@ -90,11 +90,6 @@ export interface DeleteAccountResponse {
   deletedBrandsCount: number;
 }
 
-export interface BillingConfigResponse {
-  provider: 'stackbe' | 'throttle';
-  checkoutMode: 'redirect' | 'embed';
-}
-
 export interface EmbedPayload {
   embedToken: string;
   checkoutSessionId: string;
@@ -138,11 +133,6 @@ export const billingApi = {
 
   getUsage: async (): Promise<UsageResponse> => {
     const response = await apiClient.get<UsageResponse>('/auth/usage');
-    return response.data;
-  },
-
-  getBillingConfig: async (): Promise<BillingConfigResponse> => {
-    const response = await apiClient.get<BillingConfigResponse>('/billing/config');
     return response.data;
   },
 

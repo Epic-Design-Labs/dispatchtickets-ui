@@ -8,16 +8,7 @@ export const billingKeys = {
   subscription: ['subscription'] as const,
   usage: ['usage'] as const,
   invoices: ['invoices'] as const,
-  config: ['billingConfig'] as const,
 };
-
-export function useBillingConfig() {
-  return useQuery({
-    queryKey: billingKeys.config,
-    queryFn: billingApi.getBillingConfig,
-    staleTime: 1000 * 60 * 60, // 1 hour — provider doesn't change at runtime
-  });
-}
 
 export function usePlans() {
   return useQuery({
