@@ -80,7 +80,7 @@ export default function BillingPage() {
   const [selectedDowngradePlan, setSelectedDowngradePlan] = useState<Plan | null>(null);
   const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
-  const [couponCode, setCouponCode] = useState('');
+  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
   // Embed checkout state (Throttle provider only)
   const [embedPayload, setEmbedPayload] = useState<EmbedPayload | null>(null);
   const [embedPlanRef, setEmbedPlanRef] = useState<string | null>(null);
@@ -121,7 +121,6 @@ export default function BillingPage() {
     });
   }, [allPlans]);
 
-  const freePlan = allPlans.find(p => p.price === 0);
   const currentPlan = subscription ? allPlans.find(p => p.id === subscription.planId) : null;
 
   const handleCancel = async () => {
@@ -152,8 +151,9 @@ export default function BillingPage() {
 
   const handleReactivate = async () => {
     try {
-      const result = await reactivateSubscription.mutateAsync();
-      toast.success(result.message);
+      await reactivateSubscription.mutateAsync();
+      setReactivateDialogOpen(false);
+      toast.success('Subscription reactivated — it will keep renewing and won’t be cancelled.');
     } catch {
       toast.error('Failed to reactivate subscription');
     }
@@ -166,7 +166,6 @@ export default function BillingPage() {
         planId,
         successUrl: `${window.location.origin}/billing?upgraded=true`,
         cancelUrl: `${window.location.origin}/billing`,
-        ...(couponCode.trim() && { couponCode: couponCode.trim() }),
       });
       if ('embedToken' in result) {
         // Embed mode (Throttle provider): show the in-page checkout
@@ -493,33 +492,30 @@ export default function BillingPage() {
                       {subscription.currentPeriodEnd && (
                         <div>
                           <p className="text-muted-foreground mb-1">
-                            {subscription.cancelAtPeriodEnd ? 'Ends On' : 'Next Renewal'}
+                            {subscription.cancelAtPeriodEnd ? 'Access Ends On' : 'Next Charge'}
                           </p>
-                          <p className="font-medium">{formatDate(subscription.currentPeriodEnd)}</p>
+                          <p className="font-medium">
+                            {subscription.cancelAtPeriodEnd
+                              ? formatDate(subscription.currentPeriodEnd)
+                              : `${
+                                  subscription.planInterval === 'year'
+                                    ? formatAnnualTotal(subscription.planPrice, subscription.planCurrency)
+                                    : formatPrice(subscription.planPrice, subscription.planCurrency, subscription.planInterval)
+                                } on ${formatDate(subscription.currentPeriodEnd)}`}
+                          </p>
                         </div>
                       )}
                     </div>
 
                     <div className="flex items-center gap-4">
-                      {subscription.cancelAtPeriodEnd && (
+                      {subscription.cancelAtPeriodEnd ? (
                         <Button
-                          onClick={handleReactivate}
+                          onClick={() => setReactivateDialogOpen(true)}
                           disabled={reactivateSubscription.isPending}
                         >
                           {reactivateSubscription.isPending ? 'Reactivating...' : 'Reactivate Subscription'}
                         </Button>
-                      )}
-                      {!subscription.cancelAtPeriodEnd && freePlan && !isCurrentPlan(freePlan) && (
-                        <button
-                          onClick={() => handleDowngrade(freePlan)}
-                          disabled={upgradeSubscription.isPending || !!getDowngradeBlockReason(freePlan)}
-                          title={getDowngradeBlockReason(freePlan) || undefined}
-                          className="text-sm text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Downgrade to Free
-                        </button>
-                      )}
-                      {!subscription.cancelAtPeriodEnd && (
+                      ) : (
                         <button
                           onClick={() => setCancelDialogOpen(true)}
                           className="text-sm text-muted-foreground hover:text-destructive hover:underline"
@@ -545,9 +541,13 @@ export default function BillingPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Available Plans</CardTitle>
+                    <CardTitle>{subscription ? 'Change Your Plan' : 'Available Plans'}</CardTitle>
                     <CardDescription>
-                      {subscription ? 'Upgrade or change your plan' : 'Choose a plan to get started'}
+                      {!subscription
+                        ? 'Choose a plan to get started'
+                        : subscription.cancelAtPeriodEnd
+                          ? 'Plan changes are paused while your cancellation is pending — reactivate to switch plans.'
+                          : 'Switch tiers anytime — your current plan is highlighted. To stop paying, use Cancel Subscription above.'}
                     </CardDescription>
                   </div>
                   {/* Billing Period Toggle */}
@@ -651,8 +651,8 @@ export default function BillingPage() {
                                   handleDowngrade(plan);
                                 }
                               }}
-                              disabled={upgradingPlanId !== null || (!isUpgradeAction && (subscription?.cancelAtPeriodEnd || !!getDowngradeBlockReason(plan)))}
-                              title={!isUpgradeAction ? getDowngradeBlockReason(plan) || undefined : undefined}
+                              disabled={upgradingPlanId !== null || subscription?.cancelAtPeriodEnd || (!isUpgradeAction && !!getDowngradeBlockReason(plan))}
+                              title={subscription?.cancelAtPeriodEnd ? 'Reactivate your subscription to change plans' : (!isUpgradeAction ? getDowngradeBlockReason(plan) || undefined : undefined)}
                             >
                               {upgradingPlanId === plan.id
                                 ? 'Processing...'
@@ -672,22 +672,6 @@ export default function BillingPage() {
                   </div>
                 )}
 
-                {/* Coupon Code Input */}
-                <div className="mt-6 pt-4 border-t">
-                  <div className="flex items-center gap-3 max-w-sm">
-                    <Input
-                      placeholder="Coupon code"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      className="flex-1"
-                    />
-                    {couponCode && (
-                      <span className="text-sm text-muted-foreground">
-                        Will be applied at checkout
-                      </span>
-                    )}
-                  </div>
-                </div>
               </CardContent>
             </Card>
 
@@ -937,8 +921,10 @@ export default function BillingPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel your subscription? You&apos;ll continue to have
-              access until the end of your current billing period.
+              You&apos;ll keep full access until
+              {subscription?.currentPeriodEnd ? ` ${formatDate(subscription.currentPeriodEnd)}` : ' the end of your current billing period'}.
+              After that your plan reverts to <strong>Free</strong> and you won&apos;t be charged again.
+              You can reactivate anytime before then.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -948,6 +934,30 @@ export default function BillingPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {cancelSubscription.isPending ? 'Cancelling...' : 'Cancel Subscription'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reactivate Subscription Dialog */}
+      <AlertDialog open={reactivateDialogOpen} onOpenChange={setReactivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reactivate Subscription</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your {subscription?.planName ?? 'subscription'} will continue as normal and keep
+              renewing
+              {subscription?.currentPeriodEnd ? ` on ${formatDate(subscription.currentPeriodEnd)}` : ''}
+              {' '}instead of cancelling. You can cancel again anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Cancelling</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReactivate}
+              disabled={reactivateSubscription.isPending}
+            >
+              {reactivateSubscription.isPending ? 'Reactivating...' : 'Reactivate Subscription'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
