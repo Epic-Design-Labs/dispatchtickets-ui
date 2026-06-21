@@ -53,7 +53,7 @@ export default function BillingPage() {
   const isOwner = session?.orgRole === 'owner';
   const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError, refetch } = useSubscription();
   const { data: plansData, isLoading: plansLoading } = usePlans();
-  const { data: usageData, isLoading: usageLoading } = useUsage();
+  const { data: usageData, isLoading: usageLoading, refetch: refetchUsage } = useUsage();
   const { data: invoicesData, isLoading: invoicesLoading } = useInvoices(10);
 
   // Handle upgrade success URL param
@@ -892,8 +892,10 @@ export default function BillingPage() {
                   setEmbedPayload(null);
                   setEmbedPlanRef(null);
                   setEmbedError(null);
-                  toast.success('Subscription updated successfully');
-                  refetch();
+                  toast.success('Subscription activated');
+                  // Await both refetches so the Current Plan + Usage update
+                  // immediately after payment (no manual reload needed).
+                  await Promise.all([refetch(), refetchUsage()]);
                 } catch (err: unknown) {
                   const axiosError = err as { response?: { data?: { message?: string } } };
                   const msg = axiosError.response?.data?.message
