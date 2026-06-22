@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
-import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useInvoices, useDeleteAccount, useConfirmCheckout } from '@/lib/hooks';
+import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useDeleteAccount, useConfirmCheckout } from '@/lib/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,18 +25,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Plan, Invoice, EmbedPayload } from '@/lib/api/billing';
+import { Plan, EmbedPayload } from '@/lib/api/billing';
+import { InvoiceHistoryCard } from '@/components/billing/invoice-history-card';
 import { Input } from '@/components/ui/input';
-import { FileText, Download, ExternalLink, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { ThrottleCheckout } from '@usethrottle/checkout-sdk';
 
 // Plan group types
@@ -54,7 +47,6 @@ export default function BillingPage() {
   const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError, refetch } = useSubscription();
   const { data: plansData, isLoading: plansLoading } = usePlans();
   const { data: usageData, isLoading: usageLoading, refetch: refetchUsage } = useUsage();
-  const { data: invoicesData, isLoading: invoicesLoading } = useInvoices(10);
 
   // Handle upgrade success URL param
   useEffect(() => {
@@ -88,7 +80,6 @@ export default function BillingPage() {
 
   const subscription = subscriptionData?.subscription;
   const allPlans = plansData?.plans || [];
-  const invoices = invoicesData?.invoices || [];
 
   // Group plans by base name (Starter, Pro, Enterprise) - excludes Free plan
   const planGroups = useMemo(() => {
@@ -243,14 +234,6 @@ export default function BillingPage() {
     });
   };
 
-  const formatInvoiceAmount = (amount: number, currency: string) => {
-    // Stackbe returns invoice amounts in dollars, not cents
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency?.toUpperCase() || 'USD',
-    }).format(amount);
-  };
-
   const getStatusBadge = (status: string, cancelAtPeriodEnd: boolean) => {
     if (cancelAtPeriodEnd) {
       return <Badge variant="destructive">Cancelling</Badge>;
@@ -266,23 +249,6 @@ export default function BillingPage() {
         return <Badge variant="secondary">Cancelled</Badge>;
       case 'paused':
         return <Badge variant="secondary">Paused</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const getInvoiceStatusBadge = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return <Badge className="bg-green-500">Paid</Badge>;
-      case 'open':
-        return <Badge className="bg-yellow-500">Open</Badge>;
-      case 'draft':
-        return <Badge variant="secondary">Draft</Badge>;
-      case 'void':
-        return <Badge variant="secondary">Void</Badge>;
-      case 'uncollectible':
-        return <Badge variant="destructive">Uncollectible</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -740,85 +706,10 @@ export default function BillingPage() {
               </CardContent>
             </Card>
 
-            {/* Invoice History */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Invoice History</CardTitle>
-                <CardDescription>
-                  Your past payments and invoices
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {invoicesLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                ) : invoices.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
-                    <p className="mt-4 text-sm text-muted-foreground">
-                      No invoices yet. Your payment history will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Period</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoices.map((invoice: Invoice) => (
-                        <TableRow key={invoice.id}>
-                          <TableCell className="font-medium">
-                            {invoice.number || invoice.id.slice(-8)}
-                          </TableCell>
-                          <TableCell>{formatShortDate(invoice.created)}</TableCell>
-                          <TableCell>
-                            {formatShortDate(invoice.periodStart)} - {formatShortDate(invoice.periodEnd)}
-                          </TableCell>
-                          <TableCell>
-                            {formatInvoiceAmount(invoice.amountPaid || invoice.amountDue, invoice.currency)}
-                          </TableCell>
-                          <TableCell>{getInvoiceStatusBadge(invoice.status)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              {invoice.invoiceUrl && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => window.open(invoice.invoiceUrl!, '_blank')}
-                                  title="View invoice"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {invoice.invoicePdf && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => window.open(invoice.invoicePdf!, '_blank')}
-                                  title="Download PDF"
-                                >
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+            {/* Invoice History — powered by @usethrottle/invoices via the
+                /api/throttle server proxy (customer-scoped, secret key stays
+                server-side). */}
+            <InvoiceHistoryCard />
 
             {/* Danger Zone */}
             <Card className="border-destructive/50">

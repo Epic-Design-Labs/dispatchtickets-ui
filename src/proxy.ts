@@ -18,9 +18,13 @@ export default clerkMiddleware();
 
 export const config = {
   matcher: [
-    // Run on every page route except Next internals and static assets.
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Run on API routes too (the few there are — see admin/src/app/api/).
-    '/(api|trpc)(.*)',
+    // Run on every page route except Next internals, static assets, and the
+    // invoice proxy (/api/throttle) — that route authenticates itself by
+    // forwarding the caller's token to the DT API, and Clerk's verifier crashes
+    // on non-Clerk Bearer tokens (e.g. the legacy Stackbe session token).
+    '/((?!_next|api/throttle|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Run on API routes too (the few there are — see admin/src/app/api/), but
+    // not the self-authenticating invoice proxy.
+    '/(api(?!/throttle)|trpc)(.*)',
   ],
 };
