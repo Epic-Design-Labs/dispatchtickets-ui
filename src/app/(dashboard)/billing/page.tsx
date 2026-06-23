@@ -864,8 +864,8 @@ export default function BillingPage() {
             <AlertDialogDescription>
               Are you sure you want to downgrade to the {selectedDowngradePlan?.name} plan?
               {selectedDowngradePlan?.price === 0
-                ? ' Your current plan benefits will end immediately.'
-                : ' The change will take effect at your next billing cycle.'}
+                ? ' Your subscription switches to the free plan immediately.'
+                : ' The change takes effect immediately, and your next renewal will be charged at the new rate.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
