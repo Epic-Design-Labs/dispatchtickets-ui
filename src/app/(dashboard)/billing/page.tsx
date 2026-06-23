@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
-import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useDeleteAccount, useConfirmCheckout } from '@/lib/hooks';
+import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useDeleteAccount, useConfirmCheckout, useCancelPendingChange } from '@/lib/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,7 @@ export default function BillingPage() {
 
   const cancelSubscription = useCancelSubscription();
   const reactivateSubscription = useReactivateSubscription();
+  const cancelPendingChange = useCancelPendingChange();
   const upgradeSubscription = useUpgradeSubscription();
   const confirmCheckout = useConfirmCheckout();
   const deleteAccount = useDeleteAccount();
@@ -147,6 +148,15 @@ export default function BillingPage() {
       toast.success('Subscription reactivated — it will keep renewing and won’t be cancelled.');
     } catch {
       toast.error('Failed to reactivate subscription');
+    }
+  };
+
+  const handleCancelPendingChange = async () => {
+    try {
+      await cancelPendingChange.mutateAsync();
+      toast.success('Scheduled plan change cancelled — you’ll keep your current plan.');
+    } catch {
+      toast.error('Failed to cancel the scheduled plan change');
     }
   };
 
@@ -424,6 +434,26 @@ export default function BillingPage() {
               <CardContent>
                 {subscription ? (
                   <div className="space-y-6">
+                    {/* Scheduled (deferred) plan change banner */}
+                    {subscription.pendingPlanName && (
+                      <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-900/60 dark:bg-amber-950/30 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-amber-900 dark:text-amber-200">
+                          Your plan changes to <span className="font-semibold">{subscription.pendingPlanName}</span>
+                          {subscription.pendingEffectiveAt ? ` on ${formatDate(subscription.pendingEffectiveAt)}` : ''}.
+                          You keep your current plan until then.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={handleCancelPendingChange}
+                          disabled={cancelPendingChange.isPending}
+                        >
+                          {cancelPendingChange.isPending ? 'Cancelling…' : 'Keep my current plan'}
+                        </Button>
+                      </div>
+                    )}
+
                     <div className="flex items-baseline gap-4">
                       <h3 className="text-3xl font-bold">{subscription.planName}</h3>
                       <span className="text-xl text-muted-foreground">

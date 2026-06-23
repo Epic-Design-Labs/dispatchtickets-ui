@@ -25,6 +25,10 @@ export interface Subscription {
   currentPeriodStart: string;
   currentPeriodEnd: string;
   cancelAtPeriodEnd: boolean;
+  // Scheduled (deferred) plan change — present only when a downgrade is queued.
+  pendingPlanId?: string | null;
+  pendingPlanName?: string | null;
+  pendingEffectiveAt?: string | null;
 }
 
 export interface SubscriptionResponse {
@@ -153,6 +157,11 @@ export const billingApi = {
 
   reactivate: async (): Promise<{ success: boolean; message: string }> => {
     const response = await apiClient.post<{ success: boolean; message: string }>('/auth/subscription/reactivate');
+    return response.data;
+  },
+
+  cancelPendingChange: async (): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>('/auth/subscription/cancel-pending-change');
     return response.data;
   },
 

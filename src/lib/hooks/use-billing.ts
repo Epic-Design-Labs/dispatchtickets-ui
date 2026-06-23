@@ -65,6 +65,17 @@ export function useReactivateSubscription() {
   });
 }
 
+export function useCancelPendingChange() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => billingApi.cancelPendingChange(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.subscription });
+    },
+  });
+}
+
 export function useInvoices(limit?: number) {
   return useQuery({
     queryKey: [...billingKeys.invoices, limit],
