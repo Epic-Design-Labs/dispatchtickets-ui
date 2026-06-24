@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
 import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useDeleteAccount, useConfirmCheckout, useCancelPendingChange } from '@/lib/hooks';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +43,6 @@ interface PlanGroup {
 export default function BillingPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { session } = useAuth();
   const isOwner = session?.orgRole === 'owner';
   const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError, refetch } = useSubscription();
