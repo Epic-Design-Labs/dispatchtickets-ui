@@ -209,4 +209,9 @@ export const billingApi = {
     const response = await apiClient.delete<{ success: boolean }>(`/auth/payment-methods/${id}`);
     return response.data;
   },
+
+  getPmClientToken: async (): Promise<{ token: string; expiresAt: string }> => {
+    const response = await apiClient.get<{ token: string; expiresAt: string }>('/auth/payment-methods/client-token');
+    return response.data;
+  },
 };

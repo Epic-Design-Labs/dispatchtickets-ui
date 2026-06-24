@@ -10,6 +10,7 @@ export const billingKeys = {
   usage: ['usage'] as const,
   invoices: ['invoices'] as const,
   paymentMethods: ['payment-methods'] as const,
+  pmClientToken: ['pm-client-token'] as const,
 };
 
 export function usePlans() {
@@ -132,5 +133,13 @@ export function useRemoveCard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billingKeys.paymentMethods });
     },
+  });
+}
+
+export function useGetPmClientToken() {
+  return useQuery({
+    queryKey: billingKeys.pmClientToken,
+    queryFn: billingApi.getPmClientToken,
+    staleTime: 25 * 60 * 1000, // 25 minutes — token TTL is ~30 min
   });
 }
