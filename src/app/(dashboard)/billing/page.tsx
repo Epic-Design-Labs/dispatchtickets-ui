@@ -579,14 +579,12 @@ export default function BillingPage() {
                     </span>
                   </div>
                 ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddCard}
-                  disabled={addCard.isPending}
-                >
-                  {addCard.isPending ? 'Opening...' : '+ Add card'}
-                </Button>
+                {/* Add-card temporarily hidden: the old flow reused the checkout
+                    ("Pay") widget, which was confusing. A dedicated add-a-card
+                    form is on the way. List / make-default / remove still work. */}
+                <p className="text-xs text-muted-foreground">
+                  Adding a new card is being upgraded and will be back shortly.
+                </p>
               </CardContent>
             </Card>
 
