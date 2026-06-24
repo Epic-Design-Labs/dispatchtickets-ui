@@ -33,7 +33,7 @@
     "@tanstack/react-query": "^5.90.15",
     "@usethrottle/checkout-sdk": "^1.3.0",
     "@usethrottle/invoices": "^0.1.1",
-    "@usethrottle/payment-methods": "^0.1.6",
+    "@usethrottle/payment-methods": "^0.1.7",
     "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
