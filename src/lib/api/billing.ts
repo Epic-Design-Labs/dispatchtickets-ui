@@ -124,6 +124,19 @@ export interface ConfirmCheckoutResponse {
   };
 }
 
+export interface SavedCard {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+}
+
+export interface SavedCardsResponse {
+  paymentMethods: SavedCard[];
+}
+
 export const billingApi = {
   getPlans: async (): Promise<PlansResponse> => {
     const response = await apiClient.get<PlansResponse>('/auth/plans');
@@ -174,6 +187,26 @@ export const billingApi = {
 
   deleteAccount: async (data: DeleteAccountRequest): Promise<DeleteAccountResponse> => {
     const response = await apiClient.delete<DeleteAccountResponse>('/auth/account', { data });
+    return response.data;
+  },
+
+  listPaymentMethods: async (): Promise<SavedCard[]> => {
+    const response = await apiClient.get<SavedCardsResponse>('/auth/payment-methods');
+    return response.data.paymentMethods;
+  },
+
+  addCard: async (): Promise<EmbedPayload> => {
+    const response = await apiClient.post<EmbedPayload>('/auth/payment-methods/add');
+    return response.data;
+  },
+
+  setDefaultCard: async (id: string): Promise<{ success: boolean }> => {
+    const response = await apiClient.post<{ success: boolean }>(`/auth/payment-methods/${id}/default`);
+    return response.data;
+  },
+
+  removeCard: async (id: string): Promise<{ success: boolean }> => {
+    const response = await apiClient.delete<{ success: boolean }>(`/auth/payment-methods/${id}`);
     return response.data;
   },
 };

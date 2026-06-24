@@ -2,12 +2,14 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { billingApi, UpgradeRequest, CancelRequest, DeleteAccountRequest, ConfirmCheckoutRequest } from '@/lib/api/billing';
+import type { EmbedPayload } from '@/lib/api/billing';
 
 export const billingKeys = {
   plans: ['plans'] as const,
   subscription: ['subscription'] as const,
   usage: ['usage'] as const,
   invoices: ['invoices'] as const,
+  paymentMethods: ['payment-methods'] as const,
 };
 
 export function usePlans() {
@@ -97,5 +99,38 @@ export function useConfirmCheckout() {
 export function useDeleteAccount() {
   return useMutation({
     mutationFn: (data: DeleteAccountRequest) => billingApi.deleteAccount(data),
+  });
+}
+
+export function useListPaymentMethods() {
+  return useQuery({
+    queryKey: billingKeys.paymentMethods,
+    queryFn: billingApi.listPaymentMethods,
+  });
+}
+
+export function useAddCard() {
+  return useMutation({
+    mutationFn: (): Promise<EmbedPayload> => billingApi.addCard(),
+  });
+}
+
+export function useSetDefaultCard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => billingApi.setDefaultCard(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.paymentMethods });
+    },
+  });
+}
+
+export function useRemoveCard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => billingApi.removeCard(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.paymentMethods });
+    },
   });
 }

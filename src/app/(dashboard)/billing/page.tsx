@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout';
-import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useDeleteAccount, useConfirmCheckout, useCancelPendingChange } from '@/lib/hooks';
+import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useDeleteAccount, useConfirmCheckout, useCancelPendingChange, useListPaymentMethods, useAddCard, useSetDefaultCard, useRemoveCard } from '@/lib/hooks';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ interface PlanGroup {
 export default function BillingPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { session } = useAuth();
   const isOwner = session?.orgRole === 'owner';
   const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError, refetch } = useSubscription();
@@ -66,6 +68,10 @@ export default function BillingPage() {
   const upgradeSubscription = useUpgradeSubscription();
   const confirmCheckout = useConfirmCheckout();
   const deleteAccount = useDeleteAccount();
+  const { data: savedCards = [] } = useListPaymentMethods();
+  const addCard = useAddCard();
+  const setDefault = useSetDefaultCard();
+  const removeCard = useRemoveCard();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ plan: Plan; kind: 'upgrade' | 'downgrade' } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -77,6 +83,8 @@ export default function BillingPage() {
   const [embedPayload, setEmbedPayload] = useState<EmbedPayload | null>(null);
   const [embedPlanRef, setEmbedPlanRef] = useState<string | null>(null);
   const [embedError, setEmbedError] = useState<string | null>(null);
+  // 'subscribe' = plan upgrade flow; 'add-card' = vault-only add card
+  const [embedMode, setEmbedMode] = useState<'subscribe' | 'add-card'>('subscribe');
 
   const subscription = subscriptionData?.subscription;
   const allPlans = plansData?.plans || [];
@@ -159,6 +167,32 @@ export default function BillingPage() {
     }
   };
 
+  const handleAddCard = async () => {
+    try {
+      const payload = await addCard.mutateAsync();
+      setEmbedPayload(payload);
+      setEmbedPlanRef(null);
+      setEmbedError(null);
+      setEmbedMode('add-card');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const message = axiosError.response?.data?.message
+        || (error instanceof Error ? error.message : 'Failed to start card setup');
+      toast.error(message);
+    }
+  };
+
+  const handleRemoveCard = (id: string) => {
+    removeCard.mutate(id, {
+      onError: (error: unknown) => {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        const message = axiosError.response?.data?.message
+          || (error instanceof Error ? error.message : 'Failed to remove card');
+        toast.error(message);
+      },
+    });
+  };
+
   const handleUpgrade = async (planId: string, planRef?: string) => {
     setUpgradingPlanId(planId);
     try {
@@ -172,6 +206,7 @@ export default function BillingPage() {
         setEmbedPayload(result as EmbedPayload);
         setEmbedPlanRef(planRef ?? planId);
         setEmbedError(null);
+        setEmbedMode('subscribe');
         setUpgradingPlanId(null);
       } else {
         // Redirect mode (Stackbe default): navigate to checkout URL
@@ -508,6 +543,53 @@ export default function BillingPage() {
               </CardContent>
             </Card>
 
+            {/* Payment methods */}
+            <Card>
+              <CardHeader><CardTitle>Payment methods</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {savedCards.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No saved cards.</p>
+                )}
+                {savedCards.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between text-sm">
+                    <span className="font-mono">
+                      {c.brand?.toUpperCase()} •••• {c.last4} · {String(c.expMonth).padStart(2, '0')}/{String(c.expYear).slice(-2)}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      {c.isDefault ? (
+                        <Badge>Default</Badge>
+                      ) : (
+                        <button
+                          className="text-xs underline"
+                          onClick={() => setDefault.mutate(c.id)}
+                          disabled={setDefault.isPending}
+                        >
+                          Make default
+                        </button>
+                      )}
+                      {!c.isDefault && (
+                        <button
+                          className="text-xs text-destructive underline"
+                          onClick={() => handleRemoveCard(c.id)}
+                          disabled={removeCard.isPending}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddCard}
+                  disabled={addCard.isPending}
+                >
+                  {addCard.isPending ? 'Opening...' : '+ Add card'}
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Available Plans */}
             <Card>
               <CardHeader>
@@ -757,6 +839,7 @@ export default function BillingPage() {
             setEmbedPayload(null);
             setEmbedPlanRef(null);
             setEmbedError(null);
+            setEmbedMode('subscribe');
             setUpgradingPlanId(null);
           }
         }}
@@ -775,6 +858,14 @@ export default function BillingPage() {
               sessionId={embedPayload.checkoutSessionId}
               parentOrigin={window.location.origin}
               onSucceeded={async () => {
+                if (embedMode === 'add-card') {
+                  setEmbedPayload(null);
+                  setEmbedPlanRef(null);
+                  setEmbedError(null);
+                  queryClient.invalidateQueries({ queryKey: ['payment-methods'] });
+                  toast.success('Card added successfully');
+                  return;
+                }
                 try {
                   await confirmCheckout.mutateAsync({
                     checkoutSessionId: embedPayload.checkoutSessionId,
@@ -801,6 +892,7 @@ export default function BillingPage() {
                 setEmbedPayload(null);
                 setEmbedPlanRef(null);
                 setEmbedError(null);
+                setEmbedMode('subscribe');
                 setUpgradingPlanId(null);
               }}
             />
