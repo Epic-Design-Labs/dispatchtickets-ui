@@ -67,10 +67,9 @@ export default function BillingPage() {
   const confirmCheckout = useConfirmCheckout();
   const deleteAccount = useDeleteAccount();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<{ plan: Plan; kind: 'upgrade' | 'downgrade' } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  const [selectedDowngradePlan, setSelectedDowngradePlan] = useState<Plan | null>(null);
   const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
   const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
@@ -334,44 +333,21 @@ export default function BillingPage() {
     return null;
   };
 
-  const handleDowngrade = (plan: Plan) => {
-    const blockReason = getDowngradeBlockReason(plan);
-    if (blockReason) {
-      toast.error(blockReason);
-      return;
+  function requestPlanChange(plan: Plan) {
+    const kind = isUpgrade(plan) ? 'upgrade' : 'downgrade';
+    if (kind === 'downgrade') {
+      const blocked = getDowngradeBlockReason(plan);
+      if (blocked) { toast.error(blocked); return; }
     }
-    setSelectedDowngradePlan(plan);
-    setDowngradeDialogOpen(true);
-  };
+    setConfirmTarget({ plan, kind });
+  }
 
-  const confirmDowngrade = async () => {
-    if (!selectedDowngradePlan) return;
-    try {
-      const result = await upgradeSubscription.mutateAsync({
-        planId: selectedDowngradePlan.id,
-        successUrl: `${window.location.origin}/billing?upgraded=true`,
-        cancelUrl: `${window.location.origin}/billing`,
-      });
-      // For free plan, no checkout step — just refresh
-      if (selectedDowngradePlan.price === 0) {
-        toast.success('Downgraded to free plan');
-        refetch();
-        setDowngradeDialogOpen(false);
-        setSelectedDowngradePlan(null);
-      } else if ('embedToken' in result) {
-        // Embed mode: close downgrade dialog and open embed checkout
-        setDowngradeDialogOpen(false);
-        setEmbedPayload(result as EmbedPayload);
-        setEmbedPlanRef(selectedDowngradePlan.slug);
-        setEmbedError(null);
-        setSelectedDowngradePlan(null);
-      } else {
-        window.location.href = result.url;
-      }
-    } catch {
-      toast.error('Failed to change plan');
-    }
-  };
+  async function confirmPlanChange() {
+    if (!confirmTarget) return;
+    const { plan } = confirmTarget;
+    setConfirmTarget(null);
+    await handleUpgrade(plan.id, plan.slug);
+  }
 
   // Calculate savings for annual plans
   const getAnnualSavings = (group: PlanGroup): number | null => {
@@ -640,13 +616,7 @@ export default function BillingPage() {
                             <Button
                               className="w-full"
                               variant={isUpgradeAction ? 'default' : 'outline'}
-                              onClick={() => {
-                                if (isUpgradeAction) {
-                                  handleUpgrade(plan.id, plan.slug);
-                                } else {
-                                  handleDowngrade(plan);
-                                }
-                              }}
+                              onClick={() => requestPlanChange(plan)}
                               disabled={upgradingPlanId !== null || subscription?.cancelAtPeriodEnd || (!isUpgradeAction && !!getDowngradeBlockReason(plan))}
                               title={subscription?.cancelAtPeriodEnd ? 'Reactivate your subscription to change plans' : (!isUpgradeAction ? getDowngradeBlockReason(plan) || undefined : undefined)}
                             >
@@ -886,26 +856,25 @@ export default function BillingPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Downgrade Plan Dialog */}
-      <AlertDialog open={downgradeDialogOpen} onOpenChange={setDowngradeDialogOpen}>
+      {/* Unified Plan Change Confirm Dialog */}
+      <AlertDialog open={!!confirmTarget} onOpenChange={(o) => !o && setConfirmTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Downgrade to {selectedDowngradePlan?.name}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirmTarget?.kind === 'upgrade' ? `Upgrade to ${confirmTarget?.plan.name}?` : `Switch to ${confirmTarget?.plan.name}?`}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to downgrade to the {selectedDowngradePlan?.name} plan?
-              {selectedDowngradePlan?.price === 0
-                ? ' Your subscription switches to the free plan immediately.'
-                : ' The change takes effect immediately, and your next renewal will be charged at the new rate.'}
+              {confirmTarget?.kind === 'upgrade'
+                ? `You'll be charged ${formatPrice(confirmTarget.plan.price, confirmTarget.plan.currency, confirmTarget.plan.interval)} today and your billing period restarts now.`
+                : `No charge now. You keep ${subscription?.planName} until ${subscription?.currentPeriodEnd ? formatDate(subscription.currentPeriodEnd) : 'period end'}, then switch to ${confirmTarget?.plan.name}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedDowngradePlan(null)}>
-              Keep Current Plan
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDowngrade}
-            >
-              {upgradeSubscription.isPending ? 'Processing...' : 'Confirm Downgrade'}
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPlanChange}>
+              {confirmTarget?.kind === 'upgrade'
+                ? `Pay ${formatPrice(confirmTarget.plan.price, confirmTarget.plan.currency, confirmTarget.plan.interval)} & upgrade`
+                : 'Schedule downgrade'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
