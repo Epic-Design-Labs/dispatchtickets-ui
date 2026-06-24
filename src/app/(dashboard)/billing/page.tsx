@@ -846,7 +846,7 @@ export default function BillingPage() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Complete Payment</DialogTitle>
+            <DialogTitle>{embedMode === 'add-card' ? 'Add a card' : 'Complete Payment'}</DialogTitle>
           </DialogHeader>
           {embedError && (
             <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
