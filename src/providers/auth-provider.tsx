@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth as useClerkAuth } from '@clerk/nextjs';
 import { getAuthToken } from '@/lib/api/client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
@@ -84,9 +85,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  // Track Clerk's active organization so we can re-sync the backend session
+  // whenever it changes (an org switch mints a new org-scoped token, but the
+  // backend session — which carries orgRole/organizationId — must be refetched
+  // for the new org).
+  const { isLoaded: clerkLoaded, orgId: clerkOrgId } = useClerkAuth();
+
   // Refs to prevent race conditions
   const refreshPromiseRef = useRef<Promise<Session | null> | null>(null);
   const isLoggedOutRef = useRef(false);
+  // Monotonic counter so a slow, stale refresh (e.g. for a just-left org) can
+  // never overwrite the result of a newer one that started after it.
+  const refreshSeqRef = useRef(0);
 
   const refreshSession = useCallback(async (): Promise<Session | null> => {
     // If already refreshing, return the existing promise (deduplication)
@@ -105,6 +115,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return null;
     }
+
+    // Claim a sequence number for this refresh. Only the newest refresh is
+    // allowed to write to `session`, so a slow response for an org the user
+    // has already switched away from cannot latch a stale role.
+    const mySeq = ++refreshSeqRef.current;
+    const setSessionIfCurrent = (s: Session | null) => {
+      if (!isLoggedOutRef.current && refreshSeqRef.current === mySeq) {
+        setSession(s);
+      }
+    };
 
     // Create and store the refresh promise
     const refreshPromise = (async (): Promise<Session | null> => {
@@ -133,9 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               organizationId: '',
               connected: false,
             };
-            if (!isLoggedOutRef.current) {
-              setSession(newSession);
-            }
+            setSessionIfCurrent(newSession);
             return newSession;
           } catch {
             // If JWT parsing fails, still keep them "authenticated" for the connect flow
@@ -145,18 +163,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               organizationId: '',
               connected: false,
             };
-            if (!isLoggedOutRef.current) {
-              setSession(newSession);
-            }
+            setSessionIfCurrent(newSession);
             return newSession;
           }
         }
 
         if (!response.ok) {
           clearSessionToken();
-          if (!isLoggedOutRef.current) {
-            setSession(null);
-          }
+          setSessionIfCurrent(null);
           return null;
         }
 
@@ -170,22 +184,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             connected: data.connected,
             expiresAt: data.expiresAt,
           };
-          if (!isLoggedOutRef.current) {
-            setSession(newSession);
-          }
+          setSessionIfCurrent(newSession);
           return newSession;
         } else {
           clearSessionToken();
-          if (!isLoggedOutRef.current) {
-            setSession(null);
-          }
+          setSessionIfCurrent(null);
           return null;
         }
       } catch {
         clearSessionToken();
-        if (!isLoggedOutRef.current) {
-          setSession(null);
-        }
+        setSessionIfCurrent(null);
         return null;
       } finally {
         setIsLoading(false);
@@ -197,9 +205,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return refreshPromise;
   }, []);
 
+  // Re-sync the backend session whenever Clerk finishes loading and whenever
+  // the active organization changes. Previously this ran only once on mount,
+  // so `session.orgRole`/`organizationId` latched to whatever org happened to
+  // be active at hydration — leaving owner/admin-gated UI (API Keys, Billing)
+  // hidden after an org switch or a hydration race even though the backend
+  // reports the correct role. Clearing the in-flight ref forces a fresh fetch
+  // on org change; the sequence guard drops any stale response that lands late.
   useEffect(() => {
+    if (!clerkLoaded) return;
+    refreshPromiseRef.current = null;
     refreshSession();
-  }, [refreshSession]);
+  }, [clerkLoaded, clerkOrgId, refreshSession]);
 
   const checkEmail = async (email: string): Promise<CheckEmailResult> => {
     try {
