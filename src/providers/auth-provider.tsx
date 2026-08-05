@@ -97,6 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Monotonic counter so a slow, stale refresh (e.g. for a just-left org) can
   // never overwrite the result of a newer one that started after it.
   const refreshSeqRef = useRef(0);
+  // Tracks the last-seen Clerk org so we can detect a real switch (vs. the
+  // initial resolve) and drop cached org-scoped data for the org we left.
+  const prevOrgIdRef = useRef<string | null | undefined>(undefined);
 
   const refreshSession = useCallback(async (): Promise<Session | null> => {
     // If already refreshing, return the existing promise (deduplication)
@@ -214,9 +217,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // on org change; the sequence guard drops any stale response that lands late.
   useEffect(() => {
     if (!clerkLoaded) return;
+    // On a REAL org switch (not the first resolve after load), drop every
+    // cached query. Clerk's native org switcher changes the active org without
+    // routing through the app's switchOrganization() (which clears the cache),
+    // so org-scoped data — brands, tickets, team — would otherwise stay pinned
+    // to the org we just left. That stale brand list is what breaks scoped API
+    // key creation after a switch.
+    const prevOrgId = prevOrgIdRef.current;
+    if (prevOrgId !== undefined && prevOrgId !== clerkOrgId) {
+      queryClient.clear();
+    }
+    prevOrgIdRef.current = clerkOrgId;
+
     refreshPromiseRef.current = null;
     refreshSession();
-  }, [clerkLoaded, clerkOrgId, refreshSession]);
+  }, [clerkLoaded, clerkOrgId, refreshSession, queryClient]);
 
   const checkEmail = async (email: string): Promise<CheckEmailResult> => {
     try {
