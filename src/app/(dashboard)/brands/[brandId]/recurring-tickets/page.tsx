@@ -13,7 +13,6 @@ import {
   useTeamMembers,
   useCategories,
 } from '@/lib/hooks';
-import { Header } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -221,7 +220,6 @@ export default function RecurringTicketsPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title={`${brand?.name || ''} - Recurring Tickets`} />
       <div className="flex-1 p-4 md:p-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">

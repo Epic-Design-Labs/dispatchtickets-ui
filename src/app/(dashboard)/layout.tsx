@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth as useStackbeAuth } from '@/providers';
 import { useAuth as useClerkAuth } from '@clerk/nextjs';
-import { Sidebar, NotificationBell } from '@/components/layout';
+import { Sidebar, BrandNav, NotificationBell } from '@/components/layout';
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
 import { ConnectionWarningBanner } from '@/components/connection-warning-banner';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -128,13 +128,13 @@ export default function DashboardLayout({
 
       {/* Desktop Sidebar - hidden on mobile */}
       <div className="hidden md:flex">
-        <Sidebar brandId={brandId} />
+        <Sidebar />
       </div>
 
       {/* Mobile Sidebar Sheet */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-64 p-0">
-          <Sidebar brandId={brandId} />
+          <Sidebar />
         </SheetContent>
       </Sheet>
 
@@ -164,6 +164,7 @@ export default function DashboardLayout({
         </div>
 
         <ConnectionWarningBanner />
+        {brandId && <BrandNav brandId={brandId} />}
         <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
       </div>
       <KeyboardShortcutsModal />

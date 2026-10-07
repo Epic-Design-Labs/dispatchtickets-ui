@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCompanies, useCreateCompany } from '@/lib/hooks';
-import { Header } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,7 +56,6 @@ export default function CompaniesPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Companies" />
       <div className="flex-1 p-4 md:p-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-sm">

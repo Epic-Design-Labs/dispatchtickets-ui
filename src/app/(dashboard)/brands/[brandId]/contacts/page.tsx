@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useContacts } from '@/lib/hooks';
-import { Header } from '@/components/layout';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,7 +31,6 @@ export default function ContactsPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Contacts" />
       <div className="flex-1 p-4 md:p-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-sm">

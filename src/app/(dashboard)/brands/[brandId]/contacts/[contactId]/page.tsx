@@ -13,7 +13,6 @@ import {
   useTeamMembers,
   BulkActionType,
 } from '@/lib/hooks';
-import { Header } from '@/components/layout';
 import { TicketTable } from '@/components/tickets';
 import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
@@ -125,7 +124,6 @@ export default function ContactDetailPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <Header title="Contact" />
         <div className="flex-1 p-4 md:p-6">
           <Skeleton className="h-8 w-64 mb-6" />
           <div className="grid gap-6 lg:grid-cols-3">
@@ -146,7 +144,6 @@ export default function ContactDetailPage() {
   if (!contact) {
     return (
       <div className="flex flex-col">
-        <Header title="Contact Not Found" />
         <div className="flex flex-1 flex-col items-center justify-center p-6">
           <p className="text-lg font-medium">Contact not found</p>
           <Button className="mt-4" onClick={() => router.back()}>
@@ -159,7 +156,6 @@ export default function ContactDetailPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title={contact.name || contact.email} />
       <div className="flex-1 p-4 md:p-6">
         {/* Breadcrumb */}
         <div className="mb-6">

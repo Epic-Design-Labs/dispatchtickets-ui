@@ -6,7 +6,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useBrand, useTickets, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, BulkActionType, ticketKeys } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw, MessageSquare, Timer } from 'lucide-react';
-import { Header } from '@/components/layout';
 import { TicketFilters, TicketTable, CreateTicketDialog } from '@/components/tickets';
 import { ticketsApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -247,7 +246,6 @@ export default function BrandDashboardPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title={brand?.name || 'Dashboard'} />
       <div className="flex-1 p-4 md:p-6">
         {/* Stats Cards - horizontally scrollable on mobile */}
         {isLoading ? (

@@ -2,7 +2,6 @@
 
 import { useParams } from 'next/navigation';
 import { useBrand, useTickets, useMarkAsSpam, useFieldsByEntity } from '@/lib/hooks';
-import { Header } from '@/components/layout';
 import { TicketTable } from '@/components/tickets';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +30,6 @@ export default function SpamPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title={`${brand?.name || ''} - Spam`} />
       <div className="flex-1 p-4 md:p-6">
         <div className="mb-6">
           <div className="flex items-center gap-2">

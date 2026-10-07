@@ -17,17 +17,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SignedIn, SignedOut, UserButton, OrganizationSwitcher } from '@clerk/nextjs';
 import { useAuth } from '@/providers';
-import { useProfile, useBrands, useDashboardStats, useDashboardTickets, useSetupStatus } from '@/lib/hooks';
-import { BrandSwitcher } from './brand-switcher';
+import { useProfile, useBrands, useDashboardStats, useDashboardTickets } from '@/lib/hooks';
+import { BrandList } from './brand-list';
 import { OrgSwitcher } from './org-switcher';
 import { NotificationBell } from './notification-bell';
-import { Inbox, User, AlertCircle, Key, Rocket, Check, BarChart3 } from 'lucide-react';
+import { Inbox, User, AlertCircle, Key, Rocket, BarChart3 } from 'lucide-react';
 
-interface SidebarProps {
-  brandId?: string;
-}
-
-export function Sidebar({ brandId }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { session, logout } = useAuth();
@@ -39,8 +35,8 @@ export function Sidebar({ brandId }: SidebarProps) {
   const isDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard');
   const view = searchParams.get('view') || 'all';
 
-  // Only fetch stats when on dashboard (for queue counts)
-  const { data: stats } = useDashboardStats(isDashboard ? {} : undefined);
+  // Queue counts (and the per-brand counts in BrandList) need these everywhere.
+  const { data: stats } = useDashboardStats();
 
   // Fetch my active tickets count using memberId
   const { data: myTicketsData } = useDashboardTickets(
@@ -48,9 +44,6 @@ export function Sidebar({ brandId }: SidebarProps) {
     { enabled: !!session?.memberId }
   );
   const myTicketsCount = myTicketsData?.data?.length ?? 0;
-
-  // Setup status for brand-specific Getting Started badge
-  const setupStatus = useSetupStatus(brandId || '');
 
   // Get display name: profile > email-derived > email
   const displayName = profile?.displayName || (email ? email.split('@')[0].split(/[._-]/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User');
@@ -65,76 +58,6 @@ export function Sidebar({ brandId }: SidebarProps) {
     }
     return 'U';
   };
-
-  const navigation = brandId
-    ? [
-        {
-          name: 'Tickets',
-          href: `/brands/${brandId}/tickets`,
-          icon: (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-            </svg>
-          ),
-        },
-        {
-          name: 'Contacts',
-          href: `/brands/${brandId}/contacts`,
-          icon: (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-            </svg>
-          ),
-        },
-        {
-          name: 'Companies',
-          href: `/brands/${brandId}/companies`,
-          icon: (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-          ),
-        },
-        {
-          name: 'Spam',
-          href: `/brands/${brandId}/spam`,
-          icon: (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-            </svg>
-          ),
-        },
-        {
-          name: 'Recurring',
-          href: `/brands/${brandId}/recurring-tickets`,
-          icon: (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          ),
-        },
-        {
-          name: 'Settings',
-          href: `/brands/${brandId}/settings`,
-          icon: (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          ),
-        },
-        {
-          name: 'Getting Started',
-          href: `/brands/${brandId}/getting-started`,
-          icon: <Rocket className="h-4 w-4" />,
-          badge: setupStatus.percentComplete < 100 && !setupStatus.isLoading
-            ? `${setupStatus.completedCount}/${setupStatus.requiredCount}`
-            : setupStatus.percentComplete === 100
-            ? <Check className="h-3 w-3" />
-            : undefined,
-        },
-      ]
-    : [];
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-background">
@@ -190,7 +113,7 @@ export function Sidebar({ brandId }: SidebarProps) {
                 >
                   <Inbox className="h-4 w-4" />
                   All Active
-                  {isDashboard && stats && (
+                  {stats && (
                     <span className="ml-auto text-xs opacity-70">{(stats.open || 0) + (stats.pending || 0)}</span>
                   )}
                 </Link>
@@ -238,43 +161,8 @@ export function Sidebar({ brandId }: SidebarProps) {
 
             <Separator className="mb-4" />
 
-            {/* Brand Switcher - only show when brands exist */}
-            <div className="px-3">
-              <BrandSwitcher />
-            </div>
-          </>
-        )}
-
-        {brandId && (
-          <>
-            <Separator className="my-4" />
-            <nav className="space-y-1 px-3">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href;
-
-                return (
-                  <Button
-                    key={item.name}
-                    variant={isActive ? 'secondary' : 'ghost'}
-                    className={cn(
-                      'w-full justify-start gap-2',
-                      isActive && 'bg-secondary'
-                    )}
-                    asChild
-                  >
-                    <Link href={item.href}>
-                      {item.icon}
-                      {item.name}
-                      {item.badge && (
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  </Button>
-                );
-              })}
-            </nav>
+            {/* Flat brand list with active-ticket counts */}
+            <BrandList />
           </>
         )}
       </div>
