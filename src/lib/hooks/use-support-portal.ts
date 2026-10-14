@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAuthToken } from '@/lib/api/client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.dispatchtickets.com/v1';
 
 // ============================================================================
 // Types

@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { ApiError } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.dispatchtickets.com/v1';
 const SESSION_TOKEN_KEY = 'dispatch_session_token';
 
 /**

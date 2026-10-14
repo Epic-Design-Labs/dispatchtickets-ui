@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { RatingFormData, SubmitFeedbackRequest, SubmitFeedbackResponse } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.dispatchtickets.com/v1';
 
 // Public API client without authentication
 const publicClient = axios.create({

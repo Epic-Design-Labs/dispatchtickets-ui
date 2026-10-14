@@ -14,7 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth as useClerkAuth } from '@clerk/nextjs';
 import { getAuthToken } from '@/lib/api/client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.dispatchtickets.com/v1';
 
 interface Session {
   customerId: string;

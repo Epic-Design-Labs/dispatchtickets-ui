@@ -14,8 +14,8 @@ import { createInvoiceProxyHandler } from '@usethrottle/invoices/server';
  */
 
 // NEXT_PUBLIC_API_URL already includes the `/v1` prefix (e.g.
-// https://dispatch-tickets-api.onrender.com/v1).
-const DT_API = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
+// https://api.dispatchtickets.com/v1).
+const DT_API = process.env.NEXT_PUBLIC_API_URL || 'https://api.dispatchtickets.com/v1';
 
 async function getCustomerId(request: Request): Promise<string | null> {
   const authorization = request.headers.get('authorization');

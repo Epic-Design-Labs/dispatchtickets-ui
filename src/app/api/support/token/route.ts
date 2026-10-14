@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dispatch-tickets-api.onrender.com/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.dispatchtickets.com/v1';
 const DISPATCH_API_KEY = process.env.DISPATCH_API_KEY;
 const DISPATCH_SUPPORT_BRAND_ID = process.env.DISPATCH_SUPPORT_BRAND_ID;
 
