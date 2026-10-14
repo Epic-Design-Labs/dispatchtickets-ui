@@ -25,3 +25,4 @@ export * from './use-debounce';
 export * from './use-watchers';
 export * from './use-ecommerce';
 export * from './use-recurring-tickets';
+export * from './use-enrichment';

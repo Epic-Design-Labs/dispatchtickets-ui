@@ -40,6 +40,9 @@ export interface Ticket {
   tags?: Tag[];
   links?: string[];
   customFields?: Record<string, unknown>;
+  /** Snapshot from the brand's context endpoint (Core B). */
+  enrichment?: { sections: Array<{ title: string; fields: Array<{ label: string; value: string; href?: string; status?: 'ok' | 'warn' | 'error' | 'neutral' }> }> } | null;
+  enrichedAt?: string | null;
   metadata?: Record<string, unknown>;
   createdBy?: string;
   commentCount?: number;

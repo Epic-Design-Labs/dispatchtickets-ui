@@ -20,6 +20,7 @@ export { feedbackApi } from './feedback';
 export { watchersApi } from './watchers';
 export { ecommerceApi } from './ecommerce';
 export { recurringTicketsApi } from './recurring-tickets';
+export { enrichmentApi } from './enrichment';
 export type { Profile, UpdateProfileInput, AvatarUploadInput } from './profile';
 export type { FeatureRequest, FeatureRequestsResponse, FeatureActivityResponse, CreateFeatureRequestInput } from './feature-requests';
 export type { EmailConnection, EmailConnectionProvider, EmailConnectionStatus } from './email-connections';

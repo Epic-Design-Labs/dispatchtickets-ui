@@ -15,6 +15,7 @@ const settingsNav = [
   { title: 'Portal', href: '/portal' },
   { title: 'Integrations', href: '/integrations' },
   { title: 'Webhooks', href: '/webhooks' },
+  { title: 'Enrichment', href: '/enrichment' },
   { title: 'Activity Log', href: '/log' },
 ];
 

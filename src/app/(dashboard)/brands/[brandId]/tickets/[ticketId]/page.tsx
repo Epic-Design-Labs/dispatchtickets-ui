@@ -7,6 +7,7 @@ import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam
 import { useStatuses } from '@/lib/hooks/use-statuses';
 import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers } from '@/components/tickets';
 import { TicketOrdersSection } from '@/components/ecommerce';
+import { TicketEnrichmentSection } from '@/components/enrichment';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
@@ -1351,6 +1352,14 @@ export default function TicketDetailPage() {
               </div>
             </>
           )}
+
+          {/* Context from the brand's enrichment endpoint */}
+          <TicketEnrichmentSection
+            brandId={brandId}
+            ticketId={ticketId}
+            enrichment={ticket.enrichment}
+            enrichedAt={ticket.enrichedAt}
+          />
 
           {/* Orders */}
           <TicketOrdersSection brandId={brandId} ticketId={ticketId} />
