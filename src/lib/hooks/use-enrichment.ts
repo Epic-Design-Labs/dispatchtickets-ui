@@ -67,6 +67,17 @@ export function useRotateEnrichmentSecret() {
  * query: it has a side effect on the tenant's system and must only run when
  * someone presses the button.
  */
+/**
+ * Fetch the real signing secret. Deliberately a mutation so it only runs when
+ * someone presses Reveal — the secret is role-gated and audited server-side,
+ * and must not sit in a query cache.
+ */
+export function useRevealEnrichmentSecret() {
+  return useMutation<string, Error, { brandId: string }>({
+    mutationFn: ({ brandId }) => enrichmentApi.revealSecret(brandId),
+  });
+}
+
 export function useTestEnrichment() {
   return useMutation<
     EnrichmentProbeResult,

@@ -23,7 +23,9 @@ export interface EnrichmentConfig {
   id: string;
   brandId: string;
   url: string;
-  secret: string;
+  /** Masked. The real secret is only available via revealSecret(). */
+  secretPreview: string | null;
+  hasSecret: boolean;
   enabled: boolean;
   events: string[];
   timeoutMs: number;
@@ -78,11 +80,21 @@ export const enrichmentApi = {
     await apiClient.delete(`/brands/${brandId}/enrichment`);
   },
 
-  rotateSecret: async (brandId: string): Promise<EnrichmentConfig> => {
-    const response = await apiClient.post<EnrichmentConfig>(
+  /** Returns the new secret once; later reads only get the masked preview. */
+  rotateSecret: async (
+    brandId: string
+  ): Promise<EnrichmentConfig & { secret: string }> => {
+    const response = await apiClient.post<EnrichmentConfig & { secret: string }>(
       `/brands/${brandId}/enrichment/rotate-secret`
     );
     return response.data;
+  },
+
+  revealSecret: async (brandId: string): Promise<string> => {
+    const response = await apiClient.post<{ secret: string }>(
+      `/brands/${brandId}/enrichment/reveal-secret`
+    );
+    return response.data.secret;
   },
 
   test: async (

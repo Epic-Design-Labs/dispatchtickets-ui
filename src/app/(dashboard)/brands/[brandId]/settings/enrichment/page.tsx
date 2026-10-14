@@ -32,6 +32,7 @@ import {
   useDeleteEnrichment,
   useRotateEnrichmentSecret,
   useTestEnrichment,
+  useRevealEnrichmentSecret,
 } from '@/lib/hooks/use-enrichment';
 import type { EnrichmentProbeResult } from '@/lib/api/enrichment';
 
@@ -49,12 +50,13 @@ export default function EnrichmentPage() {
   const remove = useDeleteEnrichment();
   const rotate = useRotateEnrichmentSecret();
   const test = useTestEnrichment();
+  const reveal = useRevealEnrichmentSecret();
 
   const [url, setUrl] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [events, setEvents] = useState<string[]>(['ticket.created']);
   const [timeoutMs, setTimeoutMs] = useState(2000);
-  const [showSecret, setShowSecret] = useState(false);
+  const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [result, setResult] = useState<EnrichmentProbeResult | null>(null);
 
   useEffect(() => {
@@ -98,13 +100,36 @@ export default function EnrichmentPage() {
     }
   };
 
+  // The secret is never in the config payload; it is fetched on demand so it
+  // does not sit in the query cache or travel to every ticket view.
+  const handleToggleSecret = async () => {
+    if (revealedSecret) {
+      setRevealedSecret(null);
+      return;
+    }
+    try {
+      setRevealedSecret(await reveal.mutateAsync({ brandId }));
+    } catch (err: any) {
+      toast.error(
+        err?.response?.status === 403
+          ? 'Only owners and admins can reveal the signing secret'
+          : 'Could not reveal the secret'
+      );
+    }
+  };
+
   const handleRotate = async () => {
     try {
-      await rotate.mutateAsync({ brandId });
-      setShowSecret(true);
-      toast.success('New signing secret generated');
-    } catch {
-      toast.error('Could not rotate the secret');
+      // Rotate returns the new secret once, because it has to be copied out.
+      const updated = await rotate.mutateAsync({ brandId });
+      setRevealedSecret(updated.secret);
+      toast.success('New signing secret generated — copy it now');
+    } catch (err: any) {
+      toast.error(
+        err?.response?.status === 403
+          ? 'Only owners and admins can rotate the signing secret'
+          : 'Could not rotate the secret'
+      );
     }
   };
 
@@ -168,18 +193,20 @@ export default function EnrichmentPage() {
                 <Input
                   id="secret"
                   readOnly
-                  type={showSecret ? 'text' : 'password'}
-                  value={config.secret}
+                  value={revealedSecret ?? config.secretPreview ?? ''}
                   className="font-mono text-xs"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={() => setShowSecret((s) => !s)}
-                  aria-label={showSecret ? 'Hide secret' : 'Reveal secret'}
+                  onClick={handleToggleSecret}
+                  disabled={reveal.isPending}
+                  aria-label={revealedSecret ? 'Hide secret' : 'Reveal secret'}
                 >
-                  {showSecret ? (
+                  {reveal.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : revealedSecret ? (
                     <EyeOff className="h-4 w-4" />
                   ) : (
                     <Eye className="h-4 w-4" />
