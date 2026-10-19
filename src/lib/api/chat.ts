@@ -10,6 +10,8 @@ export interface ChatVisitor {
   visitor: Record<string, string>;
   /** Typed by the visitor. Never verified, never used to send. */
   claimedEmail: string | null;
+  /** Vouched for by the brand's own server (identity token). Who this really is. */
+  verified: { userId: string; email: string | null; name: string | null } | null;
 }
 
 export const chatApi = {

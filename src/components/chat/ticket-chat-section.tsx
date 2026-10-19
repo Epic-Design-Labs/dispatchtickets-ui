@@ -52,10 +52,28 @@ export function TicketChatSection({
         <p className="text-xs text-muted-foreground">
           {data.present
             ? 'Replies appear in their chat right away.'
-            : 'Replies wait in the conversation until they come back. They are not emailed.'}
+            : data.verified
+              ? 'Replies are emailed to them, and wait in the conversation for when they come back.'
+              : 'Replies wait in the conversation until they come back. They are not emailed.'}
         </p>
 
-        {data.claimedEmail && (
+        {data.verified && (
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground">Signed-in user</div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm break-all">
+                {data.verified.name ? `${data.verified.name} · ` : ''}
+                {data.verified.email}
+              </span>
+              <Badge className="bg-green-600 hover:bg-green-600">Verified</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Confirmed by your app ({data.verified.userId}). Replies are emailed to them if they leave.
+            </p>
+          </div>
+        )}
+
+        {!data.verified && data.claimedEmail && (
           <div className="space-y-1">
             <div className="text-xs text-muted-foreground">Email they typed</div>
             <div className="flex items-center gap-2">

@@ -43,6 +43,29 @@ function nextSnippet(brandId: string) {
 />`;
 }
 
+function identityServerSnippet(brandId: string) {
+  return `// On your server, with your Dispatch API key, for the signed-in user.
+// Cache it for up to an hour (it expires after one).
+const res = await fetch(
+  'https://api.dispatchtickets.com/v1/brands/${brandId}/chat/identity-token',
+  {
+    method: 'POST',
+    headers: {
+      Authorization: \`Bearer \${process.env.DISPATCH_API_KEY}\`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ userId: user.id, email: user.email, name: user.name }),
+  },
+);
+const { token } = await res.json();`;
+}
+
+const IDENTITY_CLIENT_SNIPPET = `// In the browser, once the user is signed in:
+window.DispatchChat.identify(token);
+
+// On sign-out, so the next person on this device starts fresh:
+window.DispatchChat.reset();`;
+
 function CodeBlock({ code, label }: { code: string; label: string }) {
   return (
     <div className="relative">
@@ -228,6 +251,7 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
             <TabsList>
               <TabsTrigger value="html">HTML</TabsTrigger>
               <TabsTrigger value="next">Next.js / React</TabsTrigger>
+              <TabsTrigger value="identity">Signed-in users</TabsTrigger>
               <TabsTrigger value="options">Options</TabsTrigger>
             </TabsList>
             <TabsContent value="html" className="mt-3">
@@ -235,6 +259,20 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
             </TabsContent>
             <TabsContent value="next" className="mt-3">
               <CodeBlock code={nextSnippet(brandId)} label="Snippet" />
+            </TabsContent>
+            <TabsContent value="identity" className="mt-3 space-y-3 text-sm text-muted-foreground">
+              <p>
+                If visitors are signed in to your app, have your server vouch for them. Their chats
+                then link to the real contact, agents see who they are, and replies are emailed if
+                they leave. Without this every visitor is anonymous.
+              </p>
+              <CodeBlock code={identityServerSnippet(brandId)} label="Server code" />
+              <CodeBlock code={IDENTITY_CLIENT_SNIPPET} label="Browser code" />
+              <p>
+                Mint the token on your server only: it needs an API key, which must never reach the
+                browser. Call <code className="text-xs">reset()</code> on sign-out, or the next person
+                on a shared computer would see the conversation.
+              </p>
             </TabsContent>
             <TabsContent value="options" className="mt-3 space-y-2 text-sm text-muted-foreground">
               <p>Optional attributes on the script tag:</p>
@@ -256,10 +294,11 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
         <div className="flex gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
           <Info className="h-4 w-4 mt-0.5 shrink-0" />
           <p>
-            Visitors are anonymous. If one types an email address, agents see it marked
-            unverified, and replies are never sent to it: anyone can type anyone&apos;s address.
-            A reply reaches the visitor while they&apos;re on your site, and waits in the
-            conversation if they&apos;ve left.
+            Visitors are anonymous unless your app vouches for them (see &ldquo;Signed-in
+            users&rdquo; above). A typed email address is shown to agents as unverified and replies
+            are never sent to it: anyone can type anyone&apos;s address. A reply reaches the visitor
+            while they&apos;re on your site; if they&apos;ve left, it waits in the conversation, and
+            verified visitors are also emailed.
           </p>
         </div>
 
