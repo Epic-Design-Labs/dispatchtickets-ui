@@ -8,6 +8,7 @@ import { useStatuses } from '@/lib/hooks/use-statuses';
 import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers } from '@/components/tickets';
 import { TicketOrdersSection } from '@/components/ecommerce';
 import { TicketEnrichmentSection } from '@/components/enrichment';
+import { TicketChatSection } from '@/components/chat/ticket-chat-section';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
@@ -63,7 +64,10 @@ export default function TicketDetailPage() {
 
   const { data: brand } = useBrand(brandId);
   const { data: ticket, isLoading: ticketLoading } = useTicket(brandId, ticketId, { polling: true });
-  const { data: comments, isLoading: commentsLoading } = useComments(brandId, ticketId, { polling: true });
+  const { data: comments, isLoading: commentsLoading } = useComments(brandId, ticketId, {
+    polling: true,
+    live: ticket?.source === 'chat',
+  });
   const { data: ticketsData } = useTickets(brandId, { status: 'open', limit: 100 });
   const { data: teamData } = useTeamMembers({ brandId });
   const updateTicket = useUpdateTicket(brandId, ticketId);
@@ -1352,6 +1356,9 @@ export default function TicketDetailPage() {
               </div>
             </>
           )}
+
+          {/* Chat visitor: presence and what they told us */}
+          <TicketChatSection brandId={brandId} ticketId={ticketId} isChat={ticket.source === 'chat'} />
 
           {/* Context from the brand's enrichment endpoint */}
           <TicketEnrichmentSection

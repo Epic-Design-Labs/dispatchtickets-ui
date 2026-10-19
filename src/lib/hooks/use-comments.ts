@@ -10,13 +10,18 @@ export const commentKeys = {
     ['comments', brandId, ticketId] as const,
 };
 
-export function useComments(brandId: string, ticketId: string, options?: { polling?: boolean }) {
+export function useComments(
+  brandId: string,
+  ticketId: string,
+  options?: { polling?: boolean; live?: boolean },
+) {
   return useQuery({
     queryKey: commentKeys.all(brandId, ticketId),
     queryFn: () => commentsApi.list(brandId, ticketId),
     enabled: !!brandId && !!ticketId,
-    // Poll every 10 seconds when viewing a ticket
-    refetchInterval: options?.polling ? 10000 : false,
+    // Poll every 10 seconds when viewing a ticket; every 3 on a live chat,
+    // where 10 seconds is long enough to read as being ignored.
+    refetchInterval: options?.polling ? (options.live ? 3000 : 10000) : false,
     refetchIntervalInBackground: false, // Don't poll when tab is not focused
   });
 }
