@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { Copy, Plus, Trash2, Code, Zap, ExternalLink, Settings2, TicketIcon, MessageSquare } from 'lucide-react';
 import { useForms, useCreateForm, useUpdateForm, useDeleteForm } from '@/lib/hooks';
 import { FormToken, CreateFormTokenDto } from '@/lib/api/forms';
+import { ChatChannelCard } from '@/components/chat/chat-channel-card';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.dispatchtickets.com/v1';
 
@@ -325,6 +326,8 @@ Content-Type: application/json`}
           </Tabs>
         </CardContent>
       </Card>
+
+      <ChatChannelCard brandId={brandId} />
 
       {/* Form Tokens Section */}
       <Card>

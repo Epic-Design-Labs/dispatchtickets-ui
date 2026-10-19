@@ -37,6 +37,9 @@ export interface Brand {
   slaBusinessHours?: { start: string; end: string; days: number[]; timezone: string };
   // Portal settings
   portalOrigins?: string[];
+  // Chat widget
+  chatEnabled?: boolean;
+  chatAllowedOrigins?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -79,5 +82,8 @@ export interface UpdateBrandInput {
   slaBusinessHours?: { start: string; end: string; days: number[]; timezone: string };
   // Portal settings
   portalOrigins?: string[];
+  // Chat widget
+  chatEnabled?: boolean;
+  chatAllowedOrigins?: string[];
 }
 
