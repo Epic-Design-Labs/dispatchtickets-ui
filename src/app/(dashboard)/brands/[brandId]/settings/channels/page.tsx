@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Copy, Plus, Trash2, Code, Zap, ExternalLink, Settings2, TicketIcon, MessageSquare } from 'lucide-react';
+import { Copy, Plus, Trash2, Code, Zap, Settings2, TicketIcon } from 'lucide-react';
 import { useForms, useCreateForm, useUpdateForm, useDeleteForm } from '@/lib/hooks';
 import { FormToken, CreateFormTokenDto } from '@/lib/api/forms';
 import { ChatChannelCard } from '@/components/chat/chat-channel-card';
@@ -485,34 +485,6 @@ Content-Type: application/json`}
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Chat Widget Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Chat Widget</CardTitle>
-              <CardDescription>
-                Add a chat widget to your website for real-time customer support
-              </CardDescription>
-            </div>
-          </div>
-          <Badge variant="secondary" className="w-fit">Coming Soon</Badge>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Embeddable chat widget coming soon</p>
-            <p className="text-sm">Allow customers to start conversations directly from your website</p>
-            <Button variant="outline" className="mt-4" asChild>
-              <a href="/feature-requests">
-                Request this feature <ExternalLink className="h-4 w-4 ml-2" />
-              </a>
-            </Button>
-          </div>
         </CardContent>
       </Card>
 

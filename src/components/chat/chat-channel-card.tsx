@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Globe, Info, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Copy, Globe, Info, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useBrand, useUpdateBrand } from '@/lib/hooks';
 import { useAuth } from '@/providers';
@@ -18,6 +19,50 @@ import { useAuth } from '@/providers';
  * The role check here only decides what to render. The API refuses these
  * fields from anyone but owners and admins regardless (BrandsService.update).
  */
+const WIDGET_URL =
+  process.env.NEXT_PUBLIC_CHAT_WIDGET_URL || 'https://widget.dispatchtickets.com/v0/widget.js';
+const API_ORIGIN = 'https://api.dispatchtickets.com';
+
+function htmlSnippet(brandId: string) {
+  return `<script
+  src="${WIDGET_URL}"
+  data-brand="${brandId}"
+  data-title="Chat with us"
+  async></script>`;
+}
+
+function nextSnippet(brandId: string) {
+  return `import Script from 'next/script';
+
+// In the layout for the pages that should show chat:
+<Script
+  src="${WIDGET_URL}"
+  data-brand="${brandId}"
+  data-title="Chat with us"
+  strategy="afterInteractive"
+/>`;
+}
+
+function CodeBlock({ code, label }: { code: string; label: string }) {
+  return (
+    <div className="relative">
+      <pre className="bg-muted px-3 py-2 pr-10 rounded text-xs font-mono overflow-x-auto whitespace-pre">{code}</pre>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-1 right-1 h-8 w-8"
+        aria-label={`Copy ${label}`}
+        onClick={() => {
+          navigator.clipboard.writeText(code);
+          toast.success(`${label} copied`);
+        }}
+      >
+        <Copy className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
 export function ChatChannelCard({ brandId }: { brandId: string }) {
   const { data: brand, isLoading } = useBrand(brandId);
   const updateBrand = useUpdateBrand(brandId);
@@ -25,18 +70,17 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
   const role = (session?.orgRole ?? '').toLowerCase();
   const canManage = role === 'owner' || role === 'admin';
 
-  const [enabled, setEnabled] = useState(false);
-  const [origins, setOrigins] = useState<string[]>([]);
+  // Unsaved edits only. Until something changes, the form shows what's
+  // saved -- no effect copying server state into local state.
+  const [draft, setDraft] = useState<{ enabled: boolean; origins: string[] } | null>(null);
   const [newOrigin, setNewOrigin] = useState('');
-
-  useEffect(() => {
-    if (!brand) return;
-    setEnabled(Boolean(brand.chatEnabled));
-    setOrigins(brand.chatAllowedOrigins ?? []);
-  }, [brand]);
 
   const savedEnabled = Boolean(brand?.chatEnabled);
   const savedOrigins = brand?.chatAllowedOrigins ?? [];
+  const enabled = draft?.enabled ?? savedEnabled;
+  const origins = draft?.origins ?? savedOrigins;
+  const setEnabled = (value: boolean) => setDraft({ enabled: value, origins });
+  const setOrigins = (value: string[]) => setDraft({ enabled, origins: value });
   const hasChanges =
     enabled !== savedEnabled || JSON.stringify(origins) !== JSON.stringify(savedOrigins);
 
@@ -67,6 +111,7 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
   const save = async () => {
     try {
       await updateBrand.mutateAsync({ chatEnabled: enabled, chatAllowedOrigins: origins });
+      setDraft(null);
       toast.success('Chat settings saved');
     } catch {
       toast.error('Failed to save chat settings');
@@ -172,6 +217,41 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
             <p>Chat is on, but no site is allowed yet, so no visitor can connect. Add your site above.</p>
           </div>
         )}
+
+        <div className="space-y-2 pt-2">
+          <Label>Install</Label>
+          <p className="text-sm text-muted-foreground">
+            Paste this into every page that should show chat, just before{' '}
+            <code className="text-xs">&lt;/body&gt;</code>. It only works on the sites listed above.
+          </p>
+          <Tabs defaultValue="html">
+            <TabsList>
+              <TabsTrigger value="html">HTML</TabsTrigger>
+              <TabsTrigger value="next">Next.js / React</TabsTrigger>
+              <TabsTrigger value="options">Options</TabsTrigger>
+            </TabsList>
+            <TabsContent value="html" className="mt-3">
+              <CodeBlock code={htmlSnippet(brandId)} label="Snippet" />
+            </TabsContent>
+            <TabsContent value="next" className="mt-3">
+              <CodeBlock code={nextSnippet(brandId)} label="Snippet" />
+            </TabsContent>
+            <TabsContent value="options" className="mt-3 space-y-2 text-sm text-muted-foreground">
+              <p>Optional attributes on the script tag:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li><code className="text-xs">data-title</code>: panel header (default &quot;Chat with us&quot;)</li>
+                <li><code className="text-xs">data-greeting</code>: first message shown to the visitor</li>
+                <li><code className="text-xs">data-color</code>: any CSS color, e.g. <code className="text-xs">#7c3aed</code></li>
+                <li><code className="text-xs">data-position</code>: <code className="text-xs">left</code> or <code className="text-xs">right</code></li>
+              </ul>
+              <p>
+                Sites with a Content Security Policy need{' '}
+                <code className="text-xs">script-src {new URL(WIDGET_URL).origin}</code> and{' '}
+                <code className="text-xs">connect-src {API_ORIGIN}</code>.
+              </p>
+            </TabsContent>
+          </Tabs>
+        </div>
 
         <div className="flex gap-2 rounded-lg border p-3 text-sm text-muted-foreground">
           <Info className="h-4 w-4 mt-0.5 shrink-0" />
