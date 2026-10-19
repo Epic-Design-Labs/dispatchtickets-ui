@@ -60,10 +60,19 @@ const res = await fetch(
 const { token } = await res.json();`;
 }
 
-const IDENTITY_CLIENT_SNIPPET = `// In the browser, once the user is signed in:
+const IDENTITY_CLIENT_SNIPPET = `// 1. Once, before the widget script loads (e.g. in the same layout). Calls
+//    made before the widget finishes loading are queued instead of lost.
+window.DispatchChat = window.DispatchChat || { q: [] };
+['open', 'close', 'toggle', 'on', 'registerAction', 'setContext', 'identify', 'reset']
+  .forEach((m) => {
+    window.DispatchChat[m] = window.DispatchChat[m] ||
+      ((...args) => window.DispatchChat.q.push([m, args]));
+  });
+
+// 2. Once the user is signed in, with the token from your server:
 window.DispatchChat.identify(token);
 
-// On sign-out, so the next person on this device starts fresh:
+// 3. On sign-out, so the next person on this device starts fresh:
 window.DispatchChat.reset();`;
 
 function CodeBlock({ code, label }: { code: string; label: string }) {
