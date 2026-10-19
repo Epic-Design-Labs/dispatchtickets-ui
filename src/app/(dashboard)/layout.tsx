@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useKeyboardShortcuts, useMentionNotifications, useBrands, useProfile, useGlobalTicketNotifications } from '@/lib/hooks';
 import { Menu } from 'lucide-react';
+import { LiveTicketEvents } from '@/components/layout/live-ticket-events';
 
 // Separate component to enable mention polling only when authenticated
 function MentionNotificationPoller() {
@@ -125,6 +126,7 @@ export default function DashboardLayout({
       <MentionNotificationPoller />
       <DesktopNotificationInitializer />
       <GlobalTicketNotificationPoller />
+      <LiveTicketEvents />
 
       {/* Desktop Sidebar - hidden on mobile */}
       <div className="hidden md:flex">

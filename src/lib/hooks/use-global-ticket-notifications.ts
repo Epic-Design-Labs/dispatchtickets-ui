@@ -5,11 +5,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ticketsApi, commentsApi, brandsApi } from '@/lib/api';
 import { Ticket } from '@/types';
 import { toast } from 'sonner';
+import { isLiveConnected } from '@/lib/live/live-state';
 
 const POLL_INTERVAL = 120000; // 2 minutes
 
 // Check if desktop notifications are enabled
-function isDesktopNotificationsEnabled(): boolean {
+export function isDesktopNotificationsEnabled(): boolean {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return false;
   }
@@ -20,7 +21,7 @@ function isDesktopNotificationsEnabled(): boolean {
 }
 
 // Send a desktop notification
-function sendDesktopNotification(
+export function sendDesktopNotification(
   title: string,
   body: string,
   onClick?: () => void
@@ -126,6 +127,9 @@ export function useGlobalTicketNotifications() {
 
     tickets.forEach((ticket) => {
       const prev = previous.get(ticket.id);
+
+      // The live stream already alerted on this, instantly (LiveTicketEvents).
+      if (ticket.source === 'chat' && isLiveConnected()) return;
 
       if (!prev) {
         // New ticket

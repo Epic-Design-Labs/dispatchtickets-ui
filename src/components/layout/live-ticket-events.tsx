@@ -1,0 +1,156 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { apiClient } from '@/lib/api/client';
+import { ticketKeys } from '@/lib/hooks/use-tickets';
+import { commentKeys } from '@/lib/hooks/use-comments';
+import { sendDesktopNotification } from '@/lib/hooks/use-global-ticket-notifications';
+import { setLiveConnected } from '@/lib/live/live-state';
+import { playChime } from '@/lib/live/chime';
+
+const MAX_BACKOFF_MS = 60_000;
+
+interface TicketCreated {
+  id: string;
+  brandId: string;
+  ticketNumber: number;
+  title: string;
+  source: string;
+  body?: string;
+}
+
+interface CommentCreated {
+  brandId: string;
+  ticketId: string;
+  comment: { id: string; authorType: string; source: string; isInternal: boolean; body?: string };
+}
+
+/**
+ * One account-wide event stream per tab (GET /stream): instant alerts for
+ * chats, and instant refresh of ticket lists and open conversations for
+ * everything. The server only sends events for brands this user can access.
+ *
+ * Stream tokens are single-use, so EventSource's own reconnect (same URL)
+ * can't work: reconnects are ours, each with a fresh token and the last
+ * event id so nothing in the gap is missed. If the stream can't be had
+ * (429, 503), the 2-minute poller keeps covering chats, as it always has.
+ */
+export function LiveTicketEvents() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const pathRef = useRef(pathname);
+  useEffect(() => {
+    pathRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
+    let source: EventSource | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let failures = 0;
+    let lastEventId: string | undefined;
+    let stopped = false;
+    const alerted = new Set<string>();
+
+    const brandName = (brandId: string) =>
+      queryClient.getQueryData<{ id: string; name: string }[]>(['brands'])?.find((b) => b.id === brandId)?.name;
+
+    const alert = (key: string, title: string, body: string, url: string) => {
+      if (alerted.has(key)) return;
+      alerted.add(key);
+      toast.info(title, {
+        description: body,
+        action: { label: 'Open', onClick: () => router.push(url) },
+        duration: 10_000,
+      });
+      sendDesktopNotification(title, body, () => router.push(url));
+      playChime();
+    };
+
+    const schedule = () => {
+      failures += 1;
+      const delay = Math.min(1000 * 2 ** (failures - 1), MAX_BACKOFF_MS);
+      timer = setTimeout(connect, delay);
+    };
+
+    const onTicketCreated = (e: MessageEvent) => {
+      if (e.lastEventId) lastEventId = e.lastEventId;
+      const t = JSON.parse(e.data) as TicketCreated;
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(t.brandId) });
+      if (t.source !== 'chat') return;
+      const where = brandName(t.brandId);
+      alert(
+        `ticket:${t.id}`,
+        where ? `New chat on ${where}` : 'New chat',
+        (t.body || t.title || '').slice(0, 140),
+        `/brands/${t.brandId}/tickets/${t.id}`,
+      );
+    };
+
+    const onCommentCreated = (e: MessageEvent) => {
+      if (e.lastEventId) lastEventId = e.lastEventId;
+      const c = JSON.parse(e.data) as CommentCreated;
+      queryClient.invalidateQueries({ queryKey: commentKeys.all(c.brandId, c.ticketId) });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(c.brandId, c.ticketId) });
+      const fromVisitor = c.comment.source === 'chat' && c.comment.authorType === 'CUSTOMER';
+      // Already looking at it: the conversation just refreshed, no need to shout.
+      if (!fromVisitor || pathRef.current?.includes(c.ticketId)) return;
+      alert(
+        `comment:${c.comment.id}`,
+        'New chat message',
+        (c.comment.body || '').slice(0, 140),
+        `/brands/${c.brandId}/tickets/${c.ticketId}`,
+      );
+    };
+
+    async function connect() {
+      if (stopped) return;
+      let url: string;
+      try {
+        const { data } = await apiClient.post<{ token: string }>('/stream/token');
+        const q = new URLSearchParams({ token: data.token });
+        if (lastEventId) q.set('lastEventId', lastEventId);
+        url = `${apiClient.defaults.baseURL}/stream?${q}`;
+      } catch {
+        schedule();
+        return;
+      }
+      if (stopped) return;
+
+      const es = new EventSource(url);
+      source = es;
+      es.onopen = () => {
+        failures = 0;
+        setLiveConnected(true);
+      };
+      es.onerror = () => {
+        if (source !== es) return;
+        es.close();
+        source = null;
+        setLiveConnected(false);
+        if (!stopped) schedule();
+      };
+      es.addEventListener('ticket.created', onTicketCreated as EventListener);
+      es.addEventListener('ticket.comment.created', onCommentCreated as EventListener);
+      es.addEventListener('unauthorized', () => {
+        es.close();
+        source = null;
+        setLiveConnected(false);
+      });
+    }
+
+    void connect();
+
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      source?.close();
+      setLiveConnected(false);
+    };
+  }, [queryClient, router]);
+
+  return null;
+}
