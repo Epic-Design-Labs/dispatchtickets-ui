@@ -110,7 +110,12 @@ interface ChatForm {
   offlineMessage: string;
   hoursEnabled: boolean;
   hours: ChatHours;
+  // Minutes, as typed; blank = the default.
+  alertWarning: string;
+  alertCritical: string;
 }
+
+const DEFAULT_ALERT_MINUTES = { warning: 1, critical: 3 };
 
 const DEFAULT_HOURS = (): ChatHours => ({
   start: '09:00',
@@ -140,6 +145,8 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
     offlineMessage: brand?.chatOfflineMessage ?? '',
     hoursEnabled: Boolean(brand?.chatHoursEnabled),
     hours: brand?.chatHours ?? DEFAULT_HOURS(),
+    alertWarning: brand?.chatAlertWarningSeconds ? String(brand.chatAlertWarningSeconds / 60) : '',
+    alertCritical: brand?.chatAlertCriticalSeconds ? String(brand.chatAlertCriticalSeconds / 60) : '',
   };
   const form: ChatForm = { ...saved, ...draft };
   const { enabled, origins } = form;
@@ -178,6 +185,18 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
         toast.error('Pick at least one day for chat hours');
         return;
       }
+      const minutes = (v: string) => (v.trim() ? Number(v) : null);
+      const warning = minutes(form.alertWarning);
+      const critical = minutes(form.alertCritical);
+      // The API allows 30 seconds to a day.
+      if ([warning, critical].some((m) => m !== null && !(m >= 0.5 && m <= 1440))) {
+        toast.error('Alert times are between half a minute and 1440 minutes');
+        return;
+      }
+      if ((critical ?? DEFAULT_ALERT_MINUTES.critical) <= (warning ?? DEFAULT_ALERT_MINUTES.warning)) {
+        toast.error('The urgent alert has to come after the first one');
+        return;
+      }
       await updateBrand.mutateAsync({
         chatEnabled: enabled,
         chatAllowedOrigins: origins,
@@ -185,6 +204,8 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
         chatOfflineMessage: form.offlineMessage.trim() || null,
         chatHoursEnabled: form.hoursEnabled,
         ...(form.hoursEnabled && { chatHours: form.hours }),
+        chatAlertWarningSeconds: warning === null ? null : Math.round(warning * 60),
+        chatAlertCriticalSeconds: critical === null ? null : Math.round(critical * 60),
       });
       setDraft(null);
       toast.success('Chat settings saved');
@@ -406,6 +427,47 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
               </p>
             </div>
           )}
+        </div>
+
+        <div className="space-y-3 rounded-lg border p-4">
+          <div>
+            <h4 className="text-sm font-medium">Waiting alerts</h4>
+            <p className="text-sm text-muted-foreground">
+              How long a visitor can wait for a reply before the chat turns amber, then red, and
+              your team is alerted. Leave blank for the default ({DEFAULT_ALERT_MINUTES.warning} and{' '}
+              {DEFAULT_ALERT_MINUTES.critical} minutes).
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-sm">
+            <div>
+              <Label htmlFor="chat-alert-warning" className="text-xs">First alert after (minutes)</Label>
+              <Input
+                id="chat-alert-warning"
+                type="number"
+                min={0.5}
+                max={1440}
+                step="any"
+                placeholder={String(DEFAULT_ALERT_MINUTES.warning)}
+                value={form.alertWarning}
+                onChange={(e) => set({ alertWarning: e.target.value })}
+                disabled={!canManage}
+              />
+            </div>
+            <div>
+              <Label htmlFor="chat-alert-critical" className="text-xs">Urgent after (minutes)</Label>
+              <Input
+                id="chat-alert-critical"
+                type="number"
+                min={0.5}
+                max={1440}
+                step="any"
+                placeholder={String(DEFAULT_ALERT_MINUTES.critical)}
+                value={form.alertCritical}
+                onChange={(e) => set({ alertCritical: e.target.value })}
+                disabled={!canManage}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2 pt-2">

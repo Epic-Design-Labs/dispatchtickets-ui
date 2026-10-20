@@ -44,6 +44,8 @@ export interface Brand {
   chatOfflineMessage?: string | null;
   chatHoursEnabled?: boolean;
   chatHours?: { start: string; end: string; days: number[]; timezone: string } | null;
+  chatAlertWarningSeconds?: number | null;
+  chatAlertCriticalSeconds?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -93,5 +95,7 @@ export interface UpdateBrandInput {
   chatOfflineMessage?: string | null;
   chatHoursEnabled?: boolean;
   chatHours?: { start: string; end: string; days: number[]; timezone: string } | null;
+  chatAlertWarningSeconds?: number | null;
+  chatAlertCriticalSeconds?: number | null;
 }
 
