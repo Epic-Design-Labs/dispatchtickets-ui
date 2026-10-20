@@ -60,6 +60,7 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDateTime, formatTimeAgo } from '@/lib/utils';
+import { WaitingBadge } from '@/components/chat/waiting-badge';
 import { StatusBadge } from './status-badge';
 import { PriorityBadge } from './priority-badge';
 import { CloseTicketDialog } from './close-ticket-dialog';
@@ -724,13 +725,16 @@ export function TicketTable({
         return <span className="text-muted-foreground">#{ticket.ticketNumber}</span>;
       case 'subject':
         return (
-          <Link
-            href={`/brands/${brandId}/tickets/${ticket.id}`}
-            className="block font-medium hover:underline truncate max-w-[400px]"
-            title={ticket.title}
-          >
-            {ticket.title}
-          </Link>
+          <div className="flex min-w-0 items-center gap-2">
+            <Link
+              href={`/brands/${brandId}/tickets/${ticket.id}`}
+              className="block font-medium hover:underline truncate max-w-[400px]"
+              title={ticket.title}
+            >
+              {ticket.title}
+            </Link>
+            <WaitingBadge ticket={ticket} />
+          </div>
         );
       case 'status':
         return ticket.status ? <StatusBadge status={ticket.status} statusRef={ticket.statusRef} /> : <span className="text-muted-foreground">-</span>;

@@ -2,6 +2,8 @@ export type WebhookEvent =
   | 'ticket.created'
   | 'ticket.updated'
   | 'ticket.deleted'
+  | 'ticket.overdue'
+  | 'ticket.awaiting_reply'
   | 'comment.created'
   | 'comment.updated'
   | 'comment.deleted';

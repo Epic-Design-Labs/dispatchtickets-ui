@@ -49,6 +49,12 @@ export interface Ticket {
   attachmentCount?: number;
   dueAt?: string | null;
   isSpam?: boolean;
+  /** Computed by the API on every message (tickets/reply-state.ts). */
+  lastSpeaker?: 'customer' | 'agent' | null;
+  /** When the customer started waiting; null when nobody is. */
+  awaitingReplySince?: string | null;
+  /** Escalations sent for this wait: 0 none, 1 warning (amber), 2 critical (red). */
+  awaitingReplyLevel?: number;
   createdAt: string;
   updatedAt: string;
 }

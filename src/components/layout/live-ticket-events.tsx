@@ -22,6 +22,16 @@ interface TicketCreated {
   body?: string;
 }
 
+interface AwaitingReply {
+  id: string;
+  brandId: string;
+  publicId: string;
+  title: string;
+  level: 'warning' | 'critical';
+  awaitingReplySince: string;
+  waitingSeconds: number;
+}
+
 interface CommentCreated {
   brandId: string;
   ticketId: string;
@@ -106,6 +116,24 @@ export function LiveTicketEvents() {
       );
     };
 
+    // The API decides when a wait has gone on too long (reply-state.ts); this
+    // only refreshes the badges and says so. Alerts even on the ticket's own
+    // page: being there and not answering is exactly the case to flag.
+    const onAwaitingReply = (e: MessageEvent) => {
+      if (e.lastEventId) lastEventId = e.lastEventId;
+      const w = JSON.parse(e.data) as AwaitingReply;
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(w.brandId) });
+      queryClient.invalidateQueries({ queryKey: ticketKeys.detail(w.brandId, w.id) });
+      const minutes = Math.max(1, Math.floor(w.waitingSeconds / 60));
+      const where = brandName(w.brandId);
+      alert(
+        `wait:${w.id}:${w.awaitingReplySince}:${w.level}`,
+        `${w.level === 'critical' ? 'Chat still unanswered' : 'Chat waiting'}: ${minutes} min${where ? ` on ${where}` : ''}`,
+        `${w.publicId} · ${(w.title || '').slice(0, 120)}`,
+        `/brands/${w.brandId}/tickets/${w.id}`,
+      );
+    };
+
     async function connect() {
       if (stopped) return;
       let url: string;
@@ -135,6 +163,7 @@ export function LiveTicketEvents() {
       };
       es.addEventListener('ticket.created', onTicketCreated as EventListener);
       es.addEventListener('ticket.comment.created', onCommentCreated as EventListener);
+      es.addEventListener('ticket.awaiting_reply', onAwaitingReply as EventListener);
       es.addEventListener('unauthorized', () => {
         es.close();
         source = null;

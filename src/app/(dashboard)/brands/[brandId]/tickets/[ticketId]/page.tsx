@@ -9,6 +9,7 @@ import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWat
 import { TicketOrdersSection } from '@/components/ecommerce';
 import { TicketEnrichmentSection } from '@/components/enrichment';
 import { TicketChatSection } from '@/components/chat/ticket-chat-section';
+import { WaitingBadge } from '@/components/chat/waiting-badge';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { CompanyCombobox } from '@/components/companies';
 import { Button } from '@/components/ui/button';
@@ -568,6 +569,7 @@ export default function TicketDetailPage() {
                 <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-50 flex-shrink-0" />
               </h1>
               <div className="flex flex-wrap items-center gap-2 mt-2">
+                <WaitingBadge ticket={ticket} />
                 {/* Priority badge - clickable */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
