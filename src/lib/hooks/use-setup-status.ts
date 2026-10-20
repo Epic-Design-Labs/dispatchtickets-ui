@@ -33,7 +33,7 @@ export const setupStatusKeys = {
 
 /**
  * Hook to compute setup completion status for a brand
- * Tracks email setup, categories, team, and webhooks
+ * Tracks email setup, chat, categories, team, and webhooks
  */
 export function useSetupStatus(brandId: string): SetupStatus {
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
@@ -64,6 +64,8 @@ export function useSetupStatus(brandId: string): SetupStatus {
   const teamMemberCount = (members?.members?.length || 0) + (members?.invites?.length || 0);
   const hasTeam = teamMemberCount > 1; // More than just the owner
   const hasWebhooks = (webhooks?.length || 0) > 0;
+  const chatSites = brand?.chatAllowedOrigins?.length || 0;
+  const hasChat = brand?.chatEnabled === true && chatSites > 0;
 
   // Build email receiving detail
   let emailReceivingDetail: string | undefined;
@@ -118,6 +120,15 @@ export function useSetupStatus(brandId: string): SetupStatus {
       optional: true,
       href: `/brands/${brandId}/settings/email`,
       detail: hasAutoresponse ? 'Enabled' : undefined,
+    },
+    {
+      id: 'chat',
+      title: 'Live Chat',
+      description: 'Add a chat widget to your site or app',
+      completed: hasChat,
+      optional: true,
+      href: `/brands/${brandId}/settings/channels`,
+      detail: hasChat ? `On for ${chatSites} site${chatSites === 1 ? '' : 's'}` : undefined,
     },
     {
       id: 'categories',
