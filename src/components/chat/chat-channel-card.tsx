@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -95,6 +96,31 @@ function CodeBlock({ code, label }: { code: string; label: string }) {
   );
 }
 
+interface ChatHours {
+  start: string;
+  end: string;
+  days: number[];
+  timezone: string;
+}
+
+interface ChatForm {
+  enabled: boolean;
+  origins: string[];
+  greeting: string;
+  offlineMessage: string;
+  hoursEnabled: boolean;
+  hours: ChatHours;
+}
+
+const DEFAULT_HOURS = (): ChatHours => ({
+  start: '09:00',
+  end: '17:00',
+  days: [1, 2, 3, 4, 5],
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+});
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export function ChatChannelCard({ brandId }: { brandId: string }) {
   const { data: brand, isLoading } = useBrand(brandId);
   const updateBrand = useUpdateBrand(brandId);
@@ -104,17 +130,23 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
 
   // Unsaved edits only. Until something changes, the form shows what's
   // saved -- no effect copying server state into local state.
-  const [draft, setDraft] = useState<{ enabled: boolean; origins: string[] } | null>(null);
+  const [draft, setDraft] = useState<Partial<ChatForm> | null>(null);
   const [newOrigin, setNewOrigin] = useState('');
 
-  const savedEnabled = Boolean(brand?.chatEnabled);
-  const savedOrigins = brand?.chatAllowedOrigins ?? [];
-  const enabled = draft?.enabled ?? savedEnabled;
-  const origins = draft?.origins ?? savedOrigins;
-  const setEnabled = (value: boolean) => setDraft({ enabled: value, origins });
-  const setOrigins = (value: string[]) => setDraft({ enabled, origins: value });
-  const hasChanges =
-    enabled !== savedEnabled || JSON.stringify(origins) !== JSON.stringify(savedOrigins);
+  const saved: ChatForm = {
+    enabled: Boolean(brand?.chatEnabled),
+    origins: brand?.chatAllowedOrigins ?? [],
+    greeting: brand?.chatGreeting ?? '',
+    offlineMessage: brand?.chatOfflineMessage ?? '',
+    hoursEnabled: Boolean(brand?.chatHoursEnabled),
+    hours: brand?.chatHours ?? DEFAULT_HOURS(),
+  };
+  const form: ChatForm = { ...saved, ...draft };
+  const { enabled, origins } = form;
+  const set = (patch: Partial<ChatForm>) => setDraft((d) => ({ ...d, ...patch }));
+  const setEnabled = (value: boolean) => set({ enabled: value });
+  const setOrigins = (value: string[]) => set({ origins: value });
+  const hasChanges = JSON.stringify(form) !== JSON.stringify(saved);
 
   const addOrigin = () => {
     let url: URL;
@@ -142,7 +174,18 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
 
   const save = async () => {
     try {
-      await updateBrand.mutateAsync({ chatEnabled: enabled, chatAllowedOrigins: origins });
+      if (form.hoursEnabled && form.hours.days.length === 0) {
+        toast.error('Pick at least one day for chat hours');
+        return;
+      }
+      await updateBrand.mutateAsync({
+        chatEnabled: enabled,
+        chatAllowedOrigins: origins,
+        chatGreeting: form.greeting.trim() || null,
+        chatOfflineMessage: form.offlineMessage.trim() || null,
+        chatHoursEnabled: form.hoursEnabled,
+        ...(form.hoursEnabled && { chatHours: form.hours }),
+      });
       setDraft(null);
       toast.success('Chat settings saved');
     } catch {
@@ -250,6 +293,121 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
           </div>
         )}
 
+        <div className="space-y-4 rounded-lg border p-4">
+          <div>
+            <h4 className="text-sm font-medium">What visitors see</h4>
+            <p className="text-sm text-muted-foreground">
+              When nobody is set to Available or Busy (the status switch at the bottom of the
+              sidebar), or chat is outside its hours, the widget shows your offline message.
+              Visitors can still write; it waits for you as a ticket.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="chat-greeting">Greeting</Label>
+            <Textarea
+              id="chat-greeting"
+              rows={2}
+              maxLength={500}
+              placeholder="Hi! How can we help?"
+              value={form.greeting}
+              onChange={(e) => set({ greeting: e.target.value })}
+              disabled={!canManage}
+            />
+            <p className="text-xs text-muted-foreground">
+              The first message a visitor sees. A <code>data-greeting</code> on the script tag
+              overrides it for that site.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="chat-offline">Offline message</Label>
+            <Textarea
+              id="chat-offline"
+              rows={2}
+              maxLength={500}
+              placeholder="We're away right now. Leave a message and we'll reply here as soon as we can."
+              value={form.offlineMessage}
+              onChange={(e) => set({ offlineMessage: e.target.value })}
+              disabled={!canManage}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label>Chat hours</Label>
+              <p className="text-sm text-muted-foreground">
+                Outside these hours chat shows as closed, even if someone is online.
+              </p>
+            </div>
+            <Switch
+              checked={form.hoursEnabled}
+              onCheckedChange={(v) => set({ hoursEnabled: v })}
+              disabled={!canManage}
+              aria-label="Limit chat to set hours"
+            />
+          </div>
+          {form.hoursEnabled && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg">
+                <div>
+                  <Label className="text-xs">Opens</Label>
+                  <Input
+                    type="time"
+                    value={form.hours.start}
+                    onChange={(e) => set({ hours: { ...form.hours, start: e.target.value } })}
+                    disabled={!canManage}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Closes</Label>
+                  <Input
+                    type="time"
+                    value={form.hours.end}
+                    onChange={(e) => set({ hours: { ...form.hours, end: e.target.value } })}
+                    disabled={!canManage}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Timezone</Label>
+                  <Input
+                    value={form.hours.timezone}
+                    onChange={(e) => set({ hours: { ...form.hours, timezone: e.target.value } })}
+                    placeholder="America/Chicago"
+                    disabled={!canManage}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {DAY_LABELS.map((day, i) => {
+                  const on = form.hours.days.includes(i);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      disabled={!canManage}
+                      aria-pressed={on}
+                      className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                        on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                      onClick={() =>
+                        set({
+                          hours: {
+                            ...form.hours,
+                            days: on ? form.hours.days.filter((d) => d !== i) : [...form.hours.days, i].sort(),
+                          },
+                        })
+                      }
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A closing time earlier than the opening time runs overnight, counted from the day it opens.
+              </p>
+            </div>
+          )}
+        </div>
+
         <div className="space-y-2 pt-2">
           <Label>Install</Label>
           <p className="text-sm text-muted-foreground">
@@ -287,7 +445,7 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
               <p>Optional attributes on the script tag:</p>
               <ul className="list-disc pl-5 space-y-1">
                 <li><code className="text-xs">data-title</code>: panel header (default &quot;Chat with us&quot;)</li>
-                <li><code className="text-xs">data-greeting</code>: first message shown to the visitor</li>
+                <li><code className="text-xs">data-greeting</code>: first message shown to the visitor (overrides the greeting above)</li>
                 <li><code className="text-xs">data-color</code>: any CSS color, e.g. <code className="text-xs">#7c3aed</code></li>
                 <li><code className="text-xs">data-position</code>: <code className="text-xs">left</code> or <code className="text-xs">right</code></li>
               </ul>

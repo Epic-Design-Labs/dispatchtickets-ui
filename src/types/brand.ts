@@ -40,6 +40,10 @@ export interface Brand {
   // Chat widget
   chatEnabled?: boolean;
   chatAllowedOrigins?: string[];
+  chatGreeting?: string | null;
+  chatOfflineMessage?: string | null;
+  chatHoursEnabled?: boolean;
+  chatHours?: { start: string; end: string; days: number[]; timezone: string } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -85,5 +89,9 @@ export interface UpdateBrandInput {
   // Chat widget
   chatEnabled?: boolean;
   chatAllowedOrigins?: string[];
+  chatGreeting?: string | null;
+  chatOfflineMessage?: string | null;
+  chatHoursEnabled?: boolean;
+  chatHours?: { start: string; end: string; days: number[]; timezone: string } | null;
 }
 
