@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import { chatSoundEnabled, setChatSoundEnabled, subscribeChatSound } from '@/lib/live/chime';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,8 @@ export default function ProfilePage() {
   const [notifyEmail, setNotifyEmail] = useState(true);
   const [notifyToast, setNotifyToast] = useState(true);
   const [notifyDesktop, setNotifyDesktop] = useState(false);
+  // Chat sound is per browser (lib/live/chime.ts), not a profile field.
+  const chatSound = useSyncExternalStore(subscribeChatSound, chatSoundEnabled, () => true);
 
   // Initialize form with profile data and sync localStorage
   useEffect(() => {
@@ -369,6 +372,17 @@ export default function ProfilePage() {
                 onCheckedChange={handleNotifyDesktopChange}
                 disabled={updateProfile.isPending}
               />
+            </div>
+
+            {/* Chat sound */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="chat-sound">Chat Sound</Label>
+                <p className="text-sm text-muted-foreground">
+                  Play a chime when a new chat comes in. Applies to this browser only.
+                </p>
+              </div>
+              <Switch id="chat-sound" checked={chatSound} onCheckedChange={setChatSoundEnabled} />
             </div>
 
             {/* Note about brand filtering */}

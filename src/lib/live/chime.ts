@@ -5,10 +5,37 @@
  */
 let ctx: AudioContext | null = null;
 
+const SOUND_KEY = 'chat_sound_enabled';
+const soundListeners = new Set<() => void>();
+
+/** Whether this browser plays the chime (Profile -> Chat Sound). On unless turned off. */
+export function chatSoundEnabled(): boolean {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+export function setChatSoundEnabled(on: boolean): void {
+  try {
+    localStorage.setItem(SOUND_KEY, String(on));
+  } catch {
+    /* storage blocked: nothing to remember it in */
+  }
+  soundListeners.forEach((fn) => fn());
+}
+
+/** For useSyncExternalStore. */
+export function subscribeChatSound(fn: () => void): () => void {
+  soundListeners.add(fn);
+  return () => soundListeners.delete(fn);
+}
+
 export function playChime(): void {
   try {
     if (typeof window === 'undefined') return;
-    if (localStorage.getItem('chat_sound_enabled') === 'false') return;
+    if (!chatSoundEnabled()) return;
     const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
     if (activation && !activation.hasBeenActive) return;
 
