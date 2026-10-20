@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useUpdateContact, useTickets, useTicketNavigation, useTeamMembers, useContactTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls, useUploadAttachment, useDeleteAttachment } from '@/lib/hooks';
+import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useTickets, useTicketNavigation, useTeamMembers, useContactTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls, useUploadAttachment, useDeleteAttachment } from '@/lib/hooks';
 import { useStatuses } from '@/lib/hooks/use-statuses';
 import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers } from '@/components/tickets';
 import { TicketOrdersSection } from '@/components/ecommerce';
@@ -74,7 +74,6 @@ export default function TicketDetailPage() {
   const updateTicket = useUpdateTicket(brandId, ticketId);
   const deleteTicket = useDeleteTicket(brandId);
   const markAsSpam = useMarkAsSpam(brandId);
-  const updateContact = useUpdateContact(brandId, ticket?.customerId || '');
   const mergeTickets = useMergeTickets(brandId);
   const { data: contactTicketsData, isLoading: contactTicketsLoading } = useContactTickets(
     brandId,
@@ -339,13 +338,12 @@ export default function TicketDetailPage() {
     setEditDescriptionValue('');
   };
 
+  // This ticket's company, not the contact's: one person can file for several
+  // companies, and changing the contact's would move all their tickets.
   const handleCompanyChange = async (companyId: string | undefined) => {
-    if (!ticket?.customerId) return;
     try {
-      await updateContact.mutateAsync({
-        companyId: companyId,
-      });
-      toast.success('Contact company updated');
+      await updateTicket.mutateAsync({ companyId: companyId ?? null });
+      toast.success('Ticket company updated');
     } catch {
       toast.error('Failed to update company');
     }
@@ -914,21 +912,33 @@ export default function TicketDetailPage() {
                   <p className="text-sm text-muted-foreground truncate">{ticket.customer.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Company:</span>
-                <CompanyCombobox
-                  brandId={brandId}
-                  value={ticket.customer.companyId}
-                  companyName={ticket.customer.company?.name}
-                  onChange={handleCompanyChange}
-                  disabled={updateContact.isPending}
-                  placeholder="Set company..."
-                  variant="inline"
-                />
-              </div>
             </div>
           )}
+
+          {/* Company: the ticket's own, which can differ from the contact's */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Company:</span>
+              <CompanyCombobox
+                brandId={brandId}
+                value={ticket.companyId ?? undefined}
+                companyName={ticket.company?.name}
+                onChange={handleCompanyChange}
+                disabled={updateTicket.isPending}
+                placeholder="Set company..."
+                variant="inline"
+              />
+            </div>
+            {ticket.customer?.company && ticket.customer.companyId !== ticket.companyId && (
+              <p className="text-xs text-muted-foreground pl-6">
+                Contact&apos;s company:{' '}
+                <Link href={`/brands/${brandId}/companies/${ticket.customer.company.id}`} className="hover:underline">
+                  {ticket.customer.company.name}
+                </Link>
+              </p>
+            )}
+          </div>
 
           <Separator />
 

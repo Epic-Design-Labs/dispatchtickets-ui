@@ -778,7 +778,7 @@ export default function DashboardPage() {
                       )}
                       {col.key === 'company' && (
                         <span className="text-sm text-muted-foreground truncate">
-                          {ticket.customer?.company?.name || '-'}
+                          {(ticket.company ?? ticket.customer?.company)?.name || '-'}
                         </span>
                       )}
                       {col.key === 'assignee' && (

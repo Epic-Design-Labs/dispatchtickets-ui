@@ -35,6 +35,9 @@ export interface Ticket {
   assigneeId?: string;
   customerId?: string;
   customer?: Contact;
+  /** Who the ticket is for. Can differ from the contact's own company. */
+  companyId?: string | null;
+  company?: { id: string; name: string } | null;
   categoryId?: string | null;
   category?: Category | null;
   tags?: Tag[];
@@ -88,6 +91,7 @@ export interface UpdateTicketInput {
   priority?: TicketPriority;
   assigneeId?: string | null;
   categoryId?: string | null;
+  companyId?: string | null;
   tags?: string[];
   customFields?: Record<string, unknown>;
   dueAt?: string | null;
@@ -99,6 +103,7 @@ export interface TicketFilters {
   priority?: string;
   assigneeId?: string;
   customerId?: string;
+  companyId?: string;
   categoryId?: string;
   tagIds?: string[];
   source?: TicketSource;

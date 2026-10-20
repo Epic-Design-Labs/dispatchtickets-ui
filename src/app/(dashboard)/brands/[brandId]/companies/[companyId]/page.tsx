@@ -56,8 +56,10 @@ export default function CompanyDetailPage() {
   const [editNotes, setEditNotes] = useState('');
 
   const { data: company, isLoading } = useCompany(brandId, companyId);
-  const { data: contactsData, isLoading: contactsLoading } = useContacts(brandId);
-  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, {});
+  // Filtered by the API, not the browser: a client-side filter only ever saw
+  // the first page, and a ticket's company can differ from its contact's.
+  const { data: contactsData, isLoading: contactsLoading } = useContacts(brandId, { companyId });
+  const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, { companyId });
   const { data: teamMembersData } = useTeamMembers({ brandId });
   const teamMembers = teamMembersData?.members;
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
@@ -65,15 +67,8 @@ export default function CompanyDetailPage() {
   const deleteCompany = useDeleteCompany(brandId);
   const bulkAction = useBulkAction(brandId);
 
-  // Filter contacts belonging to this company
-  const companyContacts = contactsData?.data?.filter(
-    (c) => c.companyId === companyId
-  ) || [];
-
-  // Filter tickets from contacts in this company
-  const companyTickets = ticketsData?.data?.filter(
-    (t) => t.customer?.companyId === companyId
-  ) || [];
+  const companyContacts = contactsData?.data || [];
+  const companyTickets = ticketsData?.data || [];
 
   const handleBulkAction = async (
     action: BulkActionType,

@@ -511,8 +511,8 @@ export function TicketTable({
             bVal = b.assigneeId || '';
             break;
           case 'company':
-            aVal = a.customer?.company?.name?.toLowerCase() || '';
-            bVal = b.customer?.company?.name?.toLowerCase() || '';
+            aVal = (a.company ?? a.customer?.company)?.name?.toLowerCase() || '';
+            bVal = (b.company ?? b.customer?.company)?.name?.toLowerCase() || '';
             break;
           case 'category':
             aVal = a.category?.name?.toLowerCase() || '';
@@ -742,17 +742,20 @@ export function TicketTable({
         return <PriorityBadge priority={ticket.priority || 'normal'} />;
       case 'customer':
         return <span className="text-muted-foreground">{customerName || customerEmail || '-'}</span>;
-      case 'company':
-        return ticket.customer?.company ? (
+      case 'company': {
+        // The ticket's own company; the contact's only for rows from before tickets had one.
+        const company = ticket.company ?? ticket.customer?.company;
+        return company ? (
           <Link
-            href={`/brands/${brandId}/companies/${ticket.customer.company.id}`}
+            href={`/brands/${brandId}/companies/${company.id}`}
             className="text-muted-foreground hover:text-foreground hover:underline"
           >
-            {ticket.customer.company.name}
+            {company.name}
           </Link>
         ) : (
           <span className="text-muted-foreground">-</span>
         );
+      }
       case 'assignee': {
         const assignee = getAssigneeInfo(ticket.assigneeId);
         if (!assignee) {
