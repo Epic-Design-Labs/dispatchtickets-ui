@@ -1,12 +1,14 @@
 export type WebhookEvent =
   | 'ticket.created'
   | 'ticket.updated'
-  | 'ticket.deleted'
   | 'ticket.overdue'
   | 'ticket.awaiting_reply'
-  | 'comment.created'
-  | 'comment.updated'
-  | 'comment.deleted';
+  | 'ticket.comment.created'
+  | 'chat.started'
+  | 'chat.message'
+  | '*'
+  // Alias of ticket.comment.created, kept for existing subscriptions.
+  | 'comment.created';
 
 export interface Webhook {
   id: string;
