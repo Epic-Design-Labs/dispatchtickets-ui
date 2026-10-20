@@ -8,10 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Copy, Globe, Info, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Copy, Globe, Info, Lock, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { useBrand, useUpdateBrand } from '@/lib/hooks';
+import { useBrand, useSubscription, useUpdateBrand, useUsage } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 
 /**
@@ -132,6 +133,14 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
   const { session } = useAuth();
   const role = (session?.orgRole ?? '').toLowerCase();
   const canManage = role === 'owner' || role === 'admin';
+  // Chat is for paid plans. The API enforces it; this only explains it.
+  const { data: subscriptionData } = useSubscription();
+  const { data: usageData } = useUsage();
+  const planKnown = subscriptionData !== undefined || usageData !== undefined;
+  const isPaid =
+    (subscriptionData?.subscription && subscriptionData.subscription.planPrice > 0) ||
+    (usageData?.brandLimit !== null && usageData?.brandLimit !== undefined && usageData.brandLimit !== 1);
+  const needsUpgrade = planKnown && !isPaid;
 
   // Unsaved edits only. Until something changes, the form shows what's
   // saved -- no effect copying server state into local state.
@@ -244,7 +253,7 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
           <Switch
             checked={enabled}
             onCheckedChange={setEnabled}
-            disabled={!canManage}
+            disabled={!canManage || (needsUpgrade && !enabled)}
             aria-label="Enable chat"
           />
         </div>
@@ -254,6 +263,22 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
           <p className="text-sm text-muted-foreground">
             Only organization owners and admins can change chat settings.
           </p>
+        )}
+
+        {needsUpgrade && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+            <p className="text-muted-foreground">
+              {saved.enabled
+                ? 'Chat is on, but visitors can no longer reach it: chat is available on paid plans.'
+                : 'Chat is available on paid plans.'}
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/billing">
+                <Lock className="mr-2 h-4 w-4" />
+                Upgrade
+              </Link>
+            </Button>
+          </div>
         )}
 
         <div className="space-y-2">
