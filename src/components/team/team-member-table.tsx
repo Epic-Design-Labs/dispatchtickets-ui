@@ -14,6 +14,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RoleBadge } from './role-badge';
 import { TeamMember, OrgRole } from '@/types';
 import { ChevronRight } from 'lucide-react';
+import { useTeamPresence } from '@/lib/hooks/use-presence';
+import type { MemberPresenceSummary } from '@/lib/api/presence';
+import { PRESENCE_LABELS, PresenceDot } from '@/components/presence/presence-dot';
+
+/** Live status from the presence API; offline means not chosen, or no open admin tab. */
+function MemberAvailability({ presence }: { presence?: MemberPresenceSummary }) {
+  const status = presence?.status ?? 'offline';
+  const mixed = presence?.brands.some((b) => b.status !== status);
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-sm"
+      title={mixed ? 'Status differs by brand; showing the most available' : undefined}
+    >
+      <PresenceDot status={status} />
+      {PRESENCE_LABELS[status]}
+    </span>
+  );
+}
 
 interface TeamMemberTableProps {
   members: TeamMember[];
@@ -28,6 +46,8 @@ export function TeamMemberTable({
   isLoading,
 }: TeamMemberTableProps) {
   const router = useRouter();
+  const { data: presence } = useTeamPresence();
+  const presenceById = new Map((presence ?? []).map((p) => [p.memberId, p]));
 
   const handleRowClick = (memberId: string) => {
     router.push(`/team/${memberId}`);
@@ -43,6 +63,7 @@ export function TeamMemberTable({
               <TableHead>Role</TableHead>
               <TableHead>Brands</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Availability</TableHead>
               <TableHead className="w-[70px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -54,6 +75,9 @@ export function TeamMemberTable({
                     <Skeleton className="h-4 w-32" />
                     <Skeleton className="h-3 w-48" />
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-16" />
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-5 w-16" />
@@ -111,6 +135,7 @@ export function TeamMemberTable({
             <TableHead>Role</TableHead>
             <TableHead>Brands</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Availability</TableHead>
             <TableHead className="w-[100px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -157,6 +182,13 @@ export function TeamMemberTable({
                     <Badge variant="outline" className="text-green-600 border-green-300">
                       Active
                     </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {isPending ? (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  ) : (
+                    <MemberAvailability presence={presenceById.get(member.id)} />
                   )}
                 </TableCell>
                 <TableCell>

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { apiClient } from '@/lib/api/client';
 import { ticketKeys } from '@/lib/hooks/use-tickets';
 import { commentKeys } from '@/lib/hooks/use-comments';
+import { presenceKeys } from '@/lib/hooks/use-presence';
 import { sendDesktopNotification } from '@/lib/hooks/use-global-ticket-notifications';
 import { setLiveConnected } from '@/lib/live/live-state';
 import { playChime } from '@/lib/live/chime';
@@ -164,6 +165,10 @@ export function LiveTicketEvents() {
       es.addEventListener('ticket.created', onTicketCreated as EventListener);
       es.addEventListener('ticket.comment.created', onCommentCreated as EventListener);
       es.addEventListener('ticket.awaiting_reply', onAwaitingReply as EventListener);
+      es.addEventListener('presence.changed', (e: MessageEvent) => {
+        if (e.lastEventId) lastEventId = e.lastEventId;
+        queryClient.invalidateQueries({ queryKey: presenceKeys.all });
+      });
       es.addEventListener('unauthorized', () => {
         es.close();
         source = null;

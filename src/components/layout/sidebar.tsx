@@ -21,6 +21,7 @@ import { useProfile, useBrands, useDashboardStats, useDashboardTickets } from '@
 import { BrandList } from './brand-list';
 import { OrgSwitcher } from './org-switcher';
 import { NotificationBell } from './notification-bell';
+import { AvailabilityToggle } from '@/components/presence/availability-toggle';
 import { Inbox, User, AlertCircle, Key, Rocket, BarChart3 } from 'lucide-react';
 
 export function Sidebar() {
@@ -305,6 +306,9 @@ export function Sidebar() {
           sessions as "signed-out" since Clerk has no session for them, which is
           exactly the routing we want during the parallel-mode period. */}
       <div className="border-t p-3">
+        <div className="mb-1">
+          <AvailabilityToggle />
+        </div>
         <SignedIn>
           <div className="flex items-center gap-2 px-2">
             <UserButton
