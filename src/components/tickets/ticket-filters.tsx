@@ -54,6 +54,15 @@ interface TicketFiltersProps {
   children?: React.ReactNode;
 }
 
+// Where tickets come from (Ticket.source). 'web' covers forms, the portal and
+// tickets agents create here; 'chat' is the website widget.
+const channelOptions = [
+  { value: 'chat', label: 'Chat' },
+  { value: 'email', label: 'Email' },
+  { value: 'web', label: 'Web' },
+  { value: 'api', label: 'API' },
+];
+
 const statusOptions = [
   { value: 'active', label: 'Active' },
   { value: 'all', label: 'All' },
@@ -128,6 +137,7 @@ export function TicketFilters({
   const activeFilterCount = [
     filters.status,
     filters.priority,
+    filters.source,
     filters.categoryId,
     filters.assigneeId,
     filters.tagIds && filters.tagIds.length > 0,
@@ -173,6 +183,27 @@ export function TicketFilters({
             <SelectItem value="normal">Normal</SelectItem>
             <SelectItem value="high">High</SelectItem>
             <SelectItem value="urgent">Urgent</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Channel */}
+      <div className="space-y-2">
+        <Label>Channel</Label>
+        <Select
+          value={filters.source || 'all'}
+          onValueChange={(value) => updateFilter('source', value === 'all' ? undefined : (value as TicketFiltersType['source']))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="All channels" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            {channelOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -363,6 +394,37 @@ export function TicketFilters({
             <DropdownMenuRadioItem value="normal">Normal</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="high">High</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="urgent">Urgent</DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Channel Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm">
+            Channel
+            {filters.source && (
+              <span className="ml-1 rounded bg-primary/10 px-1.5 text-xs">
+                {channelOptions.find((c) => c.value === filters.source)?.label ?? filters.source}
+              </span>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Filter by channel</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuRadioGroup
+            value={filters.source || ''}
+            onValueChange={(value) =>
+              updateFilter('source', (value || undefined) as TicketFiltersType['source'])
+            }
+          >
+            <DropdownMenuRadioItem value="">All</DropdownMenuRadioItem>
+            {channelOptions.map((option) => (
+              <DropdownMenuRadioItem key={option.value} value={option.value}>
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>

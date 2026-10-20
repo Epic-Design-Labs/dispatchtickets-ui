@@ -18,6 +18,8 @@ import { Badge } from '@/components/ui/badge';
 interface CommentEditorProps {
   brandId: string;
   ticketId: string;
+  /** A live chat: Enter sends, and the email-only controls (From, CC) go away. */
+  chat?: boolean;
 }
 
 type SubmitAction = 'comment' | 'pending' | 'resolved';
@@ -29,7 +31,7 @@ interface UploadedFile {
   isImage: boolean;
 }
 
-export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
+export function CommentEditor({ brandId, ticketId, chat = false }: CommentEditorProps) {
   const [body, setBody] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -295,8 +297,26 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
           value={body}
           onChange={setBody}
           members={activeMembers}
-          placeholder="Add a comment... (paste images directly, type @ to mention)"
+          placeholder={
+            chat
+              ? isInternal
+                ? 'Internal note, not sent to the visitor (Enter to save, Shift+Enter for a new line)'
+                : 'Reply in chat (Enter to send, Shift+Enter for a new line)'
+              : 'Add a comment... (paste images directly, type @ to mention)'
+          }
           onPaste={handlePaste}
+          onKeyDown={
+            chat
+              ? (e) => {
+                  // Enter sends, as in any chat. Not while an IME is composing
+                  // a character, and modified Enter keeps its usual shortcuts.
+                  if (e.key !== 'Enter' || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
+                  if (e.nativeEvent.isComposing) return;
+                  e.preventDefault();
+                  if (body.trim() || uploadedFiles.length > 0) handleSubmit('comment');
+                }
+              : undefined
+          }
           disabled={createComment.isPending || isUploading}
         />
         {isUploading && (
@@ -357,7 +377,7 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
         className="hidden"
       />
       {/* Email selection and CC row - only show for external comments with active email connections */}
-      {!isInternal && activeConnections.length > 0 && (
+      {!chat && !isInternal && activeConnections.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {/* Email selector */}
           <div className="flex items-center gap-1.5">
@@ -504,10 +524,12 @@ export function CommentEditor({ brandId, ticketId }: CommentEditorProps) {
             size="sm"
             onClick={() => handleSubmit('comment')}
             disabled={createComment.isPending || !body.trim()}
-            title={`Add Comment (${modKey}+Enter)`}
+            title={chat ? 'Send (Enter)' : `Add Comment (${modKey}+Enter)`}
           >
             <Send className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline">{createComment.isPending ? 'Adding...' : 'Send'}</span>
+            <span className="hidden md:inline">
+              {createComment.isPending ? 'Adding...' : chat && !isInternal ? 'Send to chat' : 'Send'}
+            </span>
           </Button>
         </div>
       </div>

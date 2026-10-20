@@ -13,9 +13,11 @@ interface CommentThreadProps {
   brandId?: string;
   customer?: Contact;
   teamMembers?: TeamMember[];
+  /** 'newest' (default) puts the latest on top; a chat reads 'oldest' first. */
+  order?: 'newest' | 'oldest';
 }
 
-export function CommentThread({ comments, isLoading, brandId, customer, teamMembers = [] }: CommentThreadProps) {
+export function CommentThread({ comments, isLoading, brandId, customer, teamMembers = [], order = 'newest' }: CommentThreadProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -120,8 +122,7 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
     return comment.metadata?.isInternal === true;
   };
 
-  // Show newest comments first
-  const sortedComments = [...comments].reverse();
+  const sortedComments = order === 'newest' ? [...comments].reverse() : comments;
 
   return (
     <div className="space-y-4">

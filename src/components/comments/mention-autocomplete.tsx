@@ -19,6 +19,8 @@ interface MentionAutocompleteProps {
   disabled?: boolean;
   className?: string;
   onPaste?: (e: React.ClipboardEvent) => void;
+  /** Keys the mention list doesn't use (it owns Enter/Tab/arrows while open). */
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 }
 
 function getDisplayName(member: TeamMember): string {
@@ -40,7 +42,7 @@ function getMemberInitials(member: TeamMember): string {
 
 export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutocompleteProps>(
   function MentionAutocomplete(
-    { value, onChange, members, placeholder, disabled, className, onPaste },
+    { value, onChange, members, placeholder, disabled, className, onPaste, onKeyDown },
     forwardedRef
   ) {
     const [showPopover, setShowPopover] = useState(false);
@@ -192,7 +194,10 @@ export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutoco
     // Handle keyboard navigation
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (!showPopover || filteredMembers.length === 0) return;
+        if (!showPopover || filteredMembers.length === 0) {
+          onKeyDown?.(e);
+          return;
+        }
 
         switch (e.key) {
           case 'ArrowDown':
@@ -225,7 +230,7 @@ export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutoco
             break;
         }
       },
-      [showPopover, filteredMembers, selectedIndex, handleSelectMember]
+      [showPopover, filteredMembers, selectedIndex, handleSelectMember, onKeyDown]
     );
 
     // Close popover when clicking outside

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useTickets, useTicketNavigation, useTeamMembers, useContactTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls, useUploadAttachment, useDeleteAttachment } from '@/lib/hooks';
@@ -69,6 +69,18 @@ export default function TicketDetailPage() {
     polling: true,
     live: ticket?.source === 'chat',
   });
+  // Chat pane: open on the latest message, and follow new ones unless the
+  // agent has scrolled up to read history.
+  const chatPaneRef = useRef<HTMLDivElement>(null);
+  const chatPaneSeen = useRef(0);
+  useEffect(() => {
+    const pane = chatPaneRef.current;
+    const count = comments?.length ?? 0;
+    if (!pane || count === chatPaneSeen.current) return;
+    const nearBottom = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 120;
+    if (chatPaneSeen.current === 0 || nearBottom) pane.scrollTop = pane.scrollHeight;
+    chatPaneSeen.current = count;
+  }, [comments?.length, ticket?.source]);
   const { data: ticketsData } = useTickets(brandId, { status: 'open', limit: 100 });
   const { data: teamData } = useTeamMembers({ brandId });
   const updateTicket = useUpdateTicket(brandId, ticketId);
@@ -868,23 +880,40 @@ export default function TicketDetailPage() {
               <CardTitle>Activity</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <CommentEditor brandId={brandId} ticketId={ticketId} />
-              <Separator />
-              <CommentThread comments={(() => {
-                const ticketBodyComment: Comment | null = ticket.body ? {
-                  id: 'ticket-body',
-                  ticketId: ticket.id,
-                  authorId: ticket.customerId,
-                  authorType: 'CUSTOMER',
-                  body: ticket.body,
-                  metadata: { isTicketBody: true },
-                  createdAt: ticket.createdAt,
-                  updatedAt: ticket.createdAt,
-                } : null;
-                return ticketBodyComment
-                  ? [ticketBodyComment, ...(comments || [])]
-                  : (comments || []);
-              })()} isLoading={commentsLoading} brandId={brandId} customer={ticket.customer} teamMembers={teamMembers} />
+              {/* A chat reads top to bottom with the reply box under the latest
+                  message; email keeps the composer on top. */}
+              {ticket.source !== 'chat' && (
+                <>
+                  <CommentEditor brandId={brandId} ticketId={ticketId} />
+                  <Separator />
+                </>
+              )}
+              <div
+                ref={ticket.source === 'chat' ? chatPaneRef : undefined}
+                className={ticket.source === 'chat' ? 'max-h-[60vh] overflow-y-auto pr-1' : undefined}
+              >
+                <CommentThread order={ticket.source === 'chat' ? 'oldest' : 'newest'} comments={(() => {
+                  const ticketBodyComment: Comment | null = ticket.body ? {
+                    id: 'ticket-body',
+                    ticketId: ticket.id,
+                    authorId: ticket.customerId,
+                    authorType: 'CUSTOMER',
+                    body: ticket.body,
+                    metadata: { isTicketBody: true },
+                    createdAt: ticket.createdAt,
+                    updatedAt: ticket.createdAt,
+                  } : null;
+                  return ticketBodyComment
+                    ? [ticketBodyComment, ...(comments || [])]
+                    : (comments || []);
+                })()} isLoading={commentsLoading} brandId={brandId} customer={ticket.customer} teamMembers={teamMembers} />
+              </div>
+              {ticket.source === 'chat' && (
+                <>
+                  <Separator />
+                  <CommentEditor brandId={brandId} ticketId={ticketId} chat />
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
