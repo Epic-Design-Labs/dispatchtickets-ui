@@ -65,6 +65,9 @@ export function LiveTicketEvents() {
     let lastEventId: string | undefined;
     let stopped = false;
     const alerted = new Set<string>();
+    // One toggle writes a row per brand, so presence.changed arrives in bursts:
+    // refetch once per burst, not once per brand.
+    let presenceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const brandName = (brandId: string) =>
       queryClient.getQueryData<{ id: string; name: string }[]>(['brands'])?.find((b) => b.id === brandId)?.name;
@@ -167,7 +170,11 @@ export function LiveTicketEvents() {
       es.addEventListener('ticket.awaiting_reply', onAwaitingReply as EventListener);
       es.addEventListener('presence.changed', (e: MessageEvent) => {
         if (e.lastEventId) lastEventId = e.lastEventId;
-        queryClient.invalidateQueries({ queryKey: presenceKeys.all });
+        if (presenceTimer) return;
+        presenceTimer = setTimeout(() => {
+          presenceTimer = null;
+          queryClient.invalidateQueries({ queryKey: presenceKeys.all });
+        }, 500);
       });
       es.addEventListener('unauthorized', () => {
         es.close();
@@ -181,6 +188,7 @@ export function LiveTicketEvents() {
     return () => {
       stopped = true;
       if (timer) clearTimeout(timer);
+      if (presenceTimer) clearTimeout(presenceTimer);
       source?.close();
       setLiveConnected(false);
     };
