@@ -42,7 +42,9 @@ export function TicketChatSection({
             <MessageSquare className="h-4 w-4" />
             Chat visitor
           </div>
-          {data.present ? (
+          {data.blocked ? (
+            <Badge variant="destructive">Blocked</Badge>
+          ) : data.present ? (
             <Badge className="bg-green-600 hover:bg-green-600">On the page</Badge>
           ) : (
             <Badge variant="secondary">Left {formatTimeAgo(data.lastSeenAt)}</Badge>
@@ -50,11 +52,13 @@ export function TicketChatSection({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          {data.present
-            ? 'Replies appear in their chat right away.'
-            : data.verified
-              ? 'Replies are emailed to them, and wait in the conversation for when they come back.'
-              : 'Replies wait in the conversation until they come back. They are not emailed.'}
+          {data.blocked
+            ? "Marked as spam. They aren't told: what they send is kept here, but nobody is alerted. Restore it from Spam to lift this."
+            : data.present
+              ? 'Replies appear in their chat right away.'
+              : data.verified
+                ? 'Replies are emailed to them, and wait in the conversation for when they come back.'
+                : 'Replies wait in the conversation until they come back. They are not emailed.'}
         </p>
 
         {data.verified && (

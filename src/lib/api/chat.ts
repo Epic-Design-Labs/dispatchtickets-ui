@@ -12,6 +12,8 @@ export interface ChatVisitor {
   claimedEmail: string | null;
   /** Vouched for by the brand's own server (identity token). Who this really is. */
   verified: { userId: string; email: string | null; name: string | null } | null;
+  /** Marked as spam. Their messages are still kept here, but nobody is alerted. */
+  blocked: boolean;
 }
 
 export const chatApi = {
