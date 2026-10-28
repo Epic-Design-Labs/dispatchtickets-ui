@@ -55,9 +55,11 @@ interface TicketFiltersProps {
 }
 
 // Where tickets come from (Ticket.source). 'web' covers forms, the portal and
-// tickets agents create here; 'chat' is the website widget.
+// tickets agents create here; 'chat' is the website widget; 'live' is a Live Lane
+// call or video session.
 const channelOptions = [
   { value: 'chat', label: 'Chat' },
+  { value: 'live', label: 'Live' },
   { value: 'email', label: 'Email' },
   { value: 'web', label: 'Web' },
   { value: 'api', label: 'API' },

@@ -8,7 +8,7 @@ export type TicketStatusKey = 'open' | 'pending' | 'resolved' | 'closed' | 'spam
 // Keep TicketStatus as an alias for backwards compatibility
 export type TicketStatus = TicketStatusKey;
 export type TicketPriority = 'low' | 'normal' | 'medium' | 'high' | 'urgent' | null;
-export type TicketSource = 'api' | 'email' | 'slack' | 'sms' | 'web' | 'chat' | 'other';
+export type TicketSource = 'api' | 'email' | 'slack' | 'sms' | 'web' | 'chat' | 'live' | 'other';
 export type CloseReason = 'no_response' | 'out_of_scope' | 'customer_left' | 'duplicate';
 
 export const CLOSE_REASONS: { value: CloseReason; label: string }[] = [
