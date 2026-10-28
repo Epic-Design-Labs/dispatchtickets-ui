@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Copy, Globe, Info, Lock, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -109,6 +110,7 @@ interface ChatForm {
   origins: string[];
   greeting: string;
   offlineMessage: string;
+  emailFollowUp: EmailFollowUp;
   hoursEnabled: boolean;
   hours: ChatHours;
   // Minutes, as typed; blank = the default.
@@ -117,6 +119,14 @@ interface ChatForm {
 }
 
 const DEFAULT_ALERT_MINUTES = { warning: 1, critical: 3 };
+
+type EmailFollowUp = 'never' | 'unavailable' | 'waiting';
+
+const FOLLOW_UP_OPTIONS: { value: EmailFollowUp; label: string; hint: string }[] = [
+  { value: 'unavailable', label: "When no one's available", hint: 'Outside chat hours, or when nobody on the team is set to available.' },
+  { value: 'waiting', label: 'Also when a visitor is kept waiting', hint: 'After 2 minutes without a reply.' },
+  { value: 'never', label: 'Never', hint: 'Visitors only ever get replies in the chat.' },
+];
 
 const DEFAULT_HOURS = (): ChatHours => ({
   start: '09:00',
@@ -152,6 +162,7 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
     origins: brand?.chatAllowedOrigins ?? [],
     greeting: brand?.chatGreeting ?? '',
     offlineMessage: brand?.chatOfflineMessage ?? '',
+    emailFollowUp: brand?.chatEmailFollowUp ?? 'unavailable',
     hoursEnabled: Boolean(brand?.chatHoursEnabled),
     hours: brand?.chatHours ?? DEFAULT_HOURS(),
     alertWarning: brand?.chatAlertWarningSeconds ? String(brand.chatAlertWarningSeconds / 60) : '',
@@ -211,6 +222,7 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
         chatAllowedOrigins: origins,
         chatGreeting: form.greeting.trim() || null,
         chatOfflineMessage: form.offlineMessage.trim() || null,
+        chatEmailFollowUp: form.emailFollowUp,
         chatHoursEnabled: form.hoursEnabled,
         ...(form.hoursEnabled && { chatHours: form.hours }),
         chatAlertWarningSeconds: warning === null ? null : Math.round(warning * 60),
@@ -375,6 +387,31 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
               onChange={(e) => set({ offlineMessage: e.target.value })}
               disabled={!canManage}
             />
+          </div>
+          <div className="space-y-2">
+            <div>
+              <Label>Offer email follow-up</Label>
+              <p className="text-sm text-muted-foreground">
+                The widget asks &ldquo;Want us to follow up by email?&rdquo; and the chat becomes a ticket. An address
+                a visitor types is confirmed before anything is sent to it.
+              </p>
+            </div>
+            <RadioGroup
+              value={form.emailFollowUp}
+              onValueChange={(v) => set({ emailFollowUp: v as EmailFollowUp })}
+              disabled={!canManage}
+              className="gap-2"
+            >
+              {FOLLOW_UP_OPTIONS.map((o) => (
+                <label key={o.value} className="flex items-start gap-2 text-sm">
+                  <RadioGroupItem value={o.value} className="mt-0.5" />
+                  <span>
+                    {o.label}
+                    <span className="block text-xs text-muted-foreground">{o.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </RadioGroup>
           </div>
           <div className="flex items-center justify-between gap-4">
             <div>

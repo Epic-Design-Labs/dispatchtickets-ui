@@ -42,6 +42,8 @@ export interface Brand {
   chatAllowedOrigins?: string[];
   chatGreeting?: string | null;
   chatOfflineMessage?: string | null;
+  /** When the widget offers to continue by email. */
+  chatEmailFollowUp?: 'never' | 'unavailable' | 'waiting';
   chatHoursEnabled?: boolean;
   chatHours?: { start: string; end: string; days: number[]; timezone: string } | null;
   chatAlertWarningSeconds?: number | null;
@@ -93,6 +95,8 @@ export interface UpdateBrandInput {
   chatAllowedOrigins?: string[];
   chatGreeting?: string | null;
   chatOfflineMessage?: string | null;
+  /** When the widget offers to continue by email. */
+  chatEmailFollowUp?: 'never' | 'unavailable' | 'waiting';
   chatHoursEnabled?: boolean;
   chatHours?: { start: string; end: string; days: number[]; timezone: string } | null;
   chatAlertWarningSeconds?: number | null;
