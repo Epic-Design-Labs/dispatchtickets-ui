@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, type SetStateAction } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBrand, useTickets, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, BulkActionType, ticketKeys } from '@/lib/hooks';
@@ -11,7 +11,7 @@ import { ticketsApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { TicketFilters as TicketFiltersType } from '@/types';
+import { TicketFilters as TicketFiltersType, type TicketSource } from '@/types';
 import type { SortState, TicketRowAction } from '@/components/tickets/ticket-table';
 
 function formatDuration(minutes: number | null | undefined): string {
@@ -38,13 +38,53 @@ const COLUMN_TO_API_SORT: Record<string, string> = {
   createdAge: 'createdAt',
   updatedAge: 'updatedAt',
   dueAt: 'dueAt',
+  waiting: 'awaitingReplySince',
 };
+
+const SOURCE_STORAGE_KEY = 'dispatch-brand-ticket-source';
+
+/**
+ * The channel filter lives in the URL (?source=chat) so a toast or bookmark can
+ * land on it, and in localStorage so it survives leaving the page.
+ */
+function initialSource(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const fromUrl = new URLSearchParams(window.location.search).get('source');
+  if (fromUrl !== null) return fromUrl || undefined;
+  try {
+    return localStorage.getItem(SOURCE_STORAGE_KEY) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function persistSource(source: string | undefined) {
+  try {
+    if (source) localStorage.setItem(SOURCE_STORAGE_KEY, source);
+    else localStorage.removeItem(SOURCE_STORAGE_KEY);
+  } catch {}
+  const url = new URL(window.location.href);
+  if (source) url.searchParams.set('source', source);
+  else url.searchParams.delete('source');
+  window.history.replaceState(window.history.state, '', url);
+}
 
 export default function BrandDashboardPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   // Default to 'active' status (shows open + pending)
-  const [filters, setFilters] = useState<TicketFiltersType>({ status: 'active' });
+  const [filters, setFiltersState] = useState<TicketFiltersType>(() => {
+    const source = initialSource();
+    return source ? { status: 'active', source: source as TicketSource } : { status: 'active' };
+  });
+  // Idempotent side effect, so React re-running the updater is harmless.
+  const setFilters = useCallback((next: SetStateAction<TicketFiltersType>) => {
+    setFiltersState((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next;
+      persistSource(value.source);
+      return value;
+    });
+  }, []);
   // Use callback ref + state to ensure re-render when portal target mounts
   const [columnsPortalElement, setColumnsPortalElement] = useState<HTMLDivElement | null>(null);
   const columnsPortalRef = useCallback((node: HTMLDivElement | null) => {
@@ -60,6 +100,9 @@ export default function BrandDashboardPage() {
     } catch {}
     return { column: null, direction: null };
   });
+
+  // Chat is answered oldest-waiting first unless the agent picks another sort.
+  const chatDefaultSort = filters.source === 'chat' && !sortState.column;
 
   const handleSortChange = useCallback((newSort: SortState) => {
     setSortState(newSort);
@@ -84,10 +127,13 @@ export default function BrandDashboardPage() {
         base.sort = apiSort;
         base.order = sortState.direction;
       }
+    } else if (chatDefaultSort) {
+      base.sort = 'awaitingReplySince';
+      base.order = 'asc';
     }
 
     return base;
-  }, [filters, sortState]);
+  }, [filters, sortState, chatDefaultSort]);
   // Fetch filtered tickets for display
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, apiFilters);
 
@@ -222,7 +268,7 @@ export default function BrandDashboardPage() {
   const tickets = useMemo(() => {
     const rawTickets = ticketsData?.data || [];
     // Only apply grouping when showing "active" and no explicit sort
-    if (filters.status === 'active' && !hasExplicitSort) {
+    if (filters.status === 'active' && !hasExplicitSort && !chatDefaultSort) {
       const openTickets = rawTickets
         .filter(t => t.status === 'open')
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -232,7 +278,7 @@ export default function BrandDashboardPage() {
       return [...openTickets, ...pendingTickets];
     }
     return rawTickets;
-  }, [ticketsData?.data, filters.status, hasExplicitSort]);
+  }, [ticketsData?.data, filters.status, hasExplicitSort, chatDefaultSort]);
 
   // Handle clicking on a stat card to filter
   const handleStatClick = (status: string) => {

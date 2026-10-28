@@ -97,6 +97,7 @@ const BUILT_IN_COLUMNS: ColumnDef[] = [
   { key: 'createdAge', label: 'Age', defaultVisible: false, sortable: true },
   { key: 'updatedAge', label: 'Last Activity', defaultVisible: false, sortable: true },
   { key: 'dueAt', label: 'Due', defaultVisible: false, sortable: true },
+  { key: 'waiting', label: 'Waiting', defaultVisible: false, sortable: true },
 ];
 
 const STORAGE_KEY = 'dispatch-ticket-columns-v2'; // v2 to support new format with order
@@ -532,6 +533,10 @@ export function TicketTable({
             aVal = a.dueAt ? new Date(a.dueAt).getTime() : Infinity;
             bVal = b.dueAt ? new Date(b.dueAt).getTime() : Infinity;
             break;
+          case 'waiting':
+            aVal = a.awaitingReplySince ? new Date(a.awaitingReplySince).getTime() : Infinity;
+            bVal = b.awaitingReplySince ? new Date(b.awaitingReplySince).getTime() : Infinity;
+            break;
         }
       }
 
@@ -850,6 +855,11 @@ export function TicketTable({
             </Tooltip>
           </TooltipProvider>
         );
+      case 'waiting':
+        // The badge is chat-only (and hides on closed tickets); '-' covers the rest.
+        return ticket.source === 'chat' && ticket.awaitingReplySince && !['resolved', 'closed'].includes(String(ticket.status))
+          ? <WaitingBadge ticket={ticket} />
+          : <span className="text-muted-foreground">-</span>;
       case 'dueAt': {
         if (!ticket.dueAt) return <span className="text-muted-foreground">-</span>;
         const isOverdue = new Date(ticket.dueAt) < new Date();

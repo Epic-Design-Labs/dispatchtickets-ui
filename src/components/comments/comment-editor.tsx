@@ -43,6 +43,11 @@ export function CommentEditor({ brandId, ticketId, chat = false }: CommentEditor
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // On a chat the agent is here to answer, so the cursor starts in the box.
+  // Only on arrival: never yank focus back while they're doing something else.
+  useEffect(() => {
+    if (chat) textareaRef.current?.focus();
+  }, [chat, ticketId]);
   const createComment = useCreateComment(brandId, ticketId);
   const uploadAttachment = useUploadAttachment(brandId, ticketId);
   const { session } = useAuth();
