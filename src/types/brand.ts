@@ -44,6 +44,8 @@ export interface Brand {
   chatOfflineMessage?: string | null;
   /** When the widget offers to continue by email. */
   chatEmailFollowUp?: 'never' | 'unavailable' | 'waiting';
+  /** A signed-in visitor who leaves while waiting has the chat turned into an email ticket. */
+  chatAutoConvert?: boolean;
   chatHoursEnabled?: boolean;
   chatHours?: { start: string; end: string; days: number[]; timezone: string } | null;
   chatAlertWarningSeconds?: number | null;
@@ -97,6 +99,8 @@ export interface UpdateBrandInput {
   chatOfflineMessage?: string | null;
   /** When the widget offers to continue by email. */
   chatEmailFollowUp?: 'never' | 'unavailable' | 'waiting';
+  /** A signed-in visitor who leaves while waiting has the chat turned into an email ticket. */
+  chatAutoConvert?: boolean;
   chatHoursEnabled?: boolean;
   chatHours?: { start: string; end: string; days: number[]; timezone: string } | null;
   chatAlertWarningSeconds?: number | null;

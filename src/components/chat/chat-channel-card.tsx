@@ -111,6 +111,7 @@ interface ChatForm {
   greeting: string;
   offlineMessage: string;
   emailFollowUp: EmailFollowUp;
+  autoConvert: boolean;
   hoursEnabled: boolean;
   hours: ChatHours;
   // Minutes, as typed; blank = the default.
@@ -163,6 +164,7 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
     greeting: brand?.chatGreeting ?? '',
     offlineMessage: brand?.chatOfflineMessage ?? '',
     emailFollowUp: brand?.chatEmailFollowUp ?? 'unavailable',
+    autoConvert: Boolean(brand?.chatAutoConvert),
     hoursEnabled: Boolean(brand?.chatHoursEnabled),
     hours: brand?.chatHours ?? DEFAULT_HOURS(),
     alertWarning: brand?.chatAlertWarningSeconds ? String(brand.chatAlertWarningSeconds / 60) : '',
@@ -223,6 +225,7 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
         chatGreeting: form.greeting.trim() || null,
         chatOfflineMessage: form.offlineMessage.trim() || null,
         chatEmailFollowUp: form.emailFollowUp,
+        chatAutoConvert: form.autoConvert,
         chatHoursEnabled: form.hoursEnabled,
         ...(form.hoursEnabled && { chatHours: form.hours }),
         chatAlertWarningSeconds: warning === null ? null : Math.round(warning * 60),
@@ -412,6 +415,22 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
                 </label>
               ))}
             </RadioGroup>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label>Turn into a ticket when a signed-in visitor leaves</Label>
+              <p className="text-sm text-muted-foreground">
+                If a visitor your site has signed in leaves while waiting for a reply (gone 5 minutes), the chat
+                becomes a ticket and the conversation is emailed to them. Anonymous visitors are never converted
+                this way.
+              </p>
+            </div>
+            <Switch
+              checked={form.autoConvert}
+              onCheckedChange={(v) => set({ autoConvert: v })}
+              disabled={!canManage}
+              aria-label="Turn a signed-in visitor's chat into a ticket when they leave"
+            />
           </div>
           <div className="flex items-center justify-between gap-4">
             <div>
