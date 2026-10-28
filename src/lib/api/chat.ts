@@ -14,11 +14,52 @@ export interface ChatVisitor {
   verified: { userId: string; email: string | null; name: string | null } | null;
   /** Marked as spam. Their messages are still kept here, but nobody is alerted. */
   blocked: boolean;
+  /** Set once the chat was turned into a ticket and the typed address was asked to confirm. */
+  emailConfirmation: {
+    email: string;
+    sentAt: string;
+    confirmedAt: string | null;
+    expired: boolean;
+    canResend: boolean;
+  } | null;
+}
+
+export interface ConvertChatInput {
+  title: string;
+  description: string;
+  internalNote?: string;
+  /** An address the agent vouches for. Used as-is. */
+  email?: string;
+  notifyCustomer?: boolean;
+}
+
+/** What happened to the customer: see chat-conversion.service.ts in the API. */
+export type ConversionDelivery = 'emailed' | 'confirmation_sent' | 'no_email' | 'not_requested';
+
+export interface ConvertChatResult {
+  ticketId: string;
+  delivery: ConversionDelivery;
+  email: string | null;
 }
 
 export const chatApi = {
   visitor: async (brandId: string, ticketId: string): Promise<ChatVisitor> => {
     const response = await apiClient.get<ChatVisitor>(`/brands/${brandId}/tickets/${ticketId}/chat`);
+    return response.data;
+  },
+
+  convert: async (brandId: string, ticketId: string, data: ConvertChatInput): Promise<ConvertChatResult> => {
+    const response = await apiClient.post<ConvertChatResult>(
+      `/brands/${brandId}/tickets/${ticketId}/chat/convert`,
+      data,
+    );
+    return response.data;
+  },
+
+  resendConfirmation: async (brandId: string, ticketId: string): Promise<{ email: string }> => {
+    const response = await apiClient.post<{ email: string }>(
+      `/brands/${brandId}/tickets/${ticketId}/chat/email-confirmation/resend`,
+    );
     return response.data;
   },
 };

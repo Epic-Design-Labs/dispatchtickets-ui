@@ -58,6 +58,8 @@ export interface Ticket {
   awaitingReplySince?: string | null;
   /** Escalations sent for this wait: 0 none, 1 warning (amber), 2 critical (red). */
   awaitingReplyLevel?: number;
+  /** Set when an agent turned this chat into an email ticket. */
+  chatConvertedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -111,6 +113,8 @@ export interface TicketFilters {
   cursor?: string;
   limit?: number;
   isSpam?: boolean;
+  /** Chats turned into tickets (true) or still live (false). */
+  chatConverted?: boolean;
   sort?: string;
   order?: 'asc' | 'desc';
 }

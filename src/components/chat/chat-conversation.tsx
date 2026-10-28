@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CheckCircle2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CommentThread, CommentEditor } from '@/components/comments';
 import { WaitingBadge } from '@/components/chat/waiting-badge';
 import { TicketChatSection } from '@/components/chat/ticket-chat-section';
+import { ConvertChatButton } from '@/components/chat/convert-chat-button';
 import { useComments, useTeamMembers, useTicket, useUpdateTicket } from '@/lib/hooks';
 import { useVisitorTyping } from '@/lib/live/chat-activity';
 import type { Comment } from '@/types';
@@ -24,6 +26,7 @@ export function ChatConversation({ brandId, ticketId }: { brandId: string; ticke
   const { data: teamData } = useTeamMembers({ brandId });
   const updateTicket = useUpdateTicket(brandId, ticketId);
   const typing = useVisitorTyping(ticketId);
+  const router = useRouter();
 
   // Open on the latest message and follow new ones, unless the agent has
   // scrolled up to read. Same rule as the ticket page's chat pane.
@@ -89,6 +92,12 @@ export function ChatConversation({ brandId, ticketId }: { brandId: string; ticke
           </div>
           <WaitingBadge ticket={ticket} />
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            {/* Converted, it leaves this queue: carry on from the ticket page. */}
+            <ConvertChatButton
+              brandId={brandId}
+              ticket={ticket}
+              onConverted={() => router.push(`/brands/${brandId}/tickets/${ticketId}`)}
+            />
             {isOpen && (
               <Button size="sm" variant="outline" onClick={resolve} disabled={updateTicket.isPending}>
                 <CheckCircle2 className="mr-1.5 h-4 w-4" />
@@ -127,7 +136,7 @@ export function ChatConversation({ brandId, ticketId }: { brandId: string; ticke
       </div>
 
       <aside className="hidden w-72 shrink-0 overflow-y-auto border-l bg-gray-50 p-4 xl:block">
-        <TicketChatSection brandId={brandId} ticketId={ticketId} isChat />
+        <TicketChatSection brandId={brandId} ticketId={ticketId} isChat converted={!!ticket.chatConvertedAt} />
       </aside>
     </div>
   );

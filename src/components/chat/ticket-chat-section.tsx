@@ -1,10 +1,14 @@
 'use client';
 
+import { isAxiosError } from 'axios';
+import { toast } from 'sonner';
 import { MessageSquare } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatTimeAgo } from '@/lib/utils';
-import { useChatVisitor } from '@/lib/hooks/use-chat';
+import { useChatVisitor, useResendChatConfirmation } from '@/lib/hooks/use-chat';
+import type { ChatVisitor } from '@/lib/api/chat';
 
 /**
  * Right-rail section for a chat ticket: whether the visitor is still on the
@@ -17,10 +21,13 @@ export function TicketChatSection({
   brandId,
   ticketId,
   isChat,
+  converted = false,
 }: {
   brandId: string;
   ticketId: string;
   isChat: boolean;
+  /** Turned into an email ticket: replies go by email, not to the chat. */
+  converted?: boolean;
 }) {
   const { data } = useChatVisitor(brandId, ticketId, isChat);
   if (!isChat || !data) return null;
@@ -51,8 +58,14 @@ export function TicketChatSection({
           )}
         </div>
 
+        {converted && (
+          <ConversionStatus brandId={brandId} ticketId={ticketId} confirmation={data.emailConfirmation} />
+        )}
+
         <p className="text-xs text-muted-foreground">
-          {data.blocked
+          {converted
+            ? 'Turned into a ticket: replies go by email, not to their chat.'
+            : data.blocked
             ? "Marked as spam. They aren't told: what they send is kept here, but nobody is alerted. Restore it from Spam to lift this."
             : data.present
               ? 'Replies appear in their chat right away.'
@@ -104,5 +117,55 @@ export function TicketChatSection({
         </dl>
       </div>
     </>
+  );
+}
+
+function ConversionStatus({
+  brandId,
+  ticketId,
+  confirmation,
+}: {
+  brandId: string;
+  ticketId: string;
+  confirmation: ChatVisitor['emailConfirmation'];
+}) {
+  const resend = useResendChatConfirmation(brandId, ticketId);
+  if (!confirmation) return null;
+
+  const onResend = async () => {
+    try {
+      const { email } = await resend.mutateAsync();
+      toast.success(`Sent the confirmation to ${email} again`);
+    } catch (err) {
+      const message = isAxiosError(err) ? err.response?.data?.message : undefined;
+      toast.error(typeof message === 'string' ? message : 'Failed to resend');
+    }
+  };
+
+  return (
+    <div className="space-y-1 rounded-md border bg-background p-2">
+      <div className="flex items-center gap-2">
+        <span className="text-sm break-all">{confirmation.email}</span>
+        {confirmation.confirmedAt ? (
+          <Badge className="bg-green-600 hover:bg-green-600">Confirmed</Badge>
+        ) : confirmation.expired ? (
+          <Badge variant="secondary">Expired</Badge>
+        ) : (
+          <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300">
+            Awaiting confirmation
+          </Badge>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {confirmation.confirmedAt
+          ? `Confirmed ${formatTimeAgo(confirmation.confirmedAt)}. The ticket and conversation were emailed.`
+          : `Confirmation sent ${formatTimeAgo(confirmation.sentAt)}. Nothing else is emailed until they confirm.`}
+      </p>
+      {!confirmation.confirmedAt && confirmation.canResend && (
+        <Button size="sm" variant="outline" onClick={onResend} disabled={resend.isPending}>
+          Resend confirmation
+        </Button>
+      )}
+    </div>
   );
 }

@@ -147,8 +147,11 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
               <span className="font-medium">{getAuthorLabel(comment)}</span>
               {comment.metadata?.isTicketBody === true && (
                 <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-800">
-                  Original Request
+                  {comment.metadata?.isConvertedDescription === true ? 'Turned into ticket' : 'Original Request'}
                 </span>
+              )}
+              {comment.metadata?.chatOpeningMessage === true && (
+                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-800">Chat started</span>
               )}
               {isInternal(comment) && (
                 <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-xs text-yellow-800">

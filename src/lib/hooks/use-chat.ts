@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { chatApi } from '@/lib/api/chat';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { chatApi, type ConvertChatInput } from '@/lib/api/chat';
 import { ticketsApi } from '@/lib/api';
 import { ticketKeys } from '@/lib/hooks/use-tickets';
+import { commentKeys } from '@/lib/hooks/use-comments';
 import type { TicketFilters } from '@/types';
 
 export const chatKeys = {
@@ -28,6 +29,8 @@ export function useChatVisitor(brandId: string, ticketId: string, enabled: boole
 export const CHAT_QUEUE_FILTERS: TicketFilters = {
   source: 'chat',
   status: 'active',
+  // Turned into tickets: they live in the ticket list now.
+  chatConverted: false,
   sort: 'awaitingReplySince',
   order: 'asc',
   limit: 100,
@@ -40,5 +43,26 @@ export function useChatQueue(brandId: string, enabled = true) {
     enabled: enabled && !!brandId,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
+  });
+}
+
+/** Turn a chat into an email ticket. Refreshes the ticket, its lists and the visitor panel. */
+export function useConvertChat(brandId: string, ticketId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ConvertChatInput) => chatApi.convert(brandId, ticketId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ticketKeys.all(brandId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.visitor(brandId, ticketId) });
+      queryClient.invalidateQueries({ queryKey: commentKeys.all(brandId, ticketId) });
+    },
+  });
+}
+
+export function useResendChatConfirmation(brandId: string, ticketId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => chatApi.resendConfirmation(brandId, ticketId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chatKeys.visitor(brandId, ticketId) }),
   });
 }

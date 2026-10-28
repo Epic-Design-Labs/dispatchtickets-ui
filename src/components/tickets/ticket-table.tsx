@@ -857,7 +857,7 @@ export function TicketTable({
         );
       case 'waiting':
         // The badge is chat-only (and hides on closed tickets); '-' covers the rest.
-        return ticket.source === 'chat' && ticket.awaitingReplySince && !['resolved', 'closed'].includes(String(ticket.status))
+        return ticket.source === 'chat' && !ticket.chatConvertedAt && ticket.awaitingReplySince && !['resolved', 'closed'].includes(String(ticket.status))
           ? <WaitingBadge ticket={ticket} />
           : <span className="text-muted-foreground">-</span>;
       case 'dueAt': {

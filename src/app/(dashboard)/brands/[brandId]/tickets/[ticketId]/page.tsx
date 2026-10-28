@@ -44,6 +44,7 @@ import { toast } from 'sonner';
 import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS, Comment } from '@/types';
 import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown, Paperclip, FileIcon, Download, ExternalLink, Upload, Loader2 } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
+import { ConvertChatButton } from '@/components/chat/convert-chat-button';
 import { CustomFieldInput } from '@/components/fields';
 
 export default function TicketDetailPage() {
@@ -69,6 +70,8 @@ export default function TicketDetailPage() {
     polling: true,
     live: ticket?.source === 'chat',
   });
+  // A live chat reads like a chat; once turned into a ticket it reads like email.
+  const liveChat = ticket?.source === 'chat' && !ticket.chatConvertedAt;
   // Chat pane: open on the latest message, and follow new ones unless the
   // agent has scrolled up to read history.
   const chatPaneRef = useRef<HTMLDivElement>(null);
@@ -876,24 +879,38 @@ export default function TicketDetailPage() {
 
           {/* Activity / Comments */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
               <CardTitle>Activity</CardTitle>
+              <ConvertChatButton brandId={brandId} ticket={ticket} />
             </CardHeader>
             <CardContent className="space-y-4">
               {/* A chat reads top to bottom with the reply box under the latest
                   message; email keeps the composer on top. */}
-              {ticket.source !== 'chat' && (
+              {!liveChat && (
                 <>
                   <CommentEditor brandId={brandId} ticketId={ticketId} />
                   <Separator />
                 </>
               )}
               <div
-                ref={ticket.source === 'chat' ? chatPaneRef : undefined}
-                className={ticket.source === 'chat' ? 'max-h-[60vh] overflow-y-auto pr-1' : undefined}
+                ref={liveChat ? chatPaneRef : undefined}
+                className={liveChat ? 'max-h-[60vh] overflow-y-auto pr-1' : undefined}
               >
-                <CommentThread order={ticket.source === 'chat' ? 'oldest' : 'newest'} comments={(() => {
-                  const ticketBodyComment: Comment | null = ticket.body ? {
+                <CommentThread order={liveChat ? 'oldest' : 'newest'} comments={(() => {
+                  // A converted chat's body is the agent's write-up, placed
+                  // where the chat became a ticket; the visitor's first
+                  // message is already a comment.
+                  const converted = ticket.source === 'chat' && ticket.chatConvertedAt;
+                  const ticketBodyComment: Comment | null = !ticket.body ? null : converted ? {
+                    id: 'ticket-body',
+                    ticketId: ticket.id,
+                    authorId: undefined,
+                    authorType: 'AGENT',
+                    body: ticket.body,
+                    metadata: { isTicketBody: true, isConvertedDescription: true },
+                    createdAt: ticket.chatConvertedAt!,
+                    updatedAt: ticket.chatConvertedAt!,
+                  } : {
                     id: 'ticket-body',
                     ticketId: ticket.id,
                     authorId: ticket.customerId,
@@ -902,13 +919,13 @@ export default function TicketDetailPage() {
                     metadata: { isTicketBody: true },
                     createdAt: ticket.createdAt,
                     updatedAt: ticket.createdAt,
-                  } : null;
+                  };
                   return ticketBodyComment
                     ? [ticketBodyComment, ...(comments || [])]
                     : (comments || []);
                 })()} isLoading={commentsLoading} brandId={brandId} customer={ticket.customer} teamMembers={teamMembers} />
               </div>
-              {ticket.source === 'chat' && (
+              {liveChat && (
                 <>
                   <Separator />
                   <CommentEditor brandId={brandId} ticketId={ticketId} chat />
@@ -1399,7 +1416,12 @@ export default function TicketDetailPage() {
           )}
 
           {/* Chat visitor: presence and what they told us */}
-          <TicketChatSection brandId={brandId} ticketId={ticketId} isChat={ticket.source === 'chat'} />
+          <TicketChatSection
+            brandId={brandId}
+            ticketId={ticketId}
+            isChat={ticket.source === 'chat'}
+            converted={!!ticket.chatConvertedAt}
+          />
 
           {/* Context from the brand's enrichment endpoint */}
           <TicketEnrichmentSection

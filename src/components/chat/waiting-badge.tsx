@@ -23,11 +23,13 @@ export function WaitingBadge({
   ticket,
   className,
 }: {
-  ticket: Pick<Ticket, 'source' | 'status' | 'awaitingReplySince' | 'awaitingReplyLevel'>;
+  ticket: Pick<Ticket, 'source' | 'status' | 'awaitingReplySince' | 'awaitingReplyLevel' | 'chatConvertedAt'>;
   className?: string;
 }) {
   const since = ticket.awaitingReplySince;
-  const active = ticket.source === 'chat' && !!since && !INACTIVE.includes(String(ticket.status));
+  // A chat turned into a ticket runs on email time: no chat clock.
+  const active =
+    ticket.source === 'chat' && !ticket.chatConvertedAt && !!since && !INACTIVE.includes(String(ticket.status));
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
