@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils';
  * selected conversation on the right. Selection is ?t= so alerts can deep-link
  * and switching never leaves the page.
  */
+const TICKET_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
 export default function ChatPage() {
   return (
     <Suspense>
@@ -30,7 +32,10 @@ function ChatWorkspace() {
   const params = useParams();
   const brandId = params.brandId as string;
   const router = useRouter();
-  const selectedId = useSearchParams().get('t');
+  // ?t= arrives from links, and it becomes a path segment in API calls made
+  // with the agent's session: only a ticket-id shape is accepted.
+  const rawSelected = useSearchParams().get('t');
+  const selectedId = rawSelected && TICKET_ID.test(rawSelected) ? rawSelected : null;
   const { data: brand } = useBrand(brandId);
   const { data, isLoading } = useChatQueue(brandId);
   const tickets = data?.data ?? [];
