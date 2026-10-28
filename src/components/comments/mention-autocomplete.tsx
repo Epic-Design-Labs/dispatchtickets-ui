@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, forwardRef } from 'react';
-import { TeamMember } from '@/types';
+import { SavedReply, TeamMember } from '@/types';
 import {
   Command,
   CommandEmpty,
@@ -21,6 +21,10 @@ interface MentionAutocompleteProps {
   onPaste?: (e: React.ClipboardEvent) => void;
   /** Keys the mention list doesn't use (it owns Enter/Tab/arrows while open). */
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  /** When given, '#' opens these the way '@' opens team members. */
+  savedReplies?: SavedReply[];
+  /** Turns a saved reply's body into the text to insert (fills its variables). */
+  renderReply?: (body: string) => string;
 }
 
 function getDisplayName(member: TeamMember): string {
@@ -42,12 +46,13 @@ function getMemberInitials(member: TeamMember): string {
 
 export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutocompleteProps>(
   function MentionAutocomplete(
-    { value, onChange, members, placeholder, disabled, className, onPaste, onKeyDown },
+    { value, onChange, members, placeholder, disabled, className, onPaste, onKeyDown, savedReplies, renderReply },
     forwardedRef
   ) {
     const [showPopover, setShowPopover] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
     const [mentionStartIndex, setMentionStartIndex] = useState(-1);
+    const [trigger, setTrigger] = useState<'@' | '#'>('@');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
     const internalRef = useRef<HTMLTextAreaElement>(null);
@@ -61,10 +66,21 @@ export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutoco
       return name.includes(mentionQuery.toLowerCase());
     });
 
+    // '#refund' matches shortcuts by prefix first, then titles containing it.
+    const filteredReplies = (() => {
+      const q = mentionQuery.toLowerCase();
+      const all = savedReplies ?? [];
+      if (!q) return all;
+      const byShortcut = all.filter((r) => r.shortcut.startsWith(q));
+      const byTitle = all.filter((r) => !r.shortcut.startsWith(q) && r.title.toLowerCase().includes(q));
+      return [...byShortcut, ...byTitle];
+    })();
+    const itemCount = Math.min(8, trigger === '#' ? filteredReplies.length : filteredMembers.length);
+
     // Reset selected index when filtered results change
     useEffect(() => {
       setSelectedIndex(0);
-    }, [filteredMembers.length]);
+    }, [itemCount, trigger]);
 
     // Calculate popover position based on cursor
     const updatePopoverPosition = useCallback(() => {
@@ -124,11 +140,12 @@ export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutoco
         // Find the @ trigger before cursor
         const textBeforeCursor = text.slice(0, cursorPos);
 
-        // Find the last @ that could be a mention trigger
+        // Find the last @ (or # with saved replies) that could be a trigger.
         // It should either be at the start or preceded by whitespace
         let atIndex = -1;
         for (let i = textBeforeCursor.length - 1; i >= 0; i--) {
-          if (textBeforeCursor[i] === '@') {
+          const ch = textBeforeCursor[i];
+          if (ch === '@' || (ch === '#' && savedReplies?.length)) {
             // Check if it's at the start or preceded by whitespace
             if (i === 0 || /\s/.test(textBeforeCursor[i - 1])) {
               atIndex = i;
@@ -145,6 +162,7 @@ export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutoco
           const query = textBeforeCursor.slice(atIndex + 1);
           // Only show if no whitespace in query (still typing mention)
           if (!/\s/.test(query) && query.length <= 50) {
+            setTrigger(textBeforeCursor[atIndex] as '@' | '#');
             setMentionQuery(query);
             setMentionStartIndex(atIndex);
             setShowPopover(true);
@@ -154,7 +172,7 @@ export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutoco
 
         setShowPopover(false);
       },
-      [onChange]
+      [onChange, savedReplies?.length]
     );
 
     // Update popover position when it becomes visible
@@ -191,10 +209,45 @@ export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutoco
       [value, mentionStartIndex, onChange, textareaRef]
     );
 
+    // Replace '#query' with the reply's text, cursor at its end.
+    const handleSelectReply = useCallback(
+      (reply: SavedReply) => {
+        const text = renderReply ? renderReply(reply.body) : reply.body;
+        const before = value.slice(0, mentionStartIndex);
+        const cursorPos = textareaRef.current?.selectionStart || value.length;
+        const after = value.slice(cursorPos);
+        onChange(`${before}${text}${after}`);
+        setShowPopover(false);
+        setMentionQuery('');
+        setMentionStartIndex(-1);
+
+        requestAnimationFrame(() => {
+          const textarea = textareaRef.current;
+          if (textarea) {
+            textarea.focus();
+            const end = before.length + text.length;
+            textarea.setSelectionRange(end, end);
+          }
+        });
+      },
+      [value, mentionStartIndex, onChange, textareaRef, renderReply]
+    );
+
+    const selectAt = useCallback(
+      (index: number) => {
+        if (trigger === '#') {
+          if (filteredReplies[index]) handleSelectReply(filteredReplies[index]);
+        } else if (filteredMembers[index]) {
+          handleSelectMember(filteredMembers[index]);
+        }
+      },
+      [trigger, filteredReplies, filteredMembers, handleSelectReply, handleSelectMember]
+    );
+
     // Handle keyboard navigation
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (!showPopover || filteredMembers.length === 0) {
+        if (!showPopover || itemCount === 0) {
           onKeyDown?.(e);
           return;
         }
@@ -202,35 +255,27 @@ export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutoco
         switch (e.key) {
           case 'ArrowDown':
             e.preventDefault();
-            setSelectedIndex((prev) =>
-              prev < filteredMembers.length - 1 ? prev + 1 : 0
-            );
+            setSelectedIndex((prev) => (prev < itemCount - 1 ? prev + 1 : 0));
             break;
           case 'ArrowUp':
             e.preventDefault();
-            setSelectedIndex((prev) =>
-              prev > 0 ? prev - 1 : filteredMembers.length - 1
-            );
+            setSelectedIndex((prev) => (prev > 0 ? prev - 1 : itemCount - 1));
             break;
           case 'Enter':
             e.preventDefault();
-            if (filteredMembers[selectedIndex]) {
-              handleSelectMember(filteredMembers[selectedIndex]);
-            }
+            selectAt(selectedIndex);
             break;
           case 'Escape':
             e.preventDefault();
             setShowPopover(false);
             break;
           case 'Tab':
-            if (filteredMembers[selectedIndex]) {
-              e.preventDefault();
-              handleSelectMember(filteredMembers[selectedIndex]);
-            }
+            e.preventDefault();
+            selectAt(selectedIndex);
             break;
         }
       },
-      [showPopover, filteredMembers, selectedIndex, handleSelectMember, onKeyDown]
+      [showPopover, itemCount, selectedIndex, selectAt, onKeyDown]
     );
 
     // Close popover when clicking outside
@@ -264,7 +309,34 @@ export const MentionAutocomplete = forwardRef<HTMLTextAreaElement, MentionAutoco
           disabled={disabled}
         />
 
-        {showPopover && filteredMembers.length > 0 && (
+        {showPopover && trigger === '#' && filteredReplies.length > 0 && (
+          <div
+            className="absolute left-0 z-50 w-full max-w-md rounded-md border bg-popover shadow-md"
+            style={{ top: popoverPosition.top }}
+          >
+            <Command>
+              <CommandList>
+                <CommandGroup heading="Saved replies">
+                  {filteredReplies.slice(0, 8).map((reply, index) => (
+                    <CommandItem
+                      key={reply.id}
+                      onSelect={() => handleSelectReply(reply)}
+                      className={cn('flex flex-col items-start gap-0.5 cursor-pointer', index === selectedIndex && 'bg-accent')}
+                    >
+                      <span className="text-sm">
+                        <span className="font-mono text-xs text-muted-foreground">#{reply.shortcut}</span>{' '}
+                        <span className="font-medium">{reply.title}</span>
+                      </span>
+                      <span className="line-clamp-1 text-xs text-muted-foreground">{reply.body}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </div>
+        )}
+
+        {showPopover && trigger === '@' && filteredMembers.length > 0 && (
           <div
             className="absolute z-50 w-64 rounded-md border bg-popover shadow-md"
             style={{ top: popoverPosition.top, left: popoverPosition.left }}

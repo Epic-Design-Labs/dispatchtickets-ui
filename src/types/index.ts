@@ -16,3 +16,4 @@ export * from './feedback';
 export * from './watcher';
 export * from './ecommerce';
 export * from './recurring-ticket';
+export * from './saved-reply';

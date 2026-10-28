@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, MessageSquare } from 'lucide-react';
@@ -13,13 +13,13 @@ import { useChatQueue } from '@/lib/hooks/use-chat';
 import { setViewingChat } from '@/lib/live/chat-activity';
 import { cn } from '@/lib/utils';
 
+const TICKET_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
 /**
  * The Chat tab: open chats on the left, longest-waiting first, and the
  * selected conversation on the right. Selection is ?t= so alerts can deep-link
  * and switching never leaves the page.
  */
-const TICKET_ID = /^[A-Za-z0-9_-]{1,64}$/;
-
 export default function ChatPage() {
   return (
     <Suspense>
@@ -38,7 +38,7 @@ function ChatWorkspace() {
   const selectedId = rawSelected && TICKET_ID.test(rawSelected) ? rawSelected : null;
   const { data: brand } = useBrand(brandId);
   const { data, isLoading } = useChatQueue(brandId);
-  const tickets = data?.data ?? [];
+  const tickets = useMemo(() => data?.data ?? [], [data]);
 
   // Land on the longest-waiting chat rather than an empty pane (wide screens
   // only: on a phone the list is the landing view).
@@ -47,6 +47,22 @@ function ChatWorkspace() {
     if (selectedId || !firstId || !window.matchMedia('(min-width: 768px)').matches) return;
     router.replace(`/brands/${brandId}/chat?t=${firstId}`, { scroll: false });
   }, [selectedId, firstId, brandId, router]);
+
+  // Alt+Up / Alt+Down move through the list. Not J/K: the reply box keeps
+  // focus here, so plain letters belong to the reply.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || tickets.length === 0) return;
+      e.preventDefault();
+      const ordered = [...tickets.filter((t) => t.awaitingReplySince), ...tickets.filter((t) => !t.awaitingReplySince)];
+      const at = ordered.findIndex((t) => t.id === selectedId);
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      const next = ordered[(at + step + ordered.length) % ordered.length] ?? ordered[0];
+      router.replace(`/brands/${brandId}/chat?t=${next.id}`, { scroll: false });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [tickets, selectedId, brandId, router]);
 
   // Tells the live stream which chat needs no alert or unread dot.
   useEffect(() => {

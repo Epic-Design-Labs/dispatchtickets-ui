@@ -33,6 +33,9 @@ export function ChatList({
 
   return (
     <div className="divide-y">
+      <p className="px-4 py-2 text-xs text-muted-foreground">
+        <kbd className="font-mono">Alt ↑↓</kbd> to switch chats · <kbd className="font-mono">#</kbd> for saved replies
+      </p>
       <Section title="Waiting" count={waiting.length}>
         {waiting.map((t) => (
           <ChatRow key={t.id} brandId={brandId} ticket={t} selected={t.id === selectedId} unread={unread.has(t.id)} />

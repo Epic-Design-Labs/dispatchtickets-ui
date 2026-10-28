@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useCreateComment, useProfile, useUploadAttachment, useEmailConnections, useTeamMembers } from '@/lib/hooks';
+import { useCreateComment, useProfile, useUploadAttachment, useEmailConnections, useTeamMembers, useTicket, useSavedReplies } from '@/lib/hooks';
+import { fillSavedReply, firstName } from '@/lib/saved-reply-vars';
 import { MentionAutocomplete } from './mention-autocomplete';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
@@ -54,6 +55,9 @@ export function CommentEditor({ brandId, ticketId, chat = false }: CommentEditor
   const { data: profile } = useProfile();
   const { data: emailConnections } = useEmailConnections(brandId);
   const { data: teamData } = useTeamMembers({ brandId });
+  const { data: savedReplies } = useSavedReplies(brandId);
+  // Already cached by every page that shows an editor.
+  const { data: ticket } = useTicket(brandId, ticketId);
   const activeMembers = useMemo(
     () => teamData?.members?.filter((m) => m.status === 'active') || [],
     [teamData?.members]
@@ -302,12 +306,25 @@ export function CommentEditor({ brandId, ticketId, chat = false }: CommentEditor
           value={body}
           onChange={setBody}
           members={activeMembers}
+          savedReplies={savedReplies}
+          renderReply={(text) => {
+            const customerName =
+              ticket?.customer?.name || (ticket?.customFields?.requesterName as string | undefined);
+            const agentName = getAuthorName();
+            return fillSavedReply(text, {
+              customerName,
+              customerFirstName: firstName(customerName),
+              agentName,
+              agentFirstName: firstName(agentName),
+              ticketNumber: ticket ? String(ticket.ticketNumber) : undefined,
+            });
+          }}
           placeholder={
             chat
               ? isInternal
                 ? 'Internal note, not sent to the visitor (Enter to save, Shift+Enter for a new line)'
-                : 'Reply in chat (Enter to send, Shift+Enter for a new line)'
-              : 'Add a comment... (paste images directly, type @ to mention)'
+                : 'Reply in chat (Enter to send, # for saved replies)'
+              : 'Add a comment... (paste images, @ to mention, # for saved replies)'
           }
           onPaste={handlePaste}
           onKeyDown={
