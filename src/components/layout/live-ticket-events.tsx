@@ -11,6 +11,7 @@ import { presenceKeys } from '@/lib/hooks/use-presence';
 import { sendDesktopNotification } from '@/lib/hooks/use-global-ticket-notifications';
 import { setLiveConnected } from '@/lib/live/live-state';
 import { playChime } from '@/lib/live/chime';
+import { markChatUnread, setVisitorTyping } from '@/lib/live/chat-activity';
 
 const MAX_BACKOFF_MS = 60_000;
 
@@ -32,6 +33,14 @@ interface AwaitingReply {
   awaitingReplySince: string;
   waitingSeconds: number;
 }
+
+interface ChatTyping {
+  ticketId: string;
+  typing: boolean;
+}
+
+/** Chat alerts open the Chat tab on that conversation. */
+const chatUrl = (brandId: string, ticketId: string) => `/brands/${brandId}/chat?t=${ticketId}`;
 
 interface CommentCreated {
   brandId: string;
@@ -95,12 +104,13 @@ export function LiveTicketEvents() {
       const t = JSON.parse(e.data) as TicketCreated;
       queryClient.invalidateQueries({ queryKey: ticketKeys.all(t.brandId) });
       if (t.source !== 'chat') return;
+      markChatUnread(t.id);
       const where = brandName(t.brandId);
       alert(
         `ticket:${t.id}`,
         where ? `New chat on ${where}` : 'New chat',
         (t.body || t.title || '').slice(0, 140),
-        `/brands/${t.brandId}/tickets/${t.id}`,
+        chatUrl(t.brandId, t.id),
       );
     };
 
@@ -110,13 +120,15 @@ export function LiveTicketEvents() {
       queryClient.invalidateQueries({ queryKey: commentKeys.all(c.brandId, c.ticketId) });
       queryClient.invalidateQueries({ queryKey: ticketKeys.detail(c.brandId, c.ticketId) });
       const fromVisitor = c.comment.source === 'chat' && c.comment.authorType === 'CUSTOMER';
-      // Already looking at it: the conversation just refreshed, no need to shout.
-      if (!fromVisitor || pathRef.current?.includes(c.ticketId)) return;
+      if (!fromVisitor) return;
+      // Already looking at it (Chat tab or ticket page): the conversation just
+      // refreshed, no need to shout.
+      if (!markChatUnread(c.ticketId) || pathRef.current?.includes(c.ticketId)) return;
       alert(
         `comment:${c.comment.id}`,
         'New chat message',
         (c.comment.body || '').slice(0, 140),
-        `/brands/${c.brandId}/tickets/${c.ticketId}`,
+        chatUrl(c.brandId, c.ticketId),
       );
     };
 
@@ -134,7 +146,7 @@ export function LiveTicketEvents() {
         `wait:${w.id}:${w.awaitingReplySince}:${w.level}`,
         `${w.level === 'critical' ? 'Chat still unanswered' : 'Chat waiting'}: ${minutes} min${where ? ` on ${where}` : ''}`,
         `${w.publicId} · ${(w.title || '').slice(0, 120)}`,
-        `/brands/${w.brandId}/tickets/${w.id}`,
+        chatUrl(w.brandId, w.id),
       );
     };
 
@@ -168,6 +180,11 @@ export function LiveTicketEvents() {
       es.addEventListener('ticket.created', onTicketCreated as EventListener);
       es.addEventListener('ticket.comment.created', onCommentCreated as EventListener);
       es.addEventListener('ticket.awaiting_reply', onAwaitingReply as EventListener);
+      es.addEventListener('chat.typing', (e: MessageEvent) => {
+        if (e.lastEventId) lastEventId = e.lastEventId;
+        const t = JSON.parse(e.data) as ChatTyping;
+        setVisitorTyping(t.ticketId, t.typing);
+      });
       es.addEventListener('presence.changed', (e: MessageEvent) => {
         if (e.lastEventId) lastEventId = e.lastEventId;
         if (presenceTimer) return;

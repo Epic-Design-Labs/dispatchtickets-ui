@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useBrand, useSetupStatus } from '@/lib/hooks';
+import { useChatQueue } from '@/lib/hooks/use-chat';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
@@ -20,6 +21,8 @@ import { Rocket, Settings } from 'lucide-react';
  */
 export const BRAND_NAV_TABS = [
   { name: 'Tickets', segment: 'tickets' },
+  // Shown only on brands with live chat on.
+  { name: 'Chat', segment: 'chat' },
   { name: 'Contacts', segment: 'contacts' },
   { name: 'Companies', segment: 'companies' },
   { name: 'Recurring', segment: 'recurring-tickets' },
@@ -34,6 +37,10 @@ export function BrandNav({ brandId }: BrandNavProps) {
   const pathname = usePathname();
   const { data: brand } = useBrand(brandId);
   const setupStatus = useSetupStatus(brandId);
+  const { data: chatQueue } = useChatQueue(brandId, !!brand?.chatEnabled);
+  const openChats = chatQueue?.data ?? [];
+  const waitingChats = openChats.filter((t) => t.awaitingReplySince).length;
+  const showChat = !!brand?.chatEnabled;
 
   const basePath = `/brands/${brandId}`;
   // The brand root redirects to /tickets, so treat it as Tickets being active.
@@ -58,6 +65,7 @@ export function BrandNav({ brandId }: BrandNavProps) {
 
       <nav className="flex h-full items-stretch gap-1 overflow-x-auto">
         {BRAND_NAV_TABS.map((tab) => {
+          if (tab.segment === 'chat' && !showChat) return null;
           const isActive = activeSegment === tab.segment;
 
           return (
@@ -73,6 +81,14 @@ export function BrandNav({ brandId }: BrandNavProps) {
               )}
             >
               {tab.name}
+              {tab.segment === 'chat' && waitingChats > 0 && (
+                <span
+                  className="ml-1.5 rounded-full bg-red-600 px-1.5 text-xs font-semibold tabular-nums text-white"
+                  aria-label={`${waitingChats} waiting`}
+                >
+                  {waitingChats}
+                </span>
+              )}
             </Link>
           );
         })}
