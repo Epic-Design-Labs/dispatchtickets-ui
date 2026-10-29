@@ -20,6 +20,12 @@ export interface Brand {
   autoresponseBody?: string;
   // How customer emails look (see api/src/modules/email/email-style.ts)
   emailStyle?: EmailStyle;
+  emailLogoUrl?: string | null;
+  emailAccentColor?: string | null;
+  emailSignature?: string | null;
+  emailFooter?: string | null;
+  emailShowTicketNumber?: boolean;
+  emailShowHistory?: boolean;
   // Brand identity
   url?: string;
   iconUrl?: string;
@@ -77,6 +83,12 @@ export interface UpdateBrandInput {
   autoresponseBody?: string;
   // How customer emails look (see api/src/modules/email/email-style.ts)
   emailStyle?: EmailStyle;
+  emailLogoUrl?: string | null;
+  emailAccentColor?: string | null;
+  emailSignature?: string | null;
+  emailFooter?: string | null;
+  emailShowTicketNumber?: boolean;
+  emailShowHistory?: boolean;
   // Brand identity
   url?: string;
   iconUrl?: string;

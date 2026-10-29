@@ -2,6 +2,7 @@ import { apiClient } from './client';
 
 export interface Profile {
   displayName: string | null;
+  emailSignature?: string | null;
   avatarUrl: string | null;
   notifyEmail: boolean;
   notifyToast: boolean;
@@ -10,6 +11,7 @@ export interface Profile {
 
 export interface UpdateProfileInput {
   displayName?: string;
+  emailSignature?: string;
   avatarUrl?: string;
   notifyEmail?: boolean;
   notifyToast?: boolean;

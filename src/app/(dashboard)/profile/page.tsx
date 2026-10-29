@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useProfile, useUpdateProfile, useUploadAvatar, useDeleteAvatar } from '@/lib/hooks';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
@@ -24,6 +25,7 @@ export default function ProfilePage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState('');
+  const [emailSignature, setEmailSignature] = useState('');
   // Notification preferences state
   const [notifyEmail, setNotifyEmail] = useState(true);
   const [notifyToast, setNotifyToast] = useState(true);
@@ -35,6 +37,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.displayName || '');
+      setEmailSignature(profile.emailSignature || '');
       setNotifyEmail(profile.notifyEmail ?? true);
       setNotifyToast(profile.notifyToast ?? true);
       setNotifyDesktop(profile.notifyDesktop ?? false);
@@ -124,6 +127,8 @@ export default function ProfilePage() {
     try {
       await updateProfile.mutateAsync({
         displayName: displayName.trim() || undefined,
+        // Empty clears it, so send it as-is (the API stores '' as no signature).
+        emailSignature,
       });
       toast.success('Profile updated');
     } catch {
@@ -307,6 +312,22 @@ export default function ProfilePage() {
                 />
                 <p className="text-sm text-muted-foreground">
                   This name will be shown on comments you add to tickets
+                </p>
+              </div>
+
+              {/* Email signature */}
+              <div className="space-y-2">
+                <Label htmlFor="emailSignature">Email Signature</Label>
+                <Textarea
+                  id="emailSignature"
+                  placeholder={'e.g.\nJamie Lee\nCustomer Support'}
+                  value={emailSignature}
+                  onChange={(e) => setEmailSignature(e.target.value)}
+                  maxLength={1000}
+                  rows={3}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Shown under your replies to customers in place of your name. Leave empty to use your display name.
                 </p>
               </div>
 
