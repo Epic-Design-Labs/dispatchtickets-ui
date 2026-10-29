@@ -27,6 +27,7 @@ export interface Brand {
   emailShowTicketNumber?: boolean;
   emailShowHistory?: boolean;
   emailTagReceivingAddress?: boolean;
+  emailBrandedReplyTo?: boolean;
   // Brand identity
   url?: string;
   iconUrl?: string;
@@ -91,6 +92,7 @@ export interface UpdateBrandInput {
   emailShowTicketNumber?: boolean;
   emailShowHistory?: boolean;
   emailTagReceivingAddress?: boolean;
+  emailBrandedReplyTo?: boolean;
   // Brand identity
   url?: string;
   iconUrl?: string;

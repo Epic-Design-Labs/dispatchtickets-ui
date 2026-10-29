@@ -336,6 +336,31 @@ We'll reach back out soon!
               }}
             />
           </div>
+
+          {/* Branded reply-to */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="branded-reply-to">Customers reply to the address they wrote to</Label>
+              <p className="text-sm text-muted-foreground">
+                Replies go back to e.g. <code className="text-xs">support@yourcompany.com</code> instead of your
+                Dispatch address. That address must forward here and be on a domain you&apos;ve verified under
+                Sending Email; otherwise the Dispatch address is used.
+              </p>
+            </div>
+            <Switch
+              id="branded-reply-to"
+              checked={brand?.emailBrandedReplyTo ?? false}
+              disabled={updateBrand.isPending}
+              onCheckedChange={async (enabled) => {
+                try {
+                  await updateBrand.mutateAsync({ emailBrandedReplyTo: enabled });
+                  toast.success(enabled ? 'Branded reply-to on' : 'Branded reply-to off');
+                } catch {
+                  toast.error('Failed to save');
+                }
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 
