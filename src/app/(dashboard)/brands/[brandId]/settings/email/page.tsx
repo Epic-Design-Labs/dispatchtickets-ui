@@ -40,6 +40,7 @@ import {
   useUsage,
 } from '@/lib/hooks';
 import { OutboundReplyMode } from '@/lib/api/domains';
+import { EmailStyleCard } from '@/components/email/email-style-card';
 import { toast } from 'sonner';
 import {
   CheckCircle,
@@ -529,6 +530,8 @@ We'll reach back out soon!
           )}
         </CardContent>
       </Card>
+
+      <EmailStyleCard brandId={brandId} />
 
       {/* ================================================================== */}
       {/* AUTO-REPLY */}

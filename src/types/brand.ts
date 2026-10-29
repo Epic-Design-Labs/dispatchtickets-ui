@@ -1,5 +1,7 @@
 import { CsatType } from './feedback';
 
+export type EmailStyle = 'conversation' | 'ticket';
+
 export interface Brand {
   id: string;
   accountId: string;
@@ -16,6 +18,8 @@ export interface Brand {
   autoresponseEnabled?: boolean;
   autoresponseSubject?: string;
   autoresponseBody?: string;
+  // How customer emails look (see api/src/modules/email/email-style.ts)
+  emailStyle?: EmailStyle;
   // Brand identity
   url?: string;
   iconUrl?: string;
@@ -71,6 +75,8 @@ export interface UpdateBrandInput {
   autoresponseEnabled?: boolean;
   autoresponseSubject?: string;
   autoresponseBody?: string;
+  // How customer emails look (see api/src/modules/email/email-style.ts)
+  emailStyle?: EmailStyle;
   // Brand identity
   url?: string;
   iconUrl?: string;
