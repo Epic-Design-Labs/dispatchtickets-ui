@@ -616,6 +616,19 @@ export default function TicketDetailPage() {
                     {ticket.source}
                   </span>
                 )}
+
+                {/* The address the customer wrote to, from its to:<address> tag */}
+                {ticket.tags
+                  ?.filter((tag) => tag.name.startsWith('to:'))
+                  .map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="px-2 py-1 rounded-full bg-sky-100 text-sky-700 text-xs font-medium"
+                      title="The address this email was sent to"
+                    >
+                      to {tag.name.slice(3)}
+                    </span>
+                  ))}
               </div>
             </>
           )}

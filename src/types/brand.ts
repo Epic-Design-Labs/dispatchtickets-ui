@@ -26,6 +26,7 @@ export interface Brand {
   emailFooter?: string | null;
   emailShowTicketNumber?: boolean;
   emailShowHistory?: boolean;
+  emailTagReceivingAddress?: boolean;
   // Brand identity
   url?: string;
   iconUrl?: string;
@@ -89,6 +90,7 @@ export interface UpdateBrandInput {
   emailFooter?: string | null;
   emailShowTicketNumber?: boolean;
   emailShowHistory?: boolean;
+  emailTagReceivingAddress?: boolean;
   // Brand identity
   url?: string;
   iconUrl?: string;

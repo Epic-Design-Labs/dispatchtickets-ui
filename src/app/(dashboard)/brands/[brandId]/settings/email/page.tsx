@@ -312,6 +312,30 @@ We'll reach back out soon!
               </div>
             </div>
           </div>
+
+          {/* Receiving-address tags */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="tag-receiving-address">Tag tickets with the address they were sent to</Label>
+              <p className="text-sm text-muted-foreground">
+                New email tickets get a tag like <code className="text-xs">to:support@yourcompany.com</code>, so you
+                can filter by mailbox when several forward here.
+              </p>
+            </div>
+            <Switch
+              id="tag-receiving-address"
+              checked={brand?.emailTagReceivingAddress ?? true}
+              disabled={updateBrand.isPending}
+              onCheckedChange={async (enabled) => {
+                try {
+                  await updateBrand.mutateAsync({ emailTagReceivingAddress: enabled });
+                  toast.success(enabled ? 'Receiving-address tags on' : 'Receiving-address tags off');
+                } catch {
+                  toast.error('Failed to save');
+                }
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 
