@@ -38,6 +38,8 @@ export interface Ticket {
   /** Who the ticket is for. Can differ from the contact's own company. */
   companyId?: string | null;
   company?: { id: string; name: string } | null;
+  /** Copied on every customer email about this ticket. Email only. */
+  cc?: string[];
   categoryId?: string | null;
   category?: Category | null;
   tags?: Tag[];
@@ -83,6 +85,7 @@ export interface CreateTicketInput {
   notifyCustomer?: boolean;
   watchers?: WatcherInput[];
   attachmentIds?: string[];
+  cc?: string[];
 }
 
 export interface UpdateTicketInput {
@@ -98,6 +101,7 @@ export interface UpdateTicketInput {
   customFields?: Record<string, unknown>;
   dueAt?: string | null;
   isSpam?: boolean;
+  cc?: string[];
 }
 
 export interface TicketFilters {

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTicket, useComments, useUpdateTicket, useDeleteTicket, useMarkAsSpam, useTickets, useTicketNavigation, useTeamMembers, useContactTickets, useMergeTickets, useCategories, useTags, useCreateTag, useBrand, useFieldsByEntity, useAcknowledgeMentionsOnView, useAttachments, useAttachmentUrls, useUploadAttachment, useDeleteAttachment } from '@/lib/hooks';
 import { useStatuses } from '@/lib/hooks/use-statuses';
-import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers } from '@/components/tickets';
+import { StatusBadge, PriorityBadge, TicketHistory, CloseTicketDialog, TicketWatchers, TicketCc } from '@/components/tickets';
 import { TicketOrdersSection } from '@/components/ecommerce';
 import { TicketEnrichmentSection } from '@/components/enrichment';
 import { TicketChatSection } from '@/components/chat/ticket-chat-section';
@@ -998,6 +998,16 @@ export default function TicketDetailPage() {
               </p>
             )}
           </div>
+
+          <Separator />
+
+          {/* CC: copied on every customer email about this ticket */}
+          <TicketCc
+            cc={ticket.cc ?? []}
+            requesterEmail={ticket.customer?.email ?? (ticket.customFields?.requesterEmail as string | undefined)}
+            disabled={updateTicket.isPending}
+            onChange={(cc) => updateTicket.mutateAsync({ cc })}
+          />
 
           <Separator />
 

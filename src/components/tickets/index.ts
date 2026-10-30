@@ -7,3 +7,4 @@ export { CreateTicketForContactDialog } from './create-ticket-for-contact-dialog
 export { CloseTicketDialog } from './close-ticket-dialog';
 export { TicketHistory } from './ticket-history';
 export { TicketWatchers } from './ticket-watchers';
+export { TicketCc } from './ticket-cc';
