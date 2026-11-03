@@ -128,6 +128,18 @@ export function useRuleVocabulary(brandId: string): RuleVocabulary {
 }
 
 /**
+ * Fields whose choices are SUGGESTIONS, not a closed set.
+ *
+ * Only tags. A rule is often written before the tag exists -- a `to:` tag
+ * appears the first time someone emails that address, and a routing rule for
+ * a new inbox is the reason you are in this dialog -- so the picker has to
+ * accept a name it has never seen. Everything else is closed on purpose: a
+ * category, status, member or priority that does not exist is a condition
+ * that can never be true, and offering to type one would only invite it.
+ */
+export const OPEN_CHOICE_FIELDS: readonly ConditionField[] = ['tag'];
+
+/**
  * The choices a condition field offers, or null when it is free text.
  *
  * Free text is not a fallback for "we didn't bother": subject, body and the

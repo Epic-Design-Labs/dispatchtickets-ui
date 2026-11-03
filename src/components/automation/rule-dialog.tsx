@@ -53,6 +53,7 @@ import {
   choicesForField,
   describeKindForAction,
   FIELD_PLACEHOLDERS,
+  OPEN_CHOICE_FIELDS,
   useRuleVocabulary,
   type Choice,
   type RuleVocabulary,
@@ -75,17 +76,22 @@ function apiMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-/** How a condition's value is edited, given its op and whether the field enumerates. */
-type ValueMode = 'none' | 'select' | 'multi' | 'text' | 'textList';
+/**
+ * How a condition's value is edited, given its op and what the field offers.
+ *
+ * 'combo' and 'multiOpen' are the open-choice variants: the known values are
+ * offered as suggestions but a new one can be typed. See OPEN_CHOICE_FIELDS.
+ */
+type ValueMode = 'none' | 'select' | 'combo' | 'multi' | 'multiOpen' | 'text' | 'textList';
 
-function valueMode(op: ConditionOp, choices: Choice[] | null): ValueMode {
+function valueMode(op: ConditionOp, choices: Choice[] | null, open: boolean): ValueMode {
   if (VALUELESS_OPS.includes(op)) return 'none';
   // contains/not_contains is a substring test, so it is free text even on a
   // field that enumerates -- "tag contains to:" is the whole point of the
   // receiving-address tags.
   if (op === 'contains' || op === 'not_contains') return 'text';
-  if (LIST_OPS.includes(op)) return choices ? 'multi' : 'textList';
-  return choices ? 'select' : 'text';
+  if (LIST_OPS.includes(op)) return choices ? (open ? 'multiOpen' : 'multi') : 'textList';
+  return choices ? (open ? 'combo' : 'select') : 'text';
 }
 
 function conditionComplete(condition: RuleCondition): boolean {
@@ -149,38 +155,81 @@ function MultiChoice({
   value,
   choices,
   onChange,
+  allowCustom = false,
+  datalistId,
 }: {
   value: string[];
   choices: Choice[];
   onChange: (value: string[]) => void;
+  /** Lets a value that is not in `choices` be typed in -- see OPEN_CHOICE_FIELDS. */
+  allowCustom?: boolean;
+  datalistId?: string;
 }) {
+  const [draft, setDraft] = useState('');
+
+  // A value already on the rule but missing from the brand's list still has to
+  // be shown and removable, whether it was typed here or the tag was deleted.
   const extras = value.filter((v) => !choices.some((c) => c.value === v));
   const options = [...choices, ...extras.map((v) => ({ value: v, label: v }))];
 
-  if (options.length === 0) {
+  const add = () => {
+    const next = draft.trim();
+    if (!next || value.includes(next)) {
+      setDraft('');
+      return;
+    }
+    onChange([...value, next]);
+    setDraft('');
+  };
+
+  if (options.length === 0 && !allowCustom) {
     return <p className="text-xs text-muted-foreground">Nothing to choose yet.</p>;
   }
 
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((c) => {
-        const on = value.includes(c.value);
-        return (
-          <button
-            key={c.value}
-            type="button"
-            aria-pressed={on}
-            onClick={() =>
-              onChange(on ? value.filter((v) => v !== c.value) : [...value, c.value])
-            }
-            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
-          >
-            <Badge variant={on ? 'default' : 'outline'} className="cursor-pointer font-normal">
-              {c.label}
-            </Badge>
-          </button>
-        );
-      })}
+    <div className="space-y-2">
+      {options.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {options.map((c) => {
+            const on = value.includes(c.value);
+            return (
+              <button
+                key={c.value}
+                type="button"
+                aria-pressed={on}
+                onClick={() =>
+                  onChange(on ? value.filter((v) => v !== c.value) : [...value, c.value])
+                }
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
+              >
+                <Badge variant={on ? 'default' : 'outline'} className="cursor-pointer font-normal">
+                  {c.label}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {allowCustom && (
+        <div className="flex gap-2">
+          <Input
+            value={draft}
+            list={datalistId}
+            placeholder="Add another tag"
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                // Otherwise Enter submits the dialog instead of adding the tag.
+                e.preventDefault();
+                add();
+              }
+            }}
+          />
+          <Button type="button" variant="outline" onClick={add} disabled={!draft.trim()}>
+            Add
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -197,7 +246,8 @@ function ConditionRow({
   onRemove: () => void;
 }) {
   const choices = choicesForField(condition.field, vocab);
-  const mode = valueMode(condition.op, choices);
+  const open = OPEN_CHOICE_FIELDS.includes(condition.field);
+  const mode = valueMode(condition.op, choices, open);
 
   // Changing the field or the op can make the existing value meaningless --
   // a tag name under "priority is", a string under "is any of". Resetting is
@@ -270,10 +320,26 @@ function ConditionRow({
               onChange={(value) => onChange({ ...condition, value })}
             />
           )}
-          {mode === 'multi' && (
+          {mode === 'combo' && (
+            <>
+              <Input
+                value={typeof condition.value === 'string' ? condition.value : ''}
+                list={TAG_DATALIST_ID}
+                placeholder="Tag name"
+                onChange={(e) => onChange({ ...condition, value: e.target.value })}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pick one of this brand&apos;s tags, or type a name it doesn&apos;t have yet — the
+                rule matches whenever a ticket arrives carrying it.
+              </p>
+            </>
+          )}
+          {(mode === 'multi' || mode === 'multiOpen') && (
             <MultiChoice
               value={Array.isArray(condition.value) ? condition.value : []}
               choices={choices ?? []}
+              allowCustom={mode === 'multiOpen'}
+              datalistId={mode === 'multiOpen' ? TAG_DATALIST_ID : undefined}
               onChange={(value) => onChange({ ...condition, value })}
             />
           )}
