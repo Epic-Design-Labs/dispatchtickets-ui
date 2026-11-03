@@ -28,3 +28,4 @@ export * from './use-recurring-tickets';
 export * from './use-enrichment';
 export * from './use-presence';
 export * from './use-saved-replies';
+export * from './use-automation';

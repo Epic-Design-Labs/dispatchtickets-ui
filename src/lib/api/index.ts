@@ -22,6 +22,7 @@ export { ecommerceApi } from './ecommerce';
 export { recurringTicketsApi } from './recurring-tickets';
 export { enrichmentApi } from './enrichment';
 export { presenceApi } from './presence';
+export { automationApi } from './automation';
 export type { Profile, UpdateProfileInput, AvatarUploadInput } from './profile';
 export type { FeatureRequest, FeatureRequestsResponse, FeatureActivityResponse, CreateFeatureRequestInput } from './feature-requests';
 export type { EmailConnection, EmailConnectionProvider, EmailConnectionStatus } from './email-connections';
