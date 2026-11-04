@@ -280,11 +280,37 @@ export function Sidebar() {
       {/* Org switcher.
           • Clerk users: Clerk's <OrganizationSwitcher /> (drives the JWT's
             org_id claim — the API uses that to scope data).
-          • Stackbe users: the legacy OrgSwitcher (Stackbe API + session). */}
+          • Stackbe users: the legacy OrgSwitcher (Stackbe API + session).
+
+          "Manage" is pointed at OUR team page (organizationProfileMode
+          "navigation"), because Clerk's <OrganizationProfile /> is member
+          management we do not control. Any org:admin can invite and remove
+          people there, and Clerk has no owner role -- it sees the account
+          owner as one more admin, so an admin could remove them. Worse, it
+          never touches the API, so none of the departure cleanup runs: the
+          leaver keeps receiving customer email (TicketWatcher rows) and their
+          tickets stay assigned to someone who is gone. Removal has to go
+          through DELETE /v1/auth/members/:id, which refuses to remove an OWNER
+          and runs offboardMember() -- see api tickets/member-offboarding.ts.
+          Clerk has no prop to hide the button, so it is redirected instead.
+
+          THIS IS NOT ENFORCEMENT. It removes the path people would find, not
+          the capability: org:admin still holds org:sys_memberships:manage, and
+          the Clerk Account Portal serves the same panel at
+          accounts.dispatchtickets.com/organization-profile to anyone signed
+          in. Taking the capability away means dropping that permission from
+          the org:admin role in Clerk (which also takes it from the owner --
+          Clerk cannot tell them apart -- and is survivable only because our
+          API calls Clerk with the secret key, which ignores org permissions).
+          Until then, the backstop is the organizationMembership.deleted
+          webhook, which runs the same cleanup for a removal that never
+          touched the API. */}
       <div className="border-t px-3 pt-2">
         <SignedIn>
           <OrganizationSwitcher
             hidePersonal
+            organizationProfileMode="navigation"
+            organizationProfileUrl="/team"
             afterSelectOrganizationUrl="/"
             afterCreateOrganizationUrl="/"
             appearance={{
