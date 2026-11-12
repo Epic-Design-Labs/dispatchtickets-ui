@@ -20,7 +20,10 @@ export default function HomePage() {
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        router.replace('/brands');
+        // Land on the All Active queue, not the brand picker. Someone opening
+        // the app wants the work, not a list of containers. The dashboard
+        // layout still bounces to /getting-started when no brands exist.
+        router.replace('/dashboard');
       } else {
         router.replace('/login');
       }
