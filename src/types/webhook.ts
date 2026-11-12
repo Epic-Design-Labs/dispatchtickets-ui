@@ -6,6 +6,8 @@ export type WebhookEvent =
   | 'ticket.comment.created'
   | 'chat.started'
   | 'chat.message'
+  // Opt-in: '*' does not include it.
+  | 'presence.updated'
   | '*'
   // Alias of ticket.comment.created, kept for existing subscriptions.
   | 'comment.created';
