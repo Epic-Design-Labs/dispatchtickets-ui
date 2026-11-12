@@ -38,6 +38,7 @@ import { TicketFilters } from '@/components/tickets/ticket-filters';
 import { CreateTicketDialog } from '@/components/tickets/create-ticket-dialog';
 import { StatusBadge } from '@/components/tickets/status-badge';
 import { PriorityBadge } from '@/components/tickets/priority-badge';
+import { StatusTabs, MetricChip } from '@/components/tickets/status-tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Tooltip,
@@ -55,12 +56,6 @@ import {
   MessageSquare,
   Timer,
   Settings2,
-  Inbox,
-  Layers,
-  CircleDot,
-  Clock,
-  CheckCircle2,
-  Archive,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -77,24 +72,6 @@ import {
 
 type ViewType = 'all' | 'mine' | 'unassigned';
 
-/**
- * The status filter row.
- *
- * Each tab carries its own icon tone so the row can be read by colour before
- * it is read by word -- the same soft fills the status pills in the table use,
- * so a glance at "Pending" up here and a pending row down there agree. The
- * selected tab goes solid brand instead of merely outlined: this row is the
- * single most-used control on the page and a 2px border was not enough to say
- * which queue you were looking at.
- */
-const STATUS_TABS = [
-  { key: 'active', label: 'Active', icon: Inbox, tone: 'bg-brand-soft text-brand' },
-  { key: 'all', label: 'All', icon: Layers, tone: 'bg-secondary text-muted-foreground' },
-  { key: 'open', label: 'Open', icon: CircleDot, tone: 'bg-info-soft text-info' },
-  { key: 'pending', label: 'Pending', icon: Clock, tone: 'bg-warning-soft text-warning-foreground' },
-  { key: 'resolved', label: 'Resolved', icon: CheckCircle2, tone: 'bg-success-soft text-success-foreground' },
-  { key: 'closed', label: 'Closed', icon: Archive, tone: 'bg-secondary text-muted-foreground' },
-] as const;
 
 // Column definitions for global dashboard (matching brand view + brand column)
 interface DashboardColumnDef {
@@ -546,60 +523,19 @@ export default function DashboardPage() {
     <div className="h-full overflow-auto p-6">
       {/* Status filters + the two response metrics */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        {STATUS_TABS.map((tab) => {
-          // "active" is the default view, so it owns the empty status too.
-          const isActive = tab.key === 'active' ? !status || status === 'active' : status === tab.key;
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => handleStatClick(tab.key)}
-              aria-pressed={isActive}
-              className={cn(
-                'flex items-center gap-2 rounded-lg border py-[5px] pr-2.5 pl-[5px]',
-                'text-sm font-medium transition-colors',
-                isActive
-                  ? 'border-brand bg-brand text-white shadow-[0_2px_8px_rgba(124,77,255,0.25)]'
-                  : 'border-border-strong bg-card hover:bg-surface-muted'
-              )}
-            >
-              <span
-                className={cn(
-                  'grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px]',
-                  isActive ? 'bg-white/20 text-white' : tab.tone
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-              </span>
-              {tab.label}
-              <span
-                className={cn(
-                  'rounded-md px-2 py-px text-[13px] tabular-nums',
-                  isActive ? 'bg-white/25 text-white' : 'bg-secondary text-muted-foreground'
-                )}
-              >
-                {statsLoading ? '–' : tabCounts[tab.key]}
-              </span>
-            </button>
-          );
-        })}
-
+        <StatusTabs value={status} onSelect={handleStatClick} counts={tabCounts} loading={statsLoading} />
         {/* Metrics are facts, not filters, so they sit apart and stay quiet. */}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-[7px] text-sm">
-            <MessageSquare className="text-brand h-4 w-4" />
-            <span className="font-semibold tabular-nums">
-              {statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgFirstResponseMinutes)}
-            </span>
-            <span className="text-muted-foreground">avg response</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-[7px] text-sm">
-            <Timer className="text-brand h-4 w-4" />
-            <span className="font-semibold tabular-nums">
-              {statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgResolutionMinutes)}
-            </span>
-            <span className="text-muted-foreground">avg resolution</span>
-          </div>
+          <MetricChip
+            icon={MessageSquare}
+            value={statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgFirstResponseMinutes)}
+            label="avg response"
+          />
+          <MetricChip
+            icon={Timer}
+            value={statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgResolutionMinutes)}
+            label="avg resolution"
+          />
         </div>
       </div>
 

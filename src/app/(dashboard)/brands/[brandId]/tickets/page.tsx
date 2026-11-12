@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useBrand, useTickets, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, BulkActionType, ticketKeys } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw, MessageSquare, Timer } from 'lucide-react';
-import { TicketFilters, TicketTable, CreateTicketDialog } from '@/components/tickets';
+import { TicketFilters, TicketTable, CreateTicketDialog, StatusTabs, MetricChip } from '@/components/tickets';
 import { ticketsApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -301,96 +301,33 @@ export default function BrandDashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="mb-6 flex gap-3 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0">
-            <button
-              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                filters.status === 'active'
-                  ? 'bg-amber-400 text-white border border-amber-400'
-                  : 'bg-white border border-gray-200 hover:bg-gray-50'
-              }`}
-              onClick={() => handleStatClick('active')}
-            >
-              <span className={`h-2 w-2 rounded-full ${filters.status === 'active' ? 'bg-white' : 'bg-amber-400'}`} />
-              <span>Active</span>
-              <span className="font-bold text-lg ml-2">{stats.active}</span>
-            </button>
-
-            <button
-              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                filters.status === 'all'
-                  ? 'bg-gray-100 border-2 border-gray-400'
-                  : 'bg-white border border-gray-200 hover:bg-gray-50'
-              }`}
-              onClick={() => handleStatClick('all')}
-            >
-              <span className="h-2 w-2 rounded-full bg-gray-400" />
-              <span>All</span>
-              <span className="font-bold text-lg ml-2">{stats.total}</span>
-            </button>
-
-            <button
-              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                filters.status === 'open'
-                  ? 'bg-blue-500 text-white border border-blue-500'
-                  : 'bg-white border border-gray-200 hover:bg-gray-50'
-              }`}
-              onClick={() => handleStatClick('open')}
-            >
-              <span className={`h-2 w-2 rounded-full ${filters.status === 'open' ? 'bg-white' : 'bg-blue-500'}`} />
-              <span>Open</span>
-              <span className="font-bold text-lg ml-2">{stats.open}</span>
-            </button>
-
-            <button
-              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                filters.status === 'pending'
-                  ? 'bg-amber-500 text-white border border-amber-500'
-                  : 'bg-white border border-gray-200 hover:bg-gray-50'
-              }`}
-              onClick={() => handleStatClick('pending')}
-            >
-              <span className={`h-2 w-2 rounded-full ${filters.status === 'pending' ? 'bg-white' : 'bg-amber-500'}`} />
-              <span>Pending</span>
-              <span className="font-bold text-lg ml-2">{stats.pending}</span>
-            </button>
-
-            <button
-              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                filters.status === 'resolved'
-                  ? 'bg-green-500 text-white border border-green-500'
-                  : 'bg-white border border-gray-200 hover:bg-gray-50'
-              }`}
-              onClick={() => handleStatClick('resolved')}
-            >
-              <span className={`h-2 w-2 rounded-full ${filters.status === 'resolved' ? 'bg-white' : 'bg-green-500'}`} />
-              <span>Resolved</span>
-              <span className="font-bold text-lg ml-2">{stats.resolved}</span>
-            </button>
-
-            <button
-              className={`flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                filters.status === 'closed'
-                  ? 'bg-gray-500 text-white border border-gray-500'
-                  : 'bg-white border border-gray-200 hover:bg-gray-50'
-              }`}
-              onClick={() => handleStatClick('closed')}
-            >
-              <span className={`h-2 w-2 rounded-full ${filters.status === 'closed' ? 'bg-white' : 'bg-gray-500'}`} />
-              <span>Closed</span>
-              <span className="font-bold text-lg ml-2">{stats.closed}</span>
-            </button>
-
-            {/* Metrics pills */}
-            <div className="flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
-              <MessageSquare className="h-4 w-4 text-purple-500" />
-              <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(brandStats?.responseMetrics?.avgFirstResponseMinutes)}</span>
-              <span className="text-muted-foreground whitespace-nowrap">Avg Response</span>
-            </div>
-
-            <div className="flex flex-shrink-0 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
-              <Timer className="h-4 w-4 text-indigo-500" />
-              <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(brandStats?.responseMetrics?.avgResolutionMinutes)}</span>
-              <span className="text-muted-foreground whitespace-nowrap">Avg Resolution</span>
+          <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible md:pb-0">
+            <StatusTabs
+              value={filters.status}
+              onSelect={handleStatClick}
+              counts={{
+                active: stats.active,
+                all: stats.total,
+                open: stats.open,
+                pending: stats.pending,
+                resolved: stats.resolved,
+                closed: stats.closed,
+              }}
+              // The row must not wrap while it is a horizontal scroller on
+              // mobile, or the tabs stack instead of scrolling.
+              className="flex-nowrap md:flex-wrap"
+            />
+            <div className="flex items-center gap-2 md:ml-auto">
+              <MetricChip
+                icon={MessageSquare}
+                value={statsLoading ? '–' : formatDuration(brandStats?.responseMetrics?.avgFirstResponseMinutes)}
+                label="avg response"
+              />
+              <MetricChip
+                icon={Timer}
+                value={statsLoading ? '–' : formatDuration(brandStats?.responseMetrics?.avgResolutionMinutes)}
+                label="avg resolution"
+              />
             </div>
           </div>
         )}

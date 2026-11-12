@@ -1,4 +1,5 @@
 export { Pill } from './pill';
+export { StatusTabs, MetricChip, STATUS_TABS } from './status-tabs';
 export { StatusBadge } from './status-badge';
 export { PriorityBadge } from './priority-badge';
 export { TicketFilters } from './ticket-filters';

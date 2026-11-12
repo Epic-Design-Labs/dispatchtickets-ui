@@ -69,7 +69,7 @@ import { Category } from '@/lib/api/categories';
 import { Tag } from '@/lib/api/tags';
 import { BulkActionType } from '@/lib/hooks/use-tickets';
 import { getGravatarUrl } from '@/lib/gravatar';
-import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical, MoreVertical, Eye, ExternalLink, UserCheck } from 'lucide-react';
+import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical, MoreVertical, Eye, ExternalLink, UserCheck, Inbox } from 'lucide-react';
 
 // Column definitions - built-in columns use these keys
 type BuiltInColumnKey = 'ticketNumber' | 'subject' | 'status' | 'priority' | 'customer' | 'assignee' | 'category' | 'created' | 'createdBy' | 'updated' | 'createdAge' | 'updatedAge' | 'dueAt';
@@ -884,27 +884,28 @@ export function TicketTable({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border">
+      <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12"></TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Created</TableHead>
+          <TableHeader className="bg-surface-muted">
+            <TableRow className="hover:bg-transparent">
+              {['', 'Subject', 'Status', 'Priority', 'Contact', 'Created'].map((label, i) => (
+                <TableHead
+                  key={i}
+                  className={`text-muted-foreground h-11 px-3 text-xs font-semibold ${i === 0 ? 'w-12' : ''}`}
+                >
+                  {label}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {[1, 2, 3, 4, 5].map((i) => (
               <TableRow key={i}>
-                <TableCell><Skeleton className="h-4 w-4" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-14" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                {[4, 48, 16, 14, 32, 20].map((w, c) => (
+                  <TableCell key={c} className="px-3 py-2.5">
+                    <Skeleton className="h-4" style={{ width: `${w * 4}px` }} />
+                  </TableCell>
+                ))}
               </TableRow>
             ))}
           </TableBody>
@@ -915,23 +916,13 @@ export function TicketTable({
 
   if (tickets.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-md border py-12">
-        <svg
-          className="mb-4 h-12 w-12 text-muted-foreground"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-          />
-        </svg>
-        <p className="text-lg font-medium">No tickets found</p>
-        <p className="text-muted-foreground">
-          Create a ticket or adjust your filters
+      <div className="bg-card flex flex-col items-center justify-center rounded-xl border px-5 py-14 text-center shadow-sm">
+        <span className="bg-brand-soft text-brand mb-3.5 grid h-12 w-12 place-items-center rounded-[14px]">
+          <Inbox className="h-6 w-6" />
+        </span>
+        <p className="text-base font-semibold">No tickets found</p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Create a ticket, or widen the filters above.
         </p>
       </div>
     );
@@ -941,7 +932,7 @@ export function TicketTable({
     <div className="space-y-2">
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-2">
+        <div className="border-brand-softer bg-brand-soft flex items-center gap-2 rounded-xl border p-2">
           <span className="text-sm font-medium px-2">
             {selectedIds.size} selected
           </span>
@@ -1121,11 +1112,14 @@ export function TicketTable({
         return <div className="flex justify-end mb-2">{columnsDropdown}</div>;
       })()}
 
-      <div className="rounded-md border overflow-x-auto">
+      <div className="bg-card overflow-x-auto rounded-xl border shadow-sm">
         <Table className={resizingColumn ? 'select-none' : ''} style={{ minWidth: 'max-content' }}>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12 sticky left-0 z-20 bg-background">
+          <TableHeader className="bg-surface-muted">
+            <TableRow className="hover:bg-transparent">
+              {/* The sticky heads take the HEADER's fill, not the page's white:
+                  bg-background here would leave two pale columns floating in
+                  front of a tinted header row. */}
+              <TableHead className="bg-surface-muted sticky left-0 z-20 h-11 w-12 px-3">
                 <Checkbox
                   checked={allSelected}
                   ref={(el) => {
@@ -1141,12 +1135,12 @@ export function TicketTable({
                 const width = getColumnWidth(col.key);
                 const isFirstColumn = index === 0;
                 const stickyClasses = isFirstColumn
-                  ? 'sticky left-12 z-10 bg-background shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
+                  ? 'sticky left-12 z-10 bg-surface-muted shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
                   : '';
                 return (
                   <TableHead
                     key={col.key}
-                    className={`relative group whitespace-normal ${stickyClasses}`}
+                    className={`group text-muted-foreground relative h-11 px-3 text-xs font-semibold whitespace-normal ${stickyClasses}`}
                     style={width
                       ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` }
                       : { minWidth: 'min-content' }
@@ -1179,7 +1173,7 @@ export function TicketTable({
                   </TableHead>
                 );
               })}
-              <TableHead className="w-10" />
+              <TableHead className="h-11 w-10 px-3" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1188,11 +1182,13 @@ export function TicketTable({
               return (
                 <TableRow
                   key={ticket.id}
-                  className={`group cursor-pointer hover:bg-muted/50 ${isSelected ? 'bg-muted/30' : ''}`}
+                  className={`group cursor-pointer ${isSelected ? 'bg-brand-soft' : 'hover:bg-surface-muted'}`}
                 >
                   <TableCell
                     onClick={(e) => e.stopPropagation()}
-                    className={`sticky left-0 z-20 group-hover:bg-muted/50 ${isSelected ? 'bg-muted/30' : 'bg-background'}`}
+                    className={`sticky left-0 z-20 px-3 py-2.5 ${
+                      isSelected ? 'bg-brand-soft' : 'bg-card group-hover:bg-surface-muted'
+                    }`}
                   >
                     <Checkbox
                       checked={isSelected}
@@ -1203,8 +1199,14 @@ export function TicketTable({
                   {visibleColumns.map((col, index) => {
                     const width = getColumnWidth(col.key);
                     const isFirstColumn = index === 0;
+                    // A sticky cell scrolls over its neighbours, so it needs an
+                    // opaque fill of its own -- and that fill has to track the
+                    // row's state exactly, or the frozen columns drift out of
+                    // step with the row on hover and on select.
                     const stickyClasses = isFirstColumn
-                      ? `sticky left-12 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] group-hover:bg-muted/50 ${isSelected ? 'bg-muted/30' : 'bg-background'}`
+                      ? `sticky left-12 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] ${
+                          isSelected ? 'bg-brand-soft' : 'bg-card group-hover:bg-surface-muted'
+                        }`
                       : '';
                     return (
                       <TableCell
@@ -1213,13 +1215,13 @@ export function TicketTable({
                           ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` }
                           : { minWidth: 'min-content' }
                         }
-                        className={`${width ? 'truncate' : ''} ${stickyClasses}`}
+                        className={`px-3 py-2.5 ${width ? 'truncate' : ''} ${stickyClasses}`}
                       >
                         {renderCellValue(ticket, col.key)}
                       </TableCell>
                     );
                   })}
-                  <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="w-10 px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                     {renderActions?.(ticket)}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
