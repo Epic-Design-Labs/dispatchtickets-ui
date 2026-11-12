@@ -21,6 +21,7 @@ import { useGlobalChatQueue } from '@/lib/hooks/use-chat';
 import { useSidebarCollapsed } from '@/lib/ui-prefs';
 import { BrandList } from './brand-list';
 import { OrgSwitcher } from './org-switcher';
+import { ClerkOrgRailSwitcher, LegacyOrgRailSwitcher } from './org-rail-switcher';
 import { NotificationBell } from './notification-bell';
 import {
   SidebarCollapsedProvider,
@@ -282,11 +283,9 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
               org_id claim — the API uses that to scope data).
             • Stackbe users: the legacy OrgSwitcher (Stackbe API + session).
 
-            HIDDEN ON THE RAIL. Both switchers render an avatar, a name and a
-            chevron, and Clerk's appearance API gives no way to drop to the
-            avatar alone — cramming it into 68px crops it. Switching org is
-            rare and expanding costs one click, so the rail drops it rather
-            than showing something broken.
+            ON THE RAIL both are replaced by OrgRailSwitcher, which draws the
+            org as a BrandTile and opens our own menu — see that file for why
+            it is not simply Clerk's component with its text hidden.
 
             "Manage" is pointed at OUR team page (organizationProfileMode
             "navigation"), because Clerk's <OrganizationProfile /> is member
@@ -311,7 +310,19 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
             Until then, the backstop is the organizationMembership.deleted
             webhook, which runs the same cleanup for a removal that never
             touched the API. */}
-        {!collapsed && (
+        {collapsed ? (
+          /* No wrapper here: the switcher draws its own bordered strip, so a
+             member with one organization gets nothing rather than an empty
+             rule across the rail. */
+          <>
+            <SignedIn>
+              <ClerkOrgRailSwitcher />
+            </SignedIn>
+            <SignedOut>
+              <LegacyOrgRailSwitcher />
+            </SignedOut>
+          </>
+        ) : (
           <div className="shrink-0 border-t px-3 py-2">
             <SignedIn>
               <OrganizationSwitcher
