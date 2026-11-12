@@ -1,10 +1,16 @@
 /**
- * Deterministic colour + initials for a brand that has no uploaded icon.
+ * Deterministic colour + initials for anything named that has no picture of
+ * its own: a brand with no uploaded icon, an agent with no avatar, a contact
+ * with no gravatar.
  *
- * The palette and the hash are lifted verbatim from the design so a brand
- * lands on the same colour here as it does in the mock. Do not "improve" the
- * hash: the colour is identity, and changing the function reshuffles every
- * brand's colour at once.
+ * The palette and the hash are lifted verbatim from the design, which uses one
+ * function for every such tile, so a name lands on the same colour here as it
+ * does in the mock. Do not "improve" the hash: the colour is identity, and
+ * changing the function reshuffles everyone's colour at once.
+ *
+ * The palette is chosen for distinctness, NOT for legibility under white text
+ * -- amber, emerald and teal all fail contrast against it. Pair it with
+ * `readableTextOn()` rather than hard-coding a text colour.
  */
 const BRAND_PALETTE = [
   '#7c4dff',

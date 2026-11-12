@@ -1,10 +1,12 @@
 'use client';
 
+import { MessageSquare } from 'lucide-react';
 import { Comment, Contact, TeamMember } from '@/types';
-import { formatDateTime } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn, formatDateTime } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MarkdownContent } from '@/components/ui/markdown-content';
+import { PersonAvatar } from '@/components/person-avatar';
+import { Pill } from '@/components/tickets/pill';
 import { getGravatarUrl } from '@/lib/gravatar';
 
 interface CommentThreadProps {
@@ -36,21 +38,11 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
 
   if (comments.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <svg
-          className="mb-2 h-8 w-8 text-muted-foreground"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-          />
-        </svg>
-        <p className="text-muted-foreground">No comments yet</p>
+      <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+        <span className="bg-brand-soft text-brand grid h-11 w-11 place-items-center rounded-xl">
+          <MessageSquare className="h-5 w-5" />
+        </span>
+        <p className="text-muted-foreground text-sm">No replies yet</p>
       </div>
     );
   }
@@ -102,22 +94,6 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
     return comment.authorId || 'Contact';
   };
 
-  const getAuthorInitial = (comment: Comment) => {
-    // Use initials from author name if available
-    const authorName = comment.metadata?.authorName as string | undefined;
-    if (authorName) {
-      return authorName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    }
-
-    // Fall back to type-based initials
-    if (comment.authorType === 'AGENT') return 'A';
-    if (comment.authorType === 'SYSTEM') return 'S';
-    // Use customer name/email initial if available
-    if (customer?.name) return customer.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    if (customer?.email) return customer.email[0].toUpperCase();
-    return 'C';
-  };
-
   const isInternal = (comment: Comment) => {
     return comment.metadata?.isInternal === true;
   };
@@ -126,51 +102,59 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
 
   return (
     <div className="space-y-4">
-      {sortedComments.map((comment) => (
-        <div key={comment.id} className="flex gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={getAuthorAvatarUrl(comment)} alt={getAuthorLabel(comment)} />
-            <AvatarFallback
-              className={
-                comment.authorType === 'AGENT'
-                  ? 'bg-blue-100 text-blue-700'
-                  : comment.authorType === 'SYSTEM'
-                    ? 'bg-gray-100 text-gray-700'
-                    : ''
-              }
-            >
-              {getAuthorInitial(comment)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{getAuthorLabel(comment)}</span>
-              {comment.metadata?.isTicketBody === true && (
-                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-800">
-                  {comment.metadata?.isConvertedDescription === true ? 'Turned into ticket' : 'Original Request'}
-                </span>
-              )}
-              {comment.metadata?.chatOpeningMessage === true && (
-                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-800">Chat started</span>
-              )}
-              {isInternal(comment) && (
-                <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-xs text-yellow-800">
-                  Internal
-                </span>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {formatDateTime(comment.createdAt)}
-              </span>
+      {sortedComments.map((comment) => {
+        const label = getAuthorLabel(comment);
+        const internal = isInternal(comment);
+        const system = comment.authorType === 'SYSTEM';
+        // Three kinds of message, told apart by their fill rather than by a
+        // label someone has to read: a note the customer will never see is
+        // amber, our own reply carries the brand violet, and what the customer
+        // wrote sits plain on the page. A chat reply is one of ours too.
+        const tone = internal ? 'note' : !system && comment.authorType === 'AGENT' ? 'reply' : 'plain';
+
+        return (
+          <div
+            key={comment.id}
+            className="flex gap-3 border-t pt-4 first:border-t-0 first:pt-0"
+          >
+            <PersonAvatar name={label} imageUrl={getAuthorAvatarUrl(comment)} system={system} />
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold">{label}</span>
+                {comment.metadata?.isTicketBody === true && (
+                  <Pill dot={false} className="bg-info-soft text-info">
+                    {comment.metadata?.isConvertedDescription === true ? 'Turned into ticket' : 'Original request'}
+                  </Pill>
+                )}
+                {comment.metadata?.chatOpeningMessage === true && (
+                  <Pill dot={false} className="bg-info-soft text-info">
+                    Chat started
+                  </Pill>
+                )}
+                {internal && (
+                  <Pill dot={false} className="bg-warning-soft text-warning-foreground">
+                    Internal note
+                  </Pill>
+                )}
+                <span className="text-subtle text-xs">{formatDateTime(comment.createdAt)}</span>
+              </div>
+              <MarkdownContent
+                content={comment.body}
+                className={cn(
+                  'text-sm',
+                  // w-fit so a one-line reply hugs its text instead of
+                  // painting a full-width slab, as the design has it.
+                  tone === 'note' && 'bg-warning-soft border-warning/25 w-fit max-w-full rounded-lg border px-3 py-2',
+                  tone === 'reply' && 'bg-brand-soft border-brand-softer w-fit max-w-full rounded-lg border px-3 py-2',
+                  system && 'text-muted-foreground'
+                )}
+                skipSignatureDetection={system}
+                brandId={brandId}
+              />
             </div>
-            <MarkdownContent
-              content={comment.body}
-              className="mt-1 text-sm"
-              skipSignatureDetection={comment.authorType === 'SYSTEM'}
-              brandId={brandId}
-            />
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

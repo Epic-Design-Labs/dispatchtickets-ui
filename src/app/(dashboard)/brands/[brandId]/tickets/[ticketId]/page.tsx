@@ -47,6 +47,8 @@ import { formatDateTime } from '@/lib/utils';
 import { formatTicketNumber } from '@/lib/ticket-number';
 import { readableTextOn, softFill } from '@/lib/soft-color';
 import { Pill } from '@/components/tickets/pill';
+import { PersonAvatar } from '@/components/person-avatar';
+import { getGravatarUrl } from '@/lib/gravatar';
 import { ConvertChatButton } from '@/components/chat/convert-chat-button';
 import { CustomFieldInput } from '@/components/fields';
 
@@ -277,20 +279,9 @@ export default function TicketDetailPage() {
     return member.email;
   };
 
-  const getMemberInitials = (memberId: string) => {
-    const member = teamMembers.find(m => m.id === memberId);
-    if (!member) return '?';
-    if (member.firstName && member.lastName) {
-      return `${member.firstName[0]}${member.lastName[0]}`.toUpperCase();
-    }
-    if (member.firstName) return member.firstName[0].toUpperCase();
-    if (member.email) return member.email[0].toUpperCase();
-    return '?';
-  };
-
   const getMemberAvatarUrl = (memberId: string) => {
     const member = teamMembers.find(m => m.id === memberId);
-    return member?.avatarUrl;
+    return member?.avatarUrl || (member?.email ? getGravatarUrl(member.email, 32) : undefined);
   };
 
   const handleMarkAsSpam = async () => {
@@ -974,9 +965,11 @@ export default function TicketDetailPage() {
                 Contact
               </div>
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-medium">
-                  {ticket.customer.name?.[0]?.toUpperCase() || ticket.customer.email[0].toUpperCase()}
-                </div>
+                <PersonAvatar
+                  size="lg"
+                  name={ticket.customer.name || ticket.customer.email}
+                  imageUrl={ticket.customer.avatarUrl || getGravatarUrl(ticket.customer.email, 40)}
+                />
                 <div className="flex-1 min-w-0">
                   <Link
                     href={`/brands/${brandId}/contacts/${ticket.customer.id}`}
@@ -1035,17 +1028,10 @@ export default function TicketDetailPage() {
             </div>
             {ticket.assigneeId ? (
               <div className="flex items-center gap-2">
-                {getMemberAvatarUrl(ticket.assigneeId) ? (
-                  <img
-                    src={getMemberAvatarUrl(ticket.assigneeId)}
-                    alt={getMemberName(ticket.assigneeId)}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
-                    {getMemberInitials(ticket.assigneeId)}
-                  </div>
-                )}
+                <PersonAvatar
+                  name={getMemberName(ticket.assigneeId)}
+                  imageUrl={getMemberAvatarUrl(ticket.assigneeId)}
+                />
                 <span className="text-sm">{getMemberName(ticket.assigneeId)}</span>
               </div>
             ) : (
@@ -1098,11 +1084,11 @@ export default function TicketDetailPage() {
               const isDueSoon = !isOverdue && new Date(ticket.dueAt).getTime() - Date.now() < 24 * 60 * 60 * 1000;
               return (
                 <div className={`flex items-center gap-2 px-3 py-2 rounded-md border ${
-                  isOverdue ? 'bg-red-50 border-red-200' : isDueSoon ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
+                  isOverdue ? 'bg-danger-soft border-danger/25' : isDueSoon ? 'bg-warning-soft border-warning/25' : 'bg-success-soft border-success/25'
                 }`}>
-                  <Clock className={`h-4 w-4 ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-amber-600' : 'text-green-600'}`} />
+                  <Clock className={`h-4 w-4 ${isOverdue ? 'text-danger' : isDueSoon ? 'text-warning-foreground' : 'text-success-foreground'}`} />
                   <div>
-                    <span className={`text-sm font-medium ${isOverdue ? 'text-red-700' : isDueSoon ? 'text-amber-700' : 'text-green-700'}`}>
+                    <span className={`text-sm font-medium ${isOverdue ? 'text-danger' : isDueSoon ? 'text-warning-foreground' : 'text-success-foreground'}`}>
                       {isOverdue ? 'Overdue' : isDueSoon ? 'Due soon' : 'On track'}
                     </span>
                     <p className="text-xs text-muted-foreground">{formatDateTime(ticket.dueAt)}</p>
@@ -1162,9 +1148,9 @@ export default function TicketDetailPage() {
               <Clock className="h-4 w-4" />
               Activity Status
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-200">
-              <Clock className="h-4 w-4 text-amber-600" />
-              <span className="text-sm text-amber-700">Last update: {getLastActivity()}</span>
+            <div className="bg-surface-muted flex items-center gap-2 rounded-md border px-3 py-2">
+              <Clock className="text-subtle h-4 w-4" />
+              <span className="text-sm">Last update: {getLastActivity()}</span>
             </div>
           </div>
 
@@ -1182,7 +1168,7 @@ export default function TicketDetailPage() {
                   <MessageSquare className="h-4 w-4" />
                   First Response
                 </span>
-                <span className="text-emerald-600 font-medium">-</span>
+                <span className="text-subtle font-medium">-</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 text-muted-foreground">

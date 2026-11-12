@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface CommentEditorProps {
   brandId: string;
@@ -298,8 +299,44 @@ export function CommentEditor({ brandId, ticketId, chat = false }: CommentEditor
     setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
   }, []);
 
+  // Who the reply goes to, so the tab says it rather than making the agent
+  // remember. Falls back to a bare "Reply" when we have no name to use.
+  const replyTarget = chat
+    ? undefined
+    : firstName(ticket?.customer?.name || (ticket?.customFields?.requesterName as string | undefined));
+
   return (
     <div className="space-y-3">
+      {/* Internal note used to be a checkbox in the row of controls below --
+          a single tick between "only my team reads this" and "this is emailed
+          to the customer", easy to miss in either direction. It is a mode
+          now, and the box it governs changes colour with it. */}
+      <div className="flex gap-0.5" role="tablist" aria-label="Reply or internal note">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!isInternal}
+          onClick={() => setIsInternal(false)}
+          className={cn(
+            'rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors',
+            !isInternal ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {replyTarget ? `Reply to ${replyTarget}` : 'Reply'}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isInternal}
+          onClick={() => setIsInternal(true)}
+          className={cn(
+            'rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors',
+            isInternal ? 'bg-warning-soft text-warning-foreground' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          Internal note
+        </button>
+      </div>
       <div className="relative">
         <MentionAutocomplete
           ref={textareaRef}
@@ -324,8 +361,11 @@ export function CommentEditor({ brandId, ticketId, chat = false }: CommentEditor
               ? isInternal
                 ? 'Internal note, not sent to the visitor (Enter to save, Shift+Enter for a new line)'
                 : 'Reply in chat (Enter to send, # for saved replies)'
-              : 'Add a comment... (paste images, @ to mention, # for saved replies)'
+              : isInternal
+                ? 'Only your team sees notes. @ to mention someone'
+                : 'Write a reply... (paste images, @ to mention, # for saved replies)'
           }
+          className={isInternal ? 'bg-warning-soft border-warning/50' : undefined}
           onPaste={handlePaste}
           onKeyDown={
             chat
@@ -485,15 +525,6 @@ export function CommentEditor({ brandId, ticketId, chat = false }: CommentEditor
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 md:gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={isInternal}
-              onChange={(e) => setIsInternal(e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            <span className="text-muted-foreground whitespace-nowrap">Internal note</span>
-          </label>
           <Button
             type="button"
             variant="ghost"
