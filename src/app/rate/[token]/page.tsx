@@ -12,6 +12,7 @@ import { RatingFormData, CsatType } from '@/types';
 import { ThumbsUp, ThumbsDown, Star, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BrandTile } from '@/components/brand-tile';
+import { readableTextOn } from '@/lib/soft-color';
 
 type PageState = 'loading' | 'ready' | 'submitting' | 'success' | 'error' | 'expired' | 'submitted';
 
@@ -97,6 +98,11 @@ export default function RatePage() {
             <div className="bg-success-soft mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
               <CheckCircle className="text-success-foreground h-8 w-8" />
             </div>
+            {formData && (
+              <div className="mb-4 flex justify-center">
+                <BrandMark brand={formData.brand} />
+              </div>
+            )}
             <h2 className="text-xl font-semibold mb-2">Thank you for your feedback!</h2>
             <p className="text-muted-foreground">
               Your response has been recorded and helps us improve our service.
@@ -163,23 +169,18 @@ export default function RatePage() {
   }
 
   // Ready state - show rating form
+  // The accent arrives already validated as #rrggbb, so the only question left
+  // is what reads on it -- which is measured, never assumed to be white.
+  const accent = formData?.brand.accentColor || null;
+
   return (
     <div className="bg-canvas flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="flex flex-col items-center gap-2 text-center">
-          {/* The customer arrived here from an email wearing the brand's name
-              and colours. Landing on an unbranded page reads as a different
-              company asking, so the brand leads. All the API hands us is a
-              name, which is enough for the tile to derive a colour from. */}
-          {formData?.brand.name && (
-            <div className="flex items-center gap-2">
-              <BrandTile name={formData.brand.name} size="lg" />
-              <span className="font-semibold">{formData.brand.name}</span>
-            </div>
-          )}
+          {formData && <BrandMark brand={formData.brand} />}
           <CardTitle className="text-xl">How was your experience?</CardTitle>
           <CardDescription className="font-mono text-xs">
-            #{formData?.ticket.ticketNumber}
+            {formData?.ticket.publicId}
           </CardDescription>
           <p className="mt-1 text-sm font-medium">{formData?.ticket.title}</p>
         </CardHeader>
@@ -215,11 +216,47 @@ export default function RatePage() {
             size="lg"
             onClick={handleSubmit}
             disabled={selectedRating === null || pageState === 'submitting'}
+            style={
+              accent
+                ? { backgroundColor: accent, color: readableTextOn(accent) }
+                : undefined
+            }
           >
             {pageState === 'submitting' ? 'Submitting...' : 'Submit Feedback'}
           </Button>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/**
+ * The brand's mark at the top of the card.
+ *
+ * A wordmark wins where there is one: it is what the header of the email that
+ * sent the customer here carries, so the page continues that rather than
+ * restating the name in our own type. Falling back, the square icon becomes a
+ * tile, and failing that the tile derives a colour from the name -- which is
+ * still more of the brand than the generic chrome this page used to show.
+ */
+function BrandMark({ brand }: { brand: RatingFormData['brand'] }) {
+  if (brand.logoUrl) {
+    return (
+      /* A brand-supplied URL on an arbitrary host, so next/image would need
+         every one of them in remotePatterns. */
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={brand.logoUrl}
+        alt={brand.name}
+        className="max-h-10 max-w-[200px] object-contain"
+      />
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <BrandTile name={brand.name} iconUrl={brand.iconUrl} size="lg" />
+      <span className="font-semibold">{brand.name}</span>
     </div>
   );
 }

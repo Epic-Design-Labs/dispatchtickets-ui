@@ -54,6 +54,12 @@ export interface RatingFormData {
   };
   brand: {
     name: string;
+    /** The brand's wordmark, as used in the header of its emails. */
+    logoUrl?: string | null;
+    /** The square brand icon, for the tile shown when there is no wordmark. */
+    iconUrl?: string | null;
+    /** #rrggbb, already validated server-side. Null when the brand set none. */
+    accentColor?: string | null;
   };
 }
 
