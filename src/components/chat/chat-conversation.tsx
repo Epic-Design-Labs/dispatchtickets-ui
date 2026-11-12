@@ -135,7 +135,7 @@ export function ChatConversation({ brandId, ticketId }: { brandId: string; ticke
         </div>
       </div>
 
-      <aside className="hidden w-72 shrink-0 overflow-y-auto border-l bg-gray-50 p-4 xl:block">
+      <aside className="bg-canvas hidden w-72 shrink-0 overflow-y-auto border-l p-4 xl:block">
         <TicketChatSection brandId={brandId} ticketId={ticketId} isChat converted={!!ticket.chatConvertedAt} />
       </aside>
     </div>

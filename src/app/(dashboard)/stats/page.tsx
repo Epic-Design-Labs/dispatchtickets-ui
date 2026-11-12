@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useDashboardStats, useDashboardTrends, useBrands } from '@/lib/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Clock, MessageCircle } from 'lucide-react';
+import { StatusTabs } from '@/components/tickets';
 import {
   Area,
   AreaChart,
@@ -85,55 +86,18 @@ export default function StatsPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-violet-500 text-white">
-          <span className="h-2 w-2 rounded-full bg-blue-300" />
-          <span>Active</span>
-          <span className="font-bold text-lg ml-2">
-            {statsLoading ? '...' : (stats?.open || 0) + (stats?.pending || 0)}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
-          <span className="h-2 w-2 rounded-full bg-blue-500" />
-          <span>All</span>
-          <span className="font-bold text-lg ml-2">
-            {statsLoading ? '...' : (stats?.open || 0) + (stats?.pending || 0) + (stats?.resolved || 0) + (stats?.closed || 0)}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          <span>Open</span>
-          <span className="font-bold text-lg ml-2">
-            {statsLoading ? '...' : stats?.open || 0}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
-          <span className="h-2 w-2 rounded-full bg-amber-500" />
-          <span>Pending</span>
-          <span className="font-bold text-lg ml-2">
-            {statsLoading ? '...' : stats?.pending || 0}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
-          <span className="h-2 w-2 rounded-full bg-green-500" />
-          <span>Resolved</span>
-          <span className="font-bold text-lg ml-2">
-            {statsLoading ? '...' : stats?.resolved || 0}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
-          <span className="h-2 w-2 rounded-full bg-gray-400" />
-          <span>Closed</span>
-          <span className="font-bold text-lg ml-2">
-            {statsLoading ? '...' : stats?.closed || 0}
-          </span>
-        </div>
-      </div>
+      <StatusTabs
+        className="mb-6"
+        counts={{
+          active: (stats?.open || 0) + (stats?.pending || 0),
+          all: (stats?.open || 0) + (stats?.pending || 0) + (stats?.resolved || 0) + (stats?.closed || 0),
+          open: stats?.open || 0,
+          pending: stats?.pending || 0,
+          resolved: stats?.resolved || 0,
+          closed: stats?.closed || 0,
+        }}
+        loading={statsLoading}
+      />
 
       {/* Response Metrics */}
       <div className="grid grid-cols-2 gap-4 mb-6">

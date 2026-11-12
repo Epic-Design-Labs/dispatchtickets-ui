@@ -470,11 +470,11 @@ export default function TicketDetailPage() {
           <Skeleton className="h-4 w-48" />
         </header>
         <div className="flex flex-col md:flex-row flex-1">
-          <div className="flex-1 bg-white p-4 md:p-6">
+          <div className="bg-card flex-1 p-4 md:p-6">
             <Skeleton className="h-8 w-64 mb-4" />
             <Skeleton className="h-24 w-full" />
           </div>
-          <div className="w-full md:w-80 bg-gray-50 p-4 md:p-6">
+          <div className="bg-canvas w-full p-4 md:w-80 md:p-6">
             <Skeleton className="h-4 w-full mb-4" />
             <Skeleton className="h-4 w-full mb-4" />
             <Skeleton className="h-4 w-full" />
@@ -550,7 +550,7 @@ export default function TicketDetailPage() {
       </header>
 
       {/* Title bar - White background */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b bg-white px-4 md:px-6 py-3 md:py-4">
+      <div className="bg-card flex flex-col justify-between gap-3 border-b px-4 py-3 md:flex-row md:items-center md:px-6 md:py-4">
         <div className="flex-1 min-w-0">
           {isEditingTitle ? (
             <div className="flex items-center gap-2 max-w-2xl">
@@ -638,7 +638,7 @@ export default function TicketDetailPage() {
         <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
           {/* Prev/Next navigation - hidden on mobile */}
           {totalCount > 0 && (
-            <div className="hidden md:flex items-center border rounded-lg bg-white">
+            <div className="bg-card hidden items-center rounded-lg border md:flex">
               <Button
                 variant="ghost"
                 size="sm"
@@ -738,7 +738,7 @@ export default function TicketDetailPage() {
       {/* Main content area - Two columns (stacks on mobile) */}
       <div className="flex flex-col md:flex-row flex-1 overflow-auto">
         {/* Left column - White background */}
-        <div className="flex-1 bg-white p-4 md:p-6 space-y-6 overflow-visible md:overflow-auto">
+        <div className="bg-card flex-1 space-y-6 overflow-visible p-4 md:overflow-auto md:p-6">
           {/* Description */}
           <Card>
             <CardHeader className="pb-3">
@@ -949,7 +949,7 @@ export default function TicketDetailPage() {
         </div>
 
         {/* Right sidebar - Grey background (full width on mobile) */}
-        <div className="w-full md:w-80 bg-gray-50 border-t md:border-t-0 md:border-l p-4 md:p-6 space-y-6 overflow-visible md:overflow-auto">
+        <div className="bg-canvas w-full space-y-6 overflow-visible border-t p-4 md:w-80 md:overflow-auto md:border-t-0 md:border-l md:p-6">
           {/* Contact Section */}
           {ticket.customer && (
             <div className="space-y-3">

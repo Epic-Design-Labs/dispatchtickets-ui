@@ -36,7 +36,16 @@ export const STATUS_TABS: StatusTabDef[] = [
 interface StatusTabsProps {
   /** The active status filter. Empty or undefined counts as 'active'. */
   value?: string | null;
-  onSelect: (key: string) => void;
+  /**
+   * Omit to render the row as a read-only summary rather than a filter.
+   *
+   * The statistics page shows the same six figures but changes nothing when
+   * you click them, and it had its own copy of this markup built out of divs
+   * -- which is how it ended up drawing "Open" in emerald while both queues
+   * drew it in blue. One component covers both, and a row that filters nothing
+   * is spans rather than buttons, so it does not invite the click.
+   */
+  onSelect?: (key: string) => void;
   counts: Record<string, number | undefined>;
   /** Show a placeholder in the count chips rather than a misleading zero. */
   loading?: boolean;
@@ -44,24 +53,29 @@ interface StatusTabsProps {
 }
 
 export function StatusTabs({ value, onSelect, counts, loading, className }: StatusTabsProps) {
+  const interactive = !!onSelect;
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
       {STATUS_TABS.map((tab) => {
-        // 'active' is the default view, so it owns the empty value too.
-        const isActive = tab.key === 'active' ? !value || value === 'active' : value === tab.key;
+        // 'active' is the default view, so it owns the empty value too. A
+        // read-only row highlights nothing: there is no selection to show.
+        const isActive =
+          interactive && (tab.key === 'active' ? !value || value === 'active' : value === tab.key);
         const Icon = tab.icon;
+        const Tag = interactive ? 'button' : 'div';
         return (
-          <button
+          <Tag
             key={tab.key}
-            type="button"
-            onClick={() => onSelect(tab.key)}
-            aria-pressed={isActive}
+            {...(interactive
+              ? { type: 'button' as const, onClick: () => onSelect(tab.key), 'aria-pressed': isActive }
+              : {})}
             className={cn(
               'flex shrink-0 items-center gap-2 rounded-lg border py-[5px] pr-2.5 pl-[5px]',
-              'text-sm font-medium transition-colors',
+              'text-sm font-medium',
               isActive
                 ? 'border-brand bg-brand text-white shadow-[0_2px_8px_rgba(124,77,255,0.25)]'
-                : 'border-border-strong bg-card hover:bg-surface-muted'
+                : 'border-border-strong bg-card',
+              interactive && !isActive && 'hover:bg-surface-muted transition-colors'
             )}
           >
             <span
@@ -81,7 +95,7 @@ export function StatusTabs({ value, onSelect, counts, loading, className }: Stat
             >
               {loading ? '–' : (counts[tab.key] ?? 0)}
             </span>
-          </button>
+          </Tag>
         );
       })}
     </div>
