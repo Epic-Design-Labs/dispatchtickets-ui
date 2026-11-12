@@ -212,7 +212,7 @@ function Problem({ title, children }: { title: string; children: React.ReactNode
     <Centered>
       <div className="w-full max-w-md rounded-xl border bg-card p-6 space-y-3">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-amber-600" />
+          <AlertTriangle className="text-warning-foreground h-5 w-5" />
           <h1 className="text-lg font-semibold">{title}</h1>
         </div>
         <p className="text-sm text-muted-foreground">{children}</p>

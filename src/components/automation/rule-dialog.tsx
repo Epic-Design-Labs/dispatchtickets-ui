@@ -607,8 +607,8 @@ export function RuleDialog({
             )}
 
             {usesForgeable && (
-              <div className="flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
-                <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-amber-600" />
+              <div className="border-warning/40 bg-warning-soft flex gap-2 rounded-md border p-3 text-xs">
+                <AlertTriangle className="text-warning-foreground mt-px h-4 w-4 shrink-0" />
                 <div className="space-y-1">
                   <p>
                     <strong>The requester address can be forged.</strong> It comes from the

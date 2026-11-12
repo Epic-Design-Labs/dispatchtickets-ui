@@ -223,13 +223,13 @@ export default function MemberDetailPage() {
         <div className="flex items-center gap-3">
           {memberName && <h1 className="text-2xl font-semibold">{memberName}</h1>}
           {isMemberOwner && (
-            <Badge variant="secondary" className="text-amber-600">
+            <Badge variant="secondary" className="text-warning-foreground">
               <Crown className="mr-1 h-3 w-3" />
               Owner
             </Badge>
           )}
           {isPending && (
-            <Badge variant="outline" className="text-amber-600 border-amber-300">
+            <Badge variant="outline" className="text-warning-foreground border-warning/30">
               Pending Invite
             </Badge>
           )}
@@ -265,7 +265,7 @@ export default function MemberDetailPage() {
               {isMemberOwner ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-amber-600">
+                    <Badge variant="secondary" className="text-warning-foreground">
                       <Crown className="mr-1 h-3 w-3" />
                       Owner
                     </Badge>
@@ -411,16 +411,16 @@ export default function MemberDetailPage() {
 
         {/* Danger Zone */}
         {canManageMembers && !isMemberOwner && (
-          <Card className="border-red-200">
+          <Card className="border-danger/25">
             <CardHeader>
-              <CardTitle className="text-red-600">Danger Zone</CardTitle>
+              <CardTitle className="text-destructive">Danger Zone</CardTitle>
               <CardDescription>
                 Irreversible actions for this member.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {isCurrentUserOwner && !isPending && (
-                <div className="flex items-center justify-between rounded-lg border border-amber-200 p-4">
+                <div className="flex items-center justify-between border-warning/25 rounded-lg border p-4">
                   <div>
                     <p className="font-medium">Transfer Ownership</p>
                     <p className="text-sm text-muted-foreground">
@@ -458,9 +458,9 @@ export default function MemberDetailPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between rounded-lg border border-red-200 p-4">
+              <div className="flex items-center justify-between border-danger/25 rounded-lg border p-4">
                 <div>
-                  <p className="font-medium text-red-600">
+                  <p className="text-destructive font-medium">
                     {isPending ? 'Cancel Invite' : 'Remove Member'}
                   </p>
                   <p className="text-sm text-muted-foreground">
@@ -497,7 +497,7 @@ export default function MemberDetailPage() {
                       <AlertDialogAction
                         onClick={handleRemove}
                         disabled={removeMember.isPending}
-                        className="bg-red-600 hover:bg-red-700"
+                        className="bg-destructive hover:bg-destructive/90"
                       >
                         {removeMember.isPending ? 'Removing...' : isPending ? 'Cancel Invite' : 'Remove Member'}
                       </AlertDialogAction>

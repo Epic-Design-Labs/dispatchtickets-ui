@@ -163,7 +163,7 @@ export function BrandList() {
                   {isAtBrandLimit ? (
                     <>
                       <p>Brand limit reached ({usageData?.brandLimit})</p>
-                      <p className="text-xs text-zinc-400">Upgrade to create more</p>
+                      <p className="text-subtle text-xs">Upgrade to create more</p>
                     </>
                   ) : (
                     <p>Create brand</p>

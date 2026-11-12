@@ -102,7 +102,7 @@ export function TicketCc({ cc, requesterEmail, disabled, onChange }: TicketCcPro
                 type="button"
                 onClick={() => save(cc.filter((a) => a !== address), `${address} removed`)}
                 disabled={disabled}
-                className="rounded-full p-0.5 hover:bg-gray-300"
+                className="hover:bg-border-strong rounded-full p-0.5"
                 aria-label={`Remove ${address}`}
               >
                 <X className="h-3 w-3" />

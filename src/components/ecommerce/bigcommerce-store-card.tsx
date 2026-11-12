@@ -32,11 +32,11 @@ const statusDisplay: Record<
   EcommerceStoreStatus,
   { label: string; dotClass: string }
 > = {
-  ACTIVE: { label: 'Connected', dotClass: 'bg-green-500' },
-  SYNCING: { label: 'Syncing', dotClass: 'bg-yellow-500 animate-pulse' },
-  PENDING_SETUP: { label: 'Setting up', dotClass: 'bg-yellow-500 animate-pulse' },
-  ERROR: { label: 'Error', dotClass: 'bg-red-500' },
-  DISCONNECTED: { label: 'Disconnected', dotClass: 'bg-gray-400' },
+  ACTIVE: { label: 'Connected', dotClass: 'bg-success' },
+  SYNCING: { label: 'Syncing', dotClass: 'bg-warning animate-pulse' },
+  PENDING_SETUP: { label: 'Setting up', dotClass: 'bg-warning animate-pulse' },
+  ERROR: { label: 'Error', dotClass: 'bg-danger' },
+  DISCONNECTED: { label: 'Disconnected', dotClass: 'bg-subtle' },
 };
 
 function formatSyncTime(dateStr: string | null): string {
@@ -111,7 +111,7 @@ function ConnectedStoreView({
         </div>
 
         {store.status === 'ERROR' && store.errorMessage && (
-          <p className="text-sm text-red-600 mb-3">{store.errorMessage}</p>
+          <p className="text-danger mb-3 text-sm">{store.errorMessage}</p>
         )}
 
         <div className="flex gap-2">

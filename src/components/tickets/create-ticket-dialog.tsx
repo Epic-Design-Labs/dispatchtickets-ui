@@ -37,6 +37,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
+import { PersonAvatar } from '@/components/person-avatar';
 import { CustomFieldsFormSection, validateCustomFields } from '@/components/fields';
 import { ContactCombobox } from '@/components/contacts/contact-combobox';
 import { Eye, Plus, X, Paperclip, Upload, FileIcon, Loader2 } from 'lucide-react';
@@ -52,11 +53,19 @@ const createTicketSchema = z.object({
   notifyCustomer: z.boolean(),
 });
 
+/**
+ * Four steps climbing from quiet to loud, with red kept for urgent alone.
+ *
+ * This is a ladder rather than a copy of `PriorityBadge`'s palette on purpose:
+ * the chip shows ONE priority on a row, while this select shows all four at
+ * once, so they have to be tellable apart from each other rather than merely
+ * readable on their own.
+ */
 const priorityColors: Record<string, string> = {
-  low: 'text-gray-600',
-  normal: 'text-blue-600',
-  high: 'text-orange-600',
-  urgent: 'text-red-600',
+  low: 'text-muted-foreground',
+  normal: 'text-brand',
+  high: 'text-warning-foreground',
+  urgent: 'text-danger',
 };
 
 type CreateTicketForm = z.infer<typeof createTicketSchema>;
@@ -391,7 +400,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                           <button
                             type="button"
                             onClick={() => removePendingAttachment(attachment.id)}
-                            className="hover:text-red-600 transition-colors"
+                            className="hover:text-destructive transition-colors"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -424,16 +433,16 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="low">
-                          <span className="text-gray-600">Low</span>
+                          <span className="text-muted-foreground">Low</span>
                         </SelectItem>
                         <SelectItem value="normal">
-                          <span className="text-blue-600">Normal</span>
+                          <span className="text-brand">Normal</span>
                         </SelectItem>
                         <SelectItem value="high">
-                          <span className="text-orange-600">High</span>
+                          <span className="text-warning-foreground">High</span>
                         </SelectItem>
                         <SelectItem value="urgent">
-                          <span className="text-red-600">Urgent</span>
+                          <span className="text-danger">Urgent</span>
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -598,9 +607,7 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                                   onSelect={() => addWatcher(member.id, member.email, getMemberName(member))}
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
-                                      {member.firstName?.[0] || member.email[0].toUpperCase()}
-                                    </div>
+                                    <PersonAvatar name={getMemberName(member)} size="sm" />
                                     <span className="text-sm">{getMemberName(member)}</span>
                                   </div>
                                 </CommandItem>
@@ -617,18 +624,20 @@ export function CreateTicketDialog({ brandId: fixedBrandId, children }: CreateTi
                     {watchers.map((watcher) => (
                       <div
                         key={watcher.memberEmail}
-                        className="inline-flex items-center gap-1 rounded-full bg-blue-100 pl-1.5 pr-1 py-0.5 text-sm group"
+                        className="bg-secondary group inline-flex items-center gap-1 rounded-full py-0.5 pl-1 pr-1.5 text-sm"
                       >
-                        <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
-                          {(watcher.memberName || watcher.memberEmail)[0].toUpperCase()}
-                        </div>
-                        <span className="text-blue-700 text-xs">
+                        <PersonAvatar
+                          name={watcher.memberName || watcher.memberEmail}
+                          size="sm"
+                          className="h-5 w-5 text-[9px]"
+                        />
+                        <span className="text-xs">
                           {watcher.memberName || watcher.memberEmail.split('@')[0]}
                         </span>
                         <button
                           type="button"
                           onClick={() => removeWatcher(watcher.memberEmail)}
-                          className="hover:text-red-600 transition-colors"
+                          className="hover:text-destructive transition-colors"
                         >
                           <X className="h-3 w-3" />
                         </button>

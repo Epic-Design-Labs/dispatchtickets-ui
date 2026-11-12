@@ -491,7 +491,7 @@ export default function RecurringTicketsPage() {
                           {rt.title}
                         </CardTitle>
                         {rt.enabled ? (
-                          <Badge variant="default" className="bg-green-500/10 text-green-600 hover:bg-green-500/10">
+                          <Badge variant="default" className="bg-success-soft text-success-foreground hover:bg-success-soft">
                             Active
                           </Badge>
                         ) : (

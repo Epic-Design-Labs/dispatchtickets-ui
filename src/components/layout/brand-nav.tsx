@@ -83,7 +83,7 @@ export function BrandNav({ brandId }: BrandNavProps) {
               {tab.name}
               {tab.segment === 'chat' && waitingChats > 0 && (
                 <span
-                  className="ml-1.5 rounded-full bg-red-600 px-1.5 text-xs font-semibold tabular-nums text-white"
+                  className="bg-danger ml-1.5 rounded-full px-1.5 text-xs font-semibold tabular-nums text-white"
                   aria-label={`${waitingChats} waiting`}
                 >
                   {waitingChats}

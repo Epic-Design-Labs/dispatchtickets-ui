@@ -158,8 +158,8 @@ function AuthCallbackContent() {
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+            <div className="mb-4 flex h-12 w-12 items-center justify-center bg-success-soft rounded-full">
+              <CheckCircle className="text-success-foreground h-6 w-6" />
             </div>
             <p className="text-lg font-medium">Successfully signed in!</p>
             <p className="text-sm text-muted-foreground">Redirecting...</p>

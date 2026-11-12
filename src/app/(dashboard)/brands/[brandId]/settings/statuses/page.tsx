@@ -187,12 +187,12 @@ export default function StatusesSettingsPage() {
   return (
     <div className="space-y-6">
       {/* Info Card */}
-      <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+      <Card className="border-info/25 bg-info-soft">
         <CardContent className="flex items-start gap-3 py-4">
-          <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-          <div className="text-sm text-blue-800 dark:text-blue-200">
+          <Info className="text-info mt-0.5 h-5 w-5" />
+          <div className="text-info text-sm">
             <p className="font-medium">About Ticket Statuses</p>
-            <p className="mt-1 text-blue-700 dark:text-blue-300">
+            <p className="mt-1">
               System statuses (Open, Pending, Resolved, Closed) cannot be deleted but their colors and descriptions can be customized.
               Create custom statuses to match your workflow, like &quot;In Progress&quot; or &quot;Waiting on Contact&quot;.
             </p>
@@ -449,7 +449,7 @@ export default function StatusesSettingsPage() {
             <AlertDialogDescription>
               Are you sure you want to delete &quot;{deletingStatus?.name}&quot;?
               {getStatusTicketCount(deletingStatus?.id || '') > 0 && (
-                <span className="block mt-2 text-amber-600 dark:text-amber-400">
+                <span className="text-warning-foreground mt-2 block">
                   Warning: This status has {getStatusTicketCount(deletingStatus?.id || '')} tickets.
                   Those tickets will keep their current status reference but may need to be updated.
                 </span>

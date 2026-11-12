@@ -184,11 +184,11 @@ export default function StatsPage() {
                           </div>
                           <div className="grid gap-1">
                             <div className="flex items-center gap-2 text-sm">
-                              <div className="h-2 w-2 rounded-full bg-blue-500" />
+                              <div className="bg-info h-2 w-2 rounded-full" />
                               <span>Created: {payload[0]?.value}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
-                              <div className="h-2 w-2 rounded-full bg-green-500" />
+                              <div className="bg-success h-2 w-2 rounded-full" />
                               <span>Resolved: {payload[1]?.value}</span>
                             </div>
                           </div>
@@ -223,11 +223,11 @@ export default function StatsPage() {
           )}
           <div className="flex items-center justify-center gap-6 mt-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-blue-500" />
+              <div className="bg-info h-2 w-2 rounded-full" />
               <span>Created</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-2 w-2 rounded-full bg-green-500" />
+              <div className="bg-success h-2 w-2 rounded-full" />
               <span>Resolved</span>
             </div>
           </div>

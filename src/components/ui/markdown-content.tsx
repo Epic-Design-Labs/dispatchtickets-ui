@@ -137,7 +137,7 @@ function ClickableLink({ href, text, className }: { href: string; text: string; 
       href={resolvedUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className={className || "text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300"}
+      className={className || "text-info hover:text-info/80 underline"}
       title={text}
     >
       {text}
@@ -630,7 +630,7 @@ function processTextWithLinks(
         <Link
           key={part.key}
           href={`/team/${part.memberId}`}
-          className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1 py-0.5 rounded font-medium text-sm hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
+          className="bg-info-soft text-info hover:bg-info-soft/70 rounded px-1 py-0.5 text-sm font-medium transition-colors"
         >
           @{part.displayName}
         </Link>
@@ -675,7 +675,7 @@ function processTextWithLinks(
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300 break-all"
+                className="text-info hover:text-info/80 break-all underline"
                 title={url}
               >
                 {truncateUrl(url)}

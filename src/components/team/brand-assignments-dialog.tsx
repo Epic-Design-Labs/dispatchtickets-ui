@@ -105,7 +105,7 @@ export function BrandAssignmentsDialog({
           <DialogDescription>
             Configure which brands {memberName} can access.
             {!canModify && member.role === 'owner' && (
-              <span className="block mt-1 text-amber-600">
+              <span className="text-warning-foreground mt-1 block">
                 Only the owner can modify their own brand access.
               </span>
             )}

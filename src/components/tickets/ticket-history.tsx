@@ -27,26 +27,26 @@ interface TicketHistoryProps {
 function getEventIcon(event: string) {
   switch (event) {
     case 'ticket.created':
-      return <PlusCircle className="h-3.5 w-3.5 text-green-500" />;
+      return <PlusCircle className="text-success-foreground h-3.5 w-3.5" />;
     case 'ticket.updated':
-      return <Edit className="h-3.5 w-3.5 text-blue-500" />;
+      return <Edit className="text-info h-3.5 w-3.5" />;
     case 'ticket.deleted':
-      return <Trash2 className="h-3.5 w-3.5 text-red-500" />;
+      return <Trash2 className="text-danger h-3.5 w-3.5" />;
     case 'ticket.merged':
-      return <Merge className="h-3.5 w-3.5 text-purple-500" />;
+      return <Merge className="text-brand h-3.5 w-3.5" />;
     case 'ticket.spam_marked':
-      return <ShieldAlert className="h-3.5 w-3.5 text-orange-500" />;
+      return <ShieldAlert className="text-warning-foreground h-3.5 w-3.5" />;
     case 'ticket.spam_unmarked':
-      return <ShieldCheck className="h-3.5 w-3.5 text-green-500" />;
+      return <ShieldCheck className="text-success-foreground h-3.5 w-3.5" />;
     case 'comment.created':
     case 'comment.updated':
     case 'comment.deleted':
-      return <MessageSquare className="h-3.5 w-3.5 text-blue-500" />;
+      return <MessageSquare className="text-info h-3.5 w-3.5" />;
     case 'attachment.uploaded':
     case 'attachment.deleted':
-      return <Paperclip className="h-3.5 w-3.5 text-gray-500" />;
+      return <Paperclip className="text-muted-foreground h-3.5 w-3.5" />;
     default:
-      return <History className="h-3.5 w-3.5 text-gray-400" />;
+      return <History className="text-subtle h-3.5 w-3.5" />;
   }
 }
 

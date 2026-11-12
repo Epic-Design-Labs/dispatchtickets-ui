@@ -44,11 +44,19 @@ const createTicketSchema = z.object({
   notifyCustomer: z.boolean(),
 });
 
+/**
+ * Four steps climbing from quiet to loud, with red kept for urgent alone.
+ *
+ * This is a ladder rather than a copy of `PriorityBadge`'s palette on purpose:
+ * the chip shows ONE priority on a row, while this select shows all four at
+ * once, so they have to be tellable apart from each other rather than merely
+ * readable on their own.
+ */
 const priorityColors: Record<string, string> = {
-  low: 'text-gray-600',
-  normal: 'text-blue-600',
-  high: 'text-orange-600',
-  urgent: 'text-red-600',
+  low: 'text-muted-foreground',
+  normal: 'text-brand',
+  high: 'text-warning-foreground',
+  urgent: 'text-danger',
 };
 
 type CreateTicketForm = z.infer<typeof createTicketSchema>;
@@ -201,16 +209,16 @@ export function CreateTicketForContactDialog({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="low">
-                          <span className="text-gray-600">Low</span>
+                          <span className="text-muted-foreground">Low</span>
                         </SelectItem>
                         <SelectItem value="normal">
-                          <span className="text-blue-600">Normal</span>
+                          <span className="text-brand">Normal</span>
                         </SelectItem>
                         <SelectItem value="high">
-                          <span className="text-orange-600">High</span>
+                          <span className="text-warning-foreground">High</span>
                         </SelectItem>
                         <SelectItem value="urgent">
-                          <span className="text-red-600">Urgent</span>
+                          <span className="text-danger">Urgent</span>
                         </SelectItem>
                       </SelectContent>
                     </Select>

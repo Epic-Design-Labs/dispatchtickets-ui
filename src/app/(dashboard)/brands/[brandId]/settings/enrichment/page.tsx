@@ -316,10 +316,10 @@ export default function EnrichmentPage() {
       </Card>
 
       {config && config.failureCount > 0 && (
-        <Card className="border-amber-300">
+        <Card className="border-warning/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertTriangle className="text-warning-foreground h-4 w-4" />
               {config.failureCount} consecutive{' '}
               {config.failureCount === 1 ? 'failure' : 'failures'}
             </CardTitle>
@@ -350,13 +350,13 @@ export default function EnrichmentPage() {
  */
 function TestResult({ result }: { result: EnrichmentProbeResult }) {
   return (
-    <Card className={result.ok ? 'border-green-300' : 'border-red-300'}>
+    <Card className={result.ok ? 'border-success/30' : 'border-danger/30'}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           {result.ok ? (
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <CheckCircle2 className="text-success-foreground h-4 w-4" />
           ) : (
-            <XCircle className="h-4 w-4 text-red-600" />
+            <XCircle className="text-danger h-4 w-4" />
           )}
           {result.ok ? 'Endpoint responded correctly' : 'Test failed'}
           <span className="ml-auto text-xs font-normal text-muted-foreground">
@@ -365,7 +365,7 @@ function TestResult({ result }: { result: EnrichmentProbeResult }) {
           </span>
         </CardTitle>
         {result.error && (
-          <CardDescription className="text-red-600">
+          <CardDescription className="text-danger">
             {result.error}
           </CardDescription>
         )}
@@ -373,10 +373,10 @@ function TestResult({ result }: { result: EnrichmentProbeResult }) {
       <CardContent className="space-y-4">
         {result.warnings.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-medium text-amber-700">
+            <p className="text-warning-foreground text-xs font-medium">
               Dropped from the response:
             </p>
-            <ul className="list-inside list-disc space-y-0.5 text-xs text-amber-700">
+            <ul className="text-warning-foreground list-inside list-disc space-y-0.5 text-xs">
               {result.warnings.map((warning, i) => (
                 <li key={i}>{warning}</li>
               ))}

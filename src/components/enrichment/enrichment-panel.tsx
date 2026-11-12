@@ -18,16 +18,16 @@ import {
  */
 
 const STATUS_STYLES: Record<EnrichmentStatus, string> = {
-  ok: 'text-green-600',
-  warn: 'text-amber-600',
-  error: 'text-red-600',
+  ok: 'text-success-foreground',
+  warn: 'text-warning-foreground',
+  error: 'text-danger',
   neutral: 'text-foreground',
 };
 
 const STATUS_DOT: Record<EnrichmentStatus, string> = {
-  ok: 'bg-green-500',
-  warn: 'bg-amber-500',
-  error: 'bg-red-500',
+  ok: 'bg-success',
+  warn: 'bg-warning',
+  error: 'bg-danger',
   neutral: 'bg-muted-foreground/40',
 };
 
@@ -122,7 +122,7 @@ export function EnrichmentPanel({
       )}
 
       {refreshError && (
-        <p className="flex items-start gap-1.5 text-xs text-red-600">
+        <p className="text-danger flex items-start gap-1.5 text-xs">
           <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
           <span>{refreshError}</span>
         </p>

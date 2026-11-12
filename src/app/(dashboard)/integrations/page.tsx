@@ -123,7 +123,7 @@ export default function IntegrationsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-red-600 hover:text-red-700"
+                          className="text-destructive hover:text-destructive"
                           onClick={() => setDisconnecting(inst)}
                         >
                           Disconnect
@@ -158,7 +158,7 @@ export default function IntegrationsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
               onClick={async () => {
                 if (!disconnecting) return;
                 try {
@@ -215,7 +215,7 @@ function EditBrandsDialog({
             </label>
           ))}
           {selected.length === 0 && (
-            <p className="text-sm text-amber-600">Pick at least one brand, or disconnect the integration instead.</p>
+            <p className="text-warning-foreground text-sm">Pick at least one brand, or disconnect the integration instead.</p>
           )}
         </div>
         <DialogFooter>

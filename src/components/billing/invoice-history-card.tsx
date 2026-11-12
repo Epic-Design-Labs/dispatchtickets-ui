@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+import { Pill } from '@/components/tickets/pill';
 import { FileText, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -76,20 +76,28 @@ function formatDate(value?: string | null): string {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
 }
 
+/**
+ * Nothing in an invoice list is an error, so nothing here wears red.
+ *
+ * Both refund states used to render as `destructive`, which reads as "something
+ * went wrong, act now" -- a refund is a completed, deliberate act and needs no
+ * reaction. They take the informational tone instead, which also keeps them
+ * apart from Open, the one row that genuinely still wants money.
+ */
 function statusBadge(status: Invoice['status']) {
   switch (status) {
     case 'paid':
-      return <Badge className="bg-green-500">Paid</Badge>;
+      return <Pill className="bg-success-soft text-success-foreground">Paid</Pill>;
     case 'open':
-      return <Badge className="bg-yellow-500">Open</Badge>;
+      return <Pill className="bg-warning-soft text-warning-foreground">Open</Pill>;
     case 'refunded':
-      return <Badge variant="destructive">Refunded</Badge>;
+      return <Pill className="bg-info-soft text-info">Refunded</Pill>;
     case 'partially_refunded':
-      return <Badge variant="destructive">Partially refunded</Badge>;
+      return <Pill className="bg-info-soft text-info">Partially refunded</Pill>;
     case 'void':
-      return <Badge variant="secondary">Void</Badge>;
+      return <Pill className="bg-secondary text-muted-foreground">Void</Pill>;
     default:
-      return <Badge variant="secondary">{status}</Badge>;
+      return <Pill className="bg-secondary text-muted-foreground">{status}</Pill>;
   }
 }
 

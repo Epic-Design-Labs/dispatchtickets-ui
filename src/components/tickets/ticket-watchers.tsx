@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Eye, Plus, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { TicketWatcher } from '@/types/watcher';
+import { PersonAvatar } from '@/components/person-avatar';
 
 interface TicketWatchersProps {
   brandId: string;
@@ -58,17 +58,6 @@ export function TicketWatchers({ brandId, ticketId }: TicketWatchersProps) {
     return member.email;
   };
 
-  const getInitials = (watcher: TicketWatcher) => {
-    if (watcher.memberName) {
-      const parts = watcher.memberName.split(' ');
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      }
-      return watcher.memberName[0].toUpperCase();
-    }
-    return watcher.memberEmail[0].toUpperCase();
-  };
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -97,9 +86,7 @@ export function TicketWatchers({ brandId, ticketId }: TicketWatchersProps) {
                       }
                     >
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
-                          {member.firstName?.[0] || member.email[0].toUpperCase()}
-                        </div>
+                        <PersonAvatar name={getMemberName(member)} size="sm" />
                         <div className="flex flex-col">
                           <span className="text-sm">{getMemberName(member)}</span>
                           {(member.firstName || member.lastName) && (
@@ -128,18 +115,20 @@ export function TicketWatchers({ brandId, ticketId }: TicketWatchersProps) {
           {watchers.map((watcher) => (
             <div
               key={watcher.id}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-100 pl-1 pr-1.5 py-0.5 text-sm group"
+              className="bg-secondary group inline-flex items-center gap-1 rounded-full py-0.5 pl-1 pr-1.5 text-sm"
               title={`${watcher.memberName || watcher.memberEmail}\nNotifications: Comment ${watcher.notifyOnComment ? 'on' : 'off'}, Status ${watcher.notifyOnStatusChange ? 'on' : 'off'}`}
             >
-              <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
-                {getInitials(watcher)}
-              </div>
-              <span className="text-blue-700 text-xs">
+              <PersonAvatar
+                name={watcher.memberName || watcher.memberEmail}
+                size="sm"
+                className="h-5 w-5 text-[9px]"
+              />
+              <span className="text-xs">
                 {watcher.memberName || watcher.memberEmail.split('@')[0]}
               </span>
               <button
                 onClick={() => handleRemoveWatcher(watcher.memberId)}
-                className="opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity"
+                className="hover:text-destructive opacity-0 transition-opacity group-hover:opacity-100"
                 disabled={removeWatcher.isPending}
               >
                 <X className="h-3 w-3" />

@@ -52,7 +52,7 @@ export function TicketChatSection({
           {data.blocked ? (
             <Badge variant="destructive">Blocked</Badge>
           ) : data.present ? (
-            <Badge className="bg-green-600 hover:bg-green-600">On the page</Badge>
+            <Badge className="bg-success hover:bg-success text-white">On the page</Badge>
           ) : (
             <Badge variant="secondary">Left {formatTimeAgo(data.lastSeenAt)}</Badge>
           )}
@@ -82,7 +82,7 @@ export function TicketChatSection({
                 {data.verified.name ? `${data.verified.name} · ` : ''}
                 {data.verified.email}
               </span>
-              <Badge className="bg-green-600 hover:bg-green-600">Verified</Badge>
+              <Badge className="bg-success hover:bg-success text-white">Verified</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               Confirmed by your app ({data.verified.userId}). Replies are emailed to them if they leave.
@@ -95,7 +95,7 @@ export function TicketChatSection({
             <div className="text-xs text-muted-foreground">Email they typed</div>
             <div className="flex items-center gap-2">
               <span className="text-sm break-all">{data.claimedEmail}</span>
-              <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300">
+              <Badge variant="outline" className="border-warning/40 text-warning-foreground">
                 Unverified
               </Badge>
             </div>
@@ -147,11 +147,11 @@ function ConversionStatus({
       <div className="flex items-center gap-2">
         <span className="text-sm break-all">{confirmation.email}</span>
         {confirmation.confirmedAt ? (
-          <Badge className="bg-green-600 hover:bg-green-600">Confirmed</Badge>
+          <Badge className="bg-success hover:bg-success text-white">Confirmed</Badge>
         ) : confirmation.expired ? (
           <Badge variant="secondary">Expired</Badge>
         ) : (
-          <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300">
+          <Badge variant="outline" className="border-warning/40 text-warning-foreground">
             Awaiting confirmation
           </Badge>
         )}

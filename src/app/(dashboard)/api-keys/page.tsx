@@ -139,7 +139,7 @@ function CreateKeyDialog({ onSuccess }: { onSuccess: (key: ApiKey) => void }) {
             </div>
 
             {allBrands && (
-              <p className="text-sm text-amber-600">
+              <p className="text-warning-foreground text-sm">
                 This key can read and change every brand&apos;s tickets, including brands you add
                 later. For a key that serves one integration, turn this off and pick its brands.
               </p>
@@ -163,7 +163,7 @@ function CreateKeyDialog({ onSuccess }: { onSuccess: (key: ApiKey) => void }) {
                   ))}
                 </div>
                 {selectedBrands.length === 0 && (
-                  <p className="text-sm text-amber-600">
+                  <p className="text-warning-foreground text-sm">
                     Select at least one brand
                   </p>
                 )}
@@ -204,7 +204,7 @@ function NewKeyDisplay({ apiKey, onClose }: { apiKey: ApiKey; onClose: () => voi
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Check className="h-5 w-5 text-green-600" />
+            <Check className="text-success-foreground h-5 w-5" />
             API Key Created
           </DialogTitle>
           <DialogDescription>
@@ -293,7 +293,7 @@ function ApiKeyRow({ apiKey, brands }: { apiKey: ApiKey; brands: { id: string; n
           <Button
             variant="ghost"
             size="sm"
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="text-destructive hover:text-destructive hover:bg-danger-soft"
             onClick={() => setRevokeOpen(true)}
           >
             <Trash2 className="h-4 w-4" />
@@ -310,7 +310,7 @@ function ApiKeyRow({ apiKey, brands }: { apiKey: ApiKey; brands: { id: string; n
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleRevoke}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-destructive hover:bg-destructive/90"
               >
                 {revokeKey.isPending ? 'Revoking...' : 'Revoke Key'}
               </AlertDialogAction>

@@ -24,9 +24,9 @@ import { ThumbsUp, TrendingUp, BarChart3 } from 'lucide-react';
 
 function getCsatColor(score: number | null): string {
   if (score === null) return 'text-muted-foreground';
-  if (score >= 80) return 'text-green-600';
-  if (score >= 60) return 'text-yellow-600';
-  return 'text-red-600';
+  if (score >= 80) return 'text-success-foreground';
+  if (score >= 60) return 'text-warning-foreground';
+  return 'text-danger';
 }
 
 export default function TeamPage() {
@@ -173,7 +173,7 @@ export default function TeamPage() {
                       <TableCell className="text-right">
                         {member.csatCount > 0 ? (
                           <div className="flex items-center justify-end gap-2">
-                            <ThumbsUp className="h-4 w-4 text-green-500" />
+                            <ThumbsUp className="text-success-foreground h-4 w-4" />
                             <span className="text-sm">
                               {member.csatPositive}/{member.csatCount}
                             </span>

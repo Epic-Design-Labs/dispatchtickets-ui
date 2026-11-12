@@ -423,7 +423,7 @@ We'll reach back out soon!
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{outboundDomain.domain}</span>
                     {outboundDomain.verified ? (
-                      <Badge variant="default" className="bg-green-600">
+                      <Badge variant="default" className="bg-success text-white">
                         <CheckCircle className="mr-1 h-3 w-3" /> Verified
                       </Badge>
                     ) : (
@@ -488,11 +488,11 @@ We'll reach back out soon!
                               </TableCell>
                               <TableCell>
                                 {record.status === 'verified' ? (
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  <CheckCircle className="text-success-foreground h-4 w-4" />
                                 ) : record.status === 'failed' ? (
-                                  <XCircle className="h-4 w-4 text-red-600" />
+                                  <XCircle className="text-danger h-4 w-4" />
                                 ) : (
-                                  <Clock className="h-4 w-4 text-yellow-600" />
+                                  <Clock className="text-warning-foreground h-4 w-4" />
                                 )}
                               </TableCell>
                             </TableRow>

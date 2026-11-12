@@ -46,7 +46,7 @@ function SetupStepCard({ step, brandId }: { step: SetupStep; brandId: string }) 
     <div
       className={`flex items-start gap-4 p-4 rounded-lg border transition-colors ${
         isComplete
-          ? 'bg-green-50/50 border-green-200'
+          ? 'bg-success-soft border-success/25'
           : isClickable
           ? 'bg-background hover:border-primary/50 cursor-pointer'
           : 'bg-background'
@@ -56,7 +56,7 @@ function SetupStepCard({ step, brandId }: { step: SetupStep; brandId: string }) 
       {/* Status Icon */}
       <div
         className={`flex-shrink-0 p-2 rounded-full ${
-          isComplete ? 'bg-green-100 text-green-600' : 'bg-muted text-muted-foreground'
+          isComplete ? 'bg-success-soft text-success-foreground' : 'bg-muted text-muted-foreground'
         }`}
       >
         {isComplete ? (
@@ -69,7 +69,7 @@ function SetupStepCard({ step, brandId }: { step: SetupStep; brandId: string }) 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className={`font-medium ${isComplete ? 'text-green-700' : ''}`}>
+          <h3 className={`font-medium ${isComplete ? 'text-success-foreground' : ''}`}>
             {step.title}
           </h3>
           {step.optional && (
@@ -80,7 +80,7 @@ function SetupStepCard({ step, brandId }: { step: SetupStep; brandId: string }) 
         </div>
         <p className="text-sm text-muted-foreground mt-0.5">{step.description}</p>
         {step.detail && (
-          <p className="text-sm font-medium text-green-600 mt-1">{step.detail}</p>
+          <p className="text-success-foreground mt-1 text-sm font-medium">{step.detail}</p>
         )}
       </div>
 
@@ -158,7 +158,7 @@ export default function BrandGettingStartedPage() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">
               {isComplete ? (
-                <span className="text-green-600">Setup Complete!</span>
+                <span className="text-success-foreground">Setup Complete!</span>
               ) : (
                 `${setupStatus.completedCount} of ${setupStatus.requiredCount} required steps complete`
               )}
@@ -173,14 +173,14 @@ export default function BrandGettingStartedPage() {
 
       {/* Success Message */}
       {isComplete && (
-        <Card className="border-green-200 bg-green-50/50">
+        <Card className="border-success/25 bg-success-soft">
           <CardContent className="flex items-center gap-4 py-4">
-            <div className="p-2 rounded-full bg-green-100">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+            <div className="bg-success-soft rounded-full p-2">
+              <CheckCircle className="text-success-foreground h-6 w-6" />
             </div>
             <div className="flex-1">
-              <h3 className="font-medium text-green-700">You&apos;re all set!</h3>
-              <p className="text-sm text-green-600">
+              <h3 className="text-success-foreground font-medium">You&apos;re all set!</h3>
+              <p className="text-success-foreground text-sm">
                 Your brand is ready to receive tickets. Share your support email with customers.
               </p>
             </div>

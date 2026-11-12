@@ -348,7 +348,7 @@ export function ChatChannelCard({ brandId }: { brandId: string }) {
         )}
 
         {enabled && origins.length === 0 && (
-          <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          <div className="border-warning/30 bg-warning-soft text-warning-foreground flex gap-2 rounded-lg border p-3 text-sm">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
             <p>Chat is on, but no site is allowed yet, so no visitor can connect. Add your site above.</p>
           </div>
