@@ -87,7 +87,7 @@ export default function DashboardLayout({
       const hasBrands = brands && brands.length > 0;
       const isOnGettingStarted = pathname === '/getting-started';
       const isOnAllowedPage = pathname === '/profile' || pathname === '/team' ||
-                              pathname === '/billing' || pathname === '/api-keys' ||
+                              pathname === '/billing' || pathname === '/api-keys' || pathname === '/integrations' ||
                               pathname === '/support' || pathname === '/feature-requests' ||
                               pathname === '/brands';
 
