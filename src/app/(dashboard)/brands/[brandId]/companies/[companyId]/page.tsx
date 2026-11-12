@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
-import {
+import { useBrand,
   useCompany,
   useUpdateCompany,
   useDeleteCompany,
@@ -62,6 +62,9 @@ export default function CompanyDetailPage() {
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets(brandId, { companyId });
   const { data: teamMembersData } = useTeamMembers({ brandId });
   const teamMembers = teamMembersData?.members;
+  // Already fetched by the page shell, so this is a cache read: it is
+  // here only to give the ticket table the brand's number prefix.
+  const { data: brand } = useBrand(brandId);
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
   const updateCompany = useUpdateCompany(brandId, companyId);
   const deleteCompany = useDeleteCompany(brandId);
@@ -463,6 +466,7 @@ export default function CompanyDetailPage() {
                 <TicketTable
                   tickets={companyTickets}
                   brandId={brandId}
+                  ticketPrefix={brand?.ticketPrefix}
                   isLoading={ticketsLoading}
                   customFields={ticketFields}
                   teamMembers={teamMembers}

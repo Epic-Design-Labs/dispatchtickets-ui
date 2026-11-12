@@ -94,7 +94,7 @@ export function TicketCc({ cc, requesterEmail, disabled, onChange }: TicketCcPro
           {cc.map((address) => (
             <div
               key={address}
-              className="inline-flex items-center gap-1 rounded-full bg-gray-200 pl-2 pr-1.5 py-0.5 text-xs text-gray-700"
+              className="bg-secondary text-muted-foreground inline-flex items-center gap-1 rounded-full py-0.5 pr-1.5 pl-2 text-xs"
               title={address}
             >
               <span className="max-w-[180px] truncate">{address}</span>

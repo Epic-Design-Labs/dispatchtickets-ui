@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
+import { useBrand,
   useContact,
   useUpdateContact,
   useDeleteContact,
@@ -57,6 +57,9 @@ export default function ContactDetailPage() {
   });
   const updateContact = useUpdateContact(brandId, contactId);
   const deleteContact = useDeleteContact(brandId);
+  // Already fetched by the page shell, so this is a cache read: it is
+  // here only to give the ticket table the brand's number prefix.
+  const { data: brand } = useBrand(brandId);
   const { data: ticketFields } = useFieldsByEntity(brandId, 'ticket');
   const { data: teamMembersData } = useTeamMembers({ brandId });
   const teamMembers = teamMembersData?.members;
@@ -343,6 +346,7 @@ export default function ContactDetailPage() {
                 <TicketTable
                   tickets={contactTickets}
                   brandId={brandId}
+                  ticketPrefix={brand?.ticketPrefix}
                   isLoading={ticketsLoading}
                   customFields={ticketFields}
                   teamMembers={teamMembers}

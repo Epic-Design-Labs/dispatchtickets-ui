@@ -49,6 +49,7 @@ import {
 import { getGravatarUrl } from '@/lib/gravatar';
 import { formatTimeAgo, formatDateTime, cn } from '@/lib/utils';
 import { BrandTile } from '@/components/brand-tile';
+import { formatTicketNumber } from '@/lib/ticket-number';
 import { toast } from 'sonner';
 import {
   Plus,
@@ -82,6 +83,7 @@ interface DashboardColumnDef {
 
 const DASHBOARD_COLUMNS: DashboardColumnDef[] = [
   { key: 'brand', label: 'Brand', defaultVisible: true },
+  { key: 'ticketNumber', label: '#', defaultVisible: false },
   { key: 'subject', label: 'Subject', defaultVisible: true },
   { key: 'status', label: 'Status', defaultVisible: true },
   { key: 'priority', label: 'Priority', defaultVisible: true },
@@ -167,6 +169,7 @@ interface SortState {
 
 // Map dashboard column keys to API sort field names
 const DASHBOARD_COLUMN_TO_API_SORT: Record<string, string> = {
+  ticketNumber: 'ticketNumber',
   subject: 'title',
   status: 'status',
   priority: 'priority',
@@ -624,6 +627,7 @@ export default function DashboardPage() {
             <TableRow className="hover:bg-transparent">
               {visibleColumnDefs.map(col => {
                 const widthClass = col.key === 'brand' ? 'w-[100px]'
+                  : col.key === 'ticketNumber' ? 'w-[110px]'
                   : col.key === 'subject' ? ''
                   : col.key === 'status' ? 'w-[100px]'
                   : col.key === 'priority' ? 'w-[100px]'
@@ -700,6 +704,11 @@ export default function DashboardPage() {
                             <TooltipContent>{ticket.brand.name}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
+                      )}
+                      {col.key === 'ticketNumber' && (
+                        <span className="text-muted-foreground font-mono text-xs">
+                          {formatTicketNumber(ticket.brand?.ticketPrefix, ticket.ticketNumber)}
+                        </span>
                       )}
                       {col.key === 'subject' && (
                         <div className="max-w-[440px] truncate font-medium" title={ticket.title}>

@@ -55,6 +55,7 @@ export default function SpamPage() {
             <TicketTable
               tickets={spamTickets}
               brandId={brandId}
+              ticketPrefix={brand?.ticketPrefix}
               isLoading={isLoading}
               customFields={ticketFields}
               renderActions={(ticket) => (

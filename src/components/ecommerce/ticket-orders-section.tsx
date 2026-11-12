@@ -76,7 +76,7 @@ export function TicketOrdersSection({
             {orders.map((order) => (
               <div
                 key={order.id}
-                className="flex items-center gap-2 p-2 -mx-2 rounded hover:bg-gray-100 transition-colors group"
+                className="hover:bg-surface-muted group -mx-2 flex items-center gap-2 rounded p-2 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

@@ -44,6 +44,7 @@ import { toast } from 'sonner';
 import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS, Comment } from '@/types';
 import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown, Paperclip, FileIcon, Download, ExternalLink, Upload, Loader2 } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
+import { formatTicketNumber } from '@/lib/ticket-number';
 import { ConvertChatButton } from '@/components/chat/convert-chat-button';
 import { CustomFieldInput } from '@/components/fields';
 
@@ -466,7 +467,7 @@ export default function TicketDetailPage() {
   if (ticketLoading) {
     return (
       <div className="flex flex-col min-h-screen">
-        <header className="flex h-14 items-center justify-between border-b bg-gray-100 px-4 md:px-6">
+        <header className="bg-surface-muted flex h-14 items-center justify-between border-b px-4 md:px-6">
           <Skeleton className="h-4 w-48" />
         </header>
         <div className="flex flex-col md:flex-row flex-1">
@@ -487,7 +488,7 @@ export default function TicketDetailPage() {
   if (!ticket) {
     return (
       <div className="flex flex-col min-h-screen">
-        <header className="flex h-14 items-center border-b bg-gray-100 px-4 md:px-6">
+        <header className="bg-surface-muted flex h-14 items-center border-b px-4 md:px-6">
           <span className="text-sm text-muted-foreground">Ticket Not Found</span>
         </header>
         <div className="flex flex-1 flex-col items-center justify-center p-6">
@@ -503,7 +504,7 @@ export default function TicketDetailPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Top bar - Grey background */}
-      <header className="flex h-14 items-center justify-between border-b bg-gray-100 px-4 md:px-6">
+      <header className="bg-surface-muted flex h-14 items-center justify-between border-b px-4 md:px-6">
         <div className="flex items-center gap-2 text-sm">
           <Link
             href={`/brands/${brandId}`}
@@ -512,7 +513,13 @@ export default function TicketDetailPage() {
             {brand?.name || 'Brand'} Tickets
           </Link>
           <span className="text-muted-foreground">/</span>
-          <span className="font-medium">#{ticket.id.slice(0, 12)}</span>
+          {/* The brand's own ticket number, not the internal id this used to
+              show -- "EDL-1271" is what the customer's email says and what an
+              agent would search for. The id stays reachable on hover, since
+              it is what the API takes. */}
+          <span className="font-medium" title={ticket.id}>
+            {formatTicketNumber(brand?.ticketPrefix, ticket.ticketNumber)}
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -1404,7 +1411,7 @@ export default function TicketDetailPage() {
                     {otherTickets.map((t) => (
                       <div
                         key={t.id}
-                        className="flex items-start gap-2 p-2 -mx-2 rounded hover:bg-gray-100 transition-colors"
+                        className="hover:bg-surface-muted -mx-2 flex items-start gap-2 rounded p-2 transition-colors"
                       >
                         <Checkbox
                           checked={selectedForMerge.includes(t.id)}

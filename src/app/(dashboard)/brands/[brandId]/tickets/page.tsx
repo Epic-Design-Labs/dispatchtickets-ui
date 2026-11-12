@@ -395,6 +395,7 @@ export default function BrandDashboardPage() {
         <TicketTable
           tickets={tickets}
           brandId={brandId}
+          ticketPrefix={brand?.ticketPrefix}
           isLoading={ticketsLoading}
           onBulkAction={handleBulkAction}
           onMerge={handleMerge}

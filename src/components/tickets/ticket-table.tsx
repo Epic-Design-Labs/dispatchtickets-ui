@@ -69,6 +69,7 @@ import { Category } from '@/lib/api/categories';
 import { Tag } from '@/lib/api/tags';
 import { BulkActionType } from '@/lib/hooks/use-tickets';
 import { getGravatarUrl } from '@/lib/gravatar';
+import { formatTicketNumber } from '@/lib/ticket-number';
 import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical, MoreVertical, Eye, ExternalLink, UserCheck, Inbox } from 'lucide-react';
 
 // Column definitions - built-in columns use these keys
@@ -177,6 +178,8 @@ interface BulkActionOptions {
 interface TicketTableProps {
   tickets: Ticket[];
   brandId: string;
+  /** The brand's ticket prefix, so the # column can read "EDL-1271". */
+  ticketPrefix?: string;
   isLoading?: boolean;
   renderActions?: (ticket: Ticket) => React.ReactNode;
   onBulkAction?: (action: BulkActionType, ticketIds: string[], options?: BulkActionOptions) => Promise<void>;
@@ -199,6 +202,7 @@ export type TicketRowAction = 'view' | 'resolve' | 'pending' | 'assign' | 'openN
 export function TicketTable({
   tickets,
   brandId,
+  ticketPrefix,
   isLoading,
   renderActions,
   onBulkAction,
@@ -727,7 +731,11 @@ export function TicketTable({
 
     switch (columnKey) {
       case 'ticketNumber':
-        return <span className="text-muted-foreground">#{ticket.ticketNumber}</span>;
+        return (
+          <span className="text-muted-foreground font-mono text-xs">
+            {formatTicketNumber(ticketPrefix, ticket.ticketNumber)}
+          </span>
+        );
       case 'subject':
         return (
           <div className="flex min-w-0 items-center gap-2">
@@ -1317,14 +1325,14 @@ export function TicketTable({
               <SelectContent>
                 {selectedTickets.map((ticket) => (
                   <SelectItem key={ticket.id} value={ticket.id}>
-                    #{ticket.ticketNumber} - {ticket.title.slice(0, 40)}{ticket.title.length > 40 ? '...' : ''}
+                    {formatTicketNumber(ticketPrefix, ticket.ticketNumber)} - {ticket.title.slice(0, 40)}{ticket.title.length > 40 ? '...' : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {mergeTargetId && (
               <p className="text-sm text-muted-foreground mt-3">
-                {selectedIds.size - 1} ticket(s) will be merged into #{selectedTickets.find(t => t.id === mergeTargetId)?.ticketNumber}
+                {selectedIds.size - 1} ticket(s) will be merged into {formatTicketNumber(ticketPrefix, selectedTickets.find(t => t.id === mergeTargetId)?.ticketNumber)}
               </p>
             )}
           </div>
