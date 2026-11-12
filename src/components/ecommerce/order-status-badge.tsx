@@ -1,44 +1,29 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { Pill } from '@/components/tickets/pill';
 import { EcommerceOrderStatus } from '@/types';
 
-const statusConfig: Record<
-  EcommerceOrderStatus,
-  { label: string; className: string }
-> = {
-  PENDING: {
-    label: 'Pending',
-    className: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
-  },
-  PROCESSING: {
-    label: 'Processing',
-    className: 'bg-amber-100 text-amber-800 hover:bg-amber-100',
-  },
-  SHIPPED: {
-    label: 'Shipped',
-    className: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-  },
-  DELIVERED: {
-    label: 'Delivered',
-    className: 'bg-green-100 text-green-800 hover:bg-green-100',
-  },
-  COMPLETED: {
-    label: 'Completed',
-    className: 'bg-green-100 text-green-800 hover:bg-green-100',
-  },
-  CANCELLED: {
-    label: 'Cancelled',
-    className: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
-  },
-  REFUNDED: {
-    label: 'Refunded',
-    className: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
-  },
-  DISPUTED: {
-    label: 'Disputed',
-    className: 'bg-red-100 text-red-800 hover:bg-red-100',
-  },
+/**
+ * Order states on the ticket palette, so an order chip sits next to a ticket's
+ * status chip without introducing a second colour language.
+ *
+ * Eight states, six tones, so two pairs share one. The pairs chosen are the
+ * ones that mean nearly the same thing to an agent reading a row: delivered
+ * and completed, pending and refunded. The pair deliberately BROKEN apart is
+ * pending and processing, which were both amber and therefore indistinguishable
+ * -- "we have not started" and "we are working on it" are the two an agent
+ * actually acts on differently.
+ */
+const statusConfig: Record<EcommerceOrderStatus, { label: string; className: string }> = {
+  PENDING: { label: 'Pending', className: 'bg-warning-soft text-warning-foreground' },
+  PROCESSING: { label: 'Processing', className: 'bg-brand-soft text-brand' },
+  SHIPPED: { label: 'Shipped', className: 'bg-info-soft text-info' },
+  DELIVERED: { label: 'Delivered', className: 'bg-success-soft text-success-foreground' },
+  COMPLETED: { label: 'Completed', className: 'bg-success-soft text-success-foreground' },
+  CANCELLED: { label: 'Cancelled', className: 'bg-secondary text-muted-foreground' },
+  REFUNDED: { label: 'Refunded', className: 'bg-warning-soft text-warning-foreground' },
+  DISPUTED: { label: 'Disputed', className: 'bg-danger-soft text-danger' },
 };
 
 interface OrderStatusBadgeProps {
@@ -47,14 +32,12 @@ interface OrderStatusBadgeProps {
 }
 
 export function OrderStatusBadge({ status, className }: OrderStatusBadgeProps) {
-  const config = statusConfig[status] || {
+  // A platform can report a state this map has not caught up with; show it as
+  // itself in grey rather than rendering a blank chip.
+  const config = statusConfig[status] ?? {
     label: status,
-    className: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
+    className: 'bg-secondary text-muted-foreground',
   };
 
-  return (
-    <Badge variant="secondary" className={`${config.className} ${className || ''}`}>
-      {config.label}
-    </Badge>
-  );
+  return <Pill className={cn(config.className, className)}>{config.label}</Pill>;
 }

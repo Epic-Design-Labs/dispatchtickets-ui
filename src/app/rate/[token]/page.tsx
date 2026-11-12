@@ -11,6 +11,7 @@ import { feedbackApi } from '@/lib/api/feedback';
 import { RatingFormData, CsatType } from '@/types';
 import { ThumbsUp, ThumbsDown, Star, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BrandTile } from '@/components/brand-tile';
 
 type PageState = 'loading' | 'ready' | 'submitting' | 'success' | 'error' | 'expired' | 'submitted';
 
@@ -72,7 +73,7 @@ export default function RatePage() {
   // Loading state
   if (pageState === 'loading') {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+      <div className="bg-canvas flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
             <Skeleton className="h-6 w-48 mb-2" />
@@ -90,11 +91,11 @@ export default function RatePage() {
   // Success state
   if (pageState === 'success') {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+      <div className="bg-canvas flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-8 pb-8">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+            <div className="bg-success-soft mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+              <CheckCircle className="text-success-foreground h-8 w-8" />
             </div>
             <h2 className="text-xl font-semibold mb-2">Thank you for your feedback!</h2>
             <p className="text-muted-foreground">
@@ -109,11 +110,11 @@ export default function RatePage() {
   // Already submitted state
   if (pageState === 'submitted') {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+      <div className="bg-canvas flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-8 pb-8">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
-              <CheckCircle className="h-8 w-8 text-blue-600" />
+            <div className="bg-info-soft mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+              <CheckCircle className="text-info h-8 w-8" />
             </div>
             <h2 className="text-xl font-semibold mb-2">Feedback already submitted</h2>
             <p className="text-muted-foreground">
@@ -128,11 +129,11 @@ export default function RatePage() {
   // Expired state
   if (pageState === 'expired') {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+      <div className="bg-canvas flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-8 pb-8">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100">
-              <Clock className="h-8 w-8 text-yellow-600" />
+            <div className="bg-warning-soft mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+              <Clock className="text-warning-foreground h-8 w-8" />
             </div>
             <h2 className="text-xl font-semibold mb-2">Link expired</h2>
             <p className="text-muted-foreground">
@@ -147,11 +148,11 @@ export default function RatePage() {
   // Error state
   if (pageState === 'error') {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+      <div className="bg-canvas flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-8 pb-8">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-              <AlertCircle className="h-8 w-8 text-red-600" />
+            <div className="bg-danger-soft mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+              <AlertCircle className="text-danger h-8 w-8" />
             </div>
             <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
             <p className="text-muted-foreground">{errorMessage}</p>
@@ -163,16 +164,24 @@ export default function RatePage() {
 
   // Ready state - show rating form
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+    <div className="bg-canvas flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+        <CardHeader className="flex flex-col items-center gap-2 text-center">
+          {/* The customer arrived here from an email wearing the brand's name
+              and colours. Landing on an unbranded page reads as a different
+              company asking, so the brand leads. All the API hands us is a
+              name, which is enough for the tile to derive a colour from. */}
+          {formData?.brand.name && (
+            <div className="flex items-center gap-2">
+              <BrandTile name={formData.brand.name} size="lg" />
+              <span className="font-semibold">{formData.brand.name}</span>
+            </div>
+          )}
           <CardTitle className="text-xl">How was your experience?</CardTitle>
-          <CardDescription>
-            {formData?.brand.name} - Ticket #{formData?.ticket.ticketNumber}
+          <CardDescription className="font-mono text-xs">
+            #{formData?.ticket.ticketNumber}
           </CardDescription>
-          <p className="text-sm text-muted-foreground mt-2 font-medium">
-            {formData?.ticket.title}
-          </p>
+          <p className="mt-1 text-sm font-medium">{formData?.ticket.title}</p>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Rating UI based on type */}
@@ -231,28 +240,51 @@ function RatingInput({
 }) {
   if (type === 'thumbs') {
     return (
-      <div className="flex gap-4 justify-center">
+      <div
+        className="flex justify-center gap-4"
+        role="radiogroup"
+        aria-label="Your rating"
+      >
         <button
+          type="button"
+          role="radio"
+          aria-checked={value === 1}
           onClick={() => onChange(1)}
           className={cn(
-            'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:border-green-500',
-            value === 1 ? 'border-green-500 bg-green-50' : 'border-muted'
+            'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all',
+            'hover:border-success focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+            value === 1 ? 'border-success bg-success-soft' : 'border-border-strong'
           )}
         >
-          <ThumbsUp className={cn('h-8 w-8', value === 1 ? 'text-green-600' : 'text-muted-foreground')} />
-          <span className={cn('text-sm font-medium', value === 1 ? 'text-green-600' : 'text-muted-foreground')}>
+          <ThumbsUp
+            className={cn('h-8 w-8', value === 1 ? 'text-success-foreground' : 'text-muted-foreground')}
+          />
+          <span
+            className={cn(
+              'text-sm font-medium',
+              value === 1 ? 'text-success-foreground' : 'text-muted-foreground'
+            )}
+          >
             Good
           </span>
         </button>
         <button
+          type="button"
+          role="radio"
+          aria-checked={value === -1}
           onClick={() => onChange(-1)}
           className={cn(
-            'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:border-red-500',
-            value === -1 ? 'border-red-500 bg-red-50' : 'border-muted'
+            'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all',
+            'hover:border-danger focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+            value === -1 ? 'border-danger bg-danger-soft' : 'border-border-strong'
           )}
         >
-          <ThumbsDown className={cn('h-8 w-8', value === -1 ? 'text-red-600' : 'text-muted-foreground')} />
-          <span className={cn('text-sm font-medium', value === -1 ? 'text-red-600' : 'text-muted-foreground')}>
+          <ThumbsDown
+            className={cn('h-8 w-8', value === -1 ? 'text-danger' : 'text-muted-foreground')}
+          />
+          <span
+            className={cn('text-sm font-medium', value === -1 ? 'text-danger' : 'text-muted-foreground')}
+          >
             Bad
           </span>
         </button>
@@ -262,24 +294,33 @@ function RatingInput({
 
   if (type === 'scale5') {
     return (
-      <div className="flex gap-1 justify-center">
+      <div className="flex justify-center gap-1" role="radiogroup" aria-label="Your rating">
         {[1, 2, 3, 4, 5].map((n) => {
           const isSelected = value !== null && n <= value;
-          const isHovered = hoveredValue !== null && n <= hoveredValue;
-          const showFilled = isSelected || isHovered;
+          // The preview that follows the pointer has to follow the keyboard
+          // too, or a keyboard user tabs through five identical empty stars
+          // with no idea which one they are on.
+          const isPreviewed = hoveredValue !== null && n <= hoveredValue;
+          const showFilled = isSelected || isPreviewed;
 
           return (
             <button
               key={n}
+              type="button"
+              role="radio"
+              aria-checked={value === n}
+              aria-label={`${n} ${n === 1 ? 'star' : 'stars'}`}
               onClick={() => onChange(n)}
               onMouseEnter={() => onHover(n)}
               onMouseLeave={() => onHover(null)}
-              className="p-1 transition-transform hover:scale-110"
+              onFocus={() => onHover(n)}
+              onBlur={() => onHover(null)}
+              className="focus-visible:ring-ring rounded-md p-1 transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none"
             >
               <Star
                 className={cn(
                   'h-10 w-10 transition-colors',
-                  showFilled ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'
+                  showFilled ? 'text-warning fill-warning' : 'text-muted-foreground'
                 )}
               />
             </button>
@@ -292,27 +333,32 @@ function RatingInput({
   if (type === 'scale10') {
     return (
       <div className="space-y-2">
-        <div className="flex gap-1 justify-center flex-wrap">
+        <div className="flex flex-wrap justify-center gap-1" role="radiogroup" aria-label="Your rating">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
             <button
               key={n}
+              type="button"
+              role="radio"
+              aria-checked={value === n}
+              aria-label={`${n} out of 10`}
               onClick={() => onChange(n)}
               className={cn(
                 'h-10 w-10 rounded-lg border-2 font-medium transition-all',
+                'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
                 value === n
                   ? n <= 6
-                    ? 'border-red-500 bg-red-50 text-red-700'
+                    ? 'border-danger bg-danger-soft text-danger'
                     : n <= 8
-                      ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                      : 'border-green-500 bg-green-50 text-green-700'
-                  : 'border-muted hover:border-muted-foreground/50'
+                      ? 'border-warning bg-warning-soft text-warning-foreground'
+                      : 'border-success bg-success-soft text-success-foreground'
+                  : 'border-border-strong hover:border-muted-foreground/50'
               )}
             >
               {n}
             </button>
           ))}
         </div>
-        <div className="flex justify-between text-xs text-muted-foreground px-1">
+        <div className="text-muted-foreground flex justify-between px-1 text-xs">
           <span>Not likely</span>
           <span>Very likely</span>
         </div>

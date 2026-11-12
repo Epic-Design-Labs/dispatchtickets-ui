@@ -34,15 +34,21 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { Pill } from '@/components/tickets/pill';
 import { ChevronUp, Plus, Lightbulb, X, Image as ImageIcon } from 'lucide-react';
 
+/**
+ * The roadmap's progression on the app's own palette. The order matters more
+ * than any single colour: a request moves quiet -> considered -> committed ->
+ * being built -> done, and the chips should read that way down a list.
+ */
 const statusColors: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-800',
-  under_review: 'bg-cyan-100 text-cyan-800',
-  planned: 'bg-purple-100 text-purple-800',
-  in_progress: 'bg-yellow-100 text-yellow-800',
-  completed: 'bg-green-100 text-green-800',
-  declined: 'bg-gray-100 text-gray-800',
+  new: 'bg-secondary text-muted-foreground',
+  under_review: 'bg-info-soft text-info',
+  planned: 'bg-brand-soft text-brand',
+  in_progress: 'bg-warning-soft text-warning-foreground',
+  completed: 'bg-success-soft text-success-foreground',
+  declined: 'bg-danger-soft text-danger',
 };
 
 const statusLabels: Record<string, string> = {
@@ -251,9 +257,9 @@ export default function FeatureRequestsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <h3 className="font-medium">{request.title}</h3>
-                          <Badge className={statusColors[request.status] || statusColors.new}>
+                          <Pill className={statusColors[request.status] || statusColors.new}>
                             {statusLabels[request.status] || request.status}
-                          </Badge>
+                          </Pill>
                         </div>
                         {(request.featureDetails || request.description) && (
                           <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
