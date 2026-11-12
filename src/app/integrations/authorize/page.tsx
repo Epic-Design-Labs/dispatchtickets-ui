@@ -64,10 +64,10 @@ function Authorize() {
     if (selected) return selected;
     const data = preview.data;
     if (!data) return [];
-    // Pre-tick an earlier approval; a first-time connect starts with one brand
-    // ticked only when there's just one, so access is always a deliberate choice.
-    if (data.currentBrandIds.length) return data.currentBrandIds;
-    return data.brands.length === 1 ? [data.brands[0].id] : [];
+    // Pre-tick only what an earlier approval already allowed. A first connect
+    // starts with nothing ticked, even with one brand, so Connect is never a
+    // single click (defence in depth alongside the no-framing headers).
+    return data.currentBrandIds;
   }, [selected, preview.data]);
 
   if (!clientId || !redirectUri) {
@@ -153,12 +153,15 @@ function Authorize() {
         <div className="space-y-2 text-sm">
           <p className="font-medium">On the brands you choose, {app.name} will be able to:</p>
           <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-            <li>Read and update tickets, and reply to customers as your agents</li>
-            <li>See which team members can handle those brands&apos; tickets</li>
+            <li>Read, create and update tickets, and reply to customers as your agents</li>
+            <li>See which team members handle those brands, and set their availability</li>
             <li>Receive events about them, and add buttons to their chat widget</li>
+            <li>Add custom ticket fields</li>
           </ul>
           <p className="text-muted-foreground">
-            It can&apos;t see other brands, manage API keys, or change billing.
+            It can&apos;t delete tickets or brands, change brand or email settings, add people to email
+            threads, see other brands, or manage your team, API keys or billing. It can only change or
+            remove webhooks and chat buttons it created.
           </p>
         </div>
 
