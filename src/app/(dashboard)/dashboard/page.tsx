@@ -46,7 +46,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getGravatarUrl } from '@/lib/gravatar';
-import { formatTimeAgo, formatDateTime } from '@/lib/utils';
+import { formatTimeAgo, formatDateTime, cn } from '@/lib/utils';
+import { BrandTile } from '@/components/brand-tile';
 import { toast } from 'sonner';
 import {
   Plus,
@@ -54,6 +55,12 @@ import {
   MessageSquare,
   Timer,
   Settings2,
+  Inbox,
+  Layers,
+  CircleDot,
+  Clock,
+  CheckCircle2,
+  Archive,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -69,6 +76,25 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 type ViewType = 'all' | 'mine' | 'unassigned';
+
+/**
+ * The status filter row.
+ *
+ * Each tab carries its own icon tone so the row can be read by colour before
+ * it is read by word -- the same soft fills the status pills in the table use,
+ * so a glance at "Pending" up here and a pending row down there agree. The
+ * selected tab goes solid brand instead of merely outlined: this row is the
+ * single most-used control on the page and a 2px border was not enough to say
+ * which queue you were looking at.
+ */
+const STATUS_TABS = [
+  { key: 'active', label: 'Active', icon: Inbox, tone: 'bg-brand-soft text-brand' },
+  { key: 'all', label: 'All', icon: Layers, tone: 'bg-secondary text-muted-foreground' },
+  { key: 'open', label: 'Open', icon: CircleDot, tone: 'bg-info-soft text-info' },
+  { key: 'pending', label: 'Pending', icon: Clock, tone: 'bg-warning-soft text-warning-foreground' },
+  { key: 'resolved', label: 'Resolved', icon: CheckCircle2, tone: 'bg-success-soft text-success-foreground' },
+  { key: 'closed', label: 'Closed', icon: Archive, tone: 'bg-secondary text-muted-foreground' },
+] as const;
 
 // Column definitions for global dashboard (matching brand view + brand column)
 interface DashboardColumnDef {
@@ -507,99 +533,73 @@ export default function DashboardPage() {
     return rawTickets;
   }, [ticketsData?.data, status, hasExplicitSort, sortState]);
 
+  const tabCounts: Record<string, number> = {
+    active: statsActive,
+    all: statsTotal,
+    open: stats.open,
+    pending: stats.pending,
+    resolved: stats.resolved,
+    closed: stats.closed,
+  };
+
   return (
     <div className="h-full overflow-auto p-6">
-      {/* Stats Pills - Matching brand view style */}
-      <div className="mb-6 flex flex-wrap gap-3">
-        <button
-          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            status === 'active' || !status
-              ? 'bg-violet-500 text-white'
-              : 'bg-white border border-gray-200 hover:bg-gray-50'
-          }`}
-          onClick={() => handleStatClick('active')}
-        >
-          <span className={`h-2 w-2 rounded-full ${status === 'active' || !status ? 'bg-blue-300' : 'bg-blue-500'}`} />
-          <span>Active</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : statsActive}</span>
-        </button>
+      {/* Status filters + the two response metrics */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {STATUS_TABS.map((tab) => {
+          // "active" is the default view, so it owns the empty status too.
+          const isActive = tab.key === 'active' ? !status || status === 'active' : status === tab.key;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => handleStatClick(tab.key)}
+              aria-pressed={isActive}
+              className={cn(
+                'flex items-center gap-2 rounded-lg border py-[5px] pr-2.5 pl-[5px]',
+                'text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-brand bg-brand text-white shadow-[0_2px_8px_rgba(124,77,255,0.25)]'
+                  : 'border-border-strong bg-card hover:bg-surface-muted'
+              )}
+            >
+              <span
+                className={cn(
+                  'grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px]',
+                  isActive ? 'bg-white/20 text-white' : tab.tone
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              {tab.label}
+              <span
+                className={cn(
+                  'rounded-md px-2 py-px text-[13px] tabular-nums',
+                  isActive ? 'bg-white/25 text-white' : 'bg-secondary text-muted-foreground'
+                )}
+              >
+                {statsLoading ? '–' : tabCounts[tab.key]}
+              </span>
+            </button>
+          );
+        })}
 
-        <button
-          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            status === 'all'
-              ? 'bg-white border-2 border-blue-500'
-              : 'bg-white border border-gray-200 hover:bg-gray-50'
-          }`}
-          onClick={() => handleStatClick('all')}
-        >
-          <span className="h-2 w-2 rounded-full bg-blue-500" />
-          <span>All</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : statsTotal}</span>
-        </button>
-
-        <button
-          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            status === 'open'
-              ? 'bg-blue-50 border-2 border-blue-400 text-blue-700'
-              : 'bg-white border border-gray-200 hover:bg-gray-50'
-          }`}
-          onClick={() => handleStatClick('open')}
-        >
-          <span className="h-2 w-2 rounded-full bg-blue-500" />
-          <span>Open</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats.open}</span>
-        </button>
-
-        <button
-          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            status === 'pending'
-              ? 'bg-amber-50 border-2 border-amber-400 text-amber-700'
-              : 'bg-white border border-gray-200 hover:bg-gray-50'
-          }`}
-          onClick={() => handleStatClick('pending')}
-        >
-          <span className="h-2 w-2 rounded-full bg-amber-500" />
-          <span>Pending</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats.pending}</span>
-        </button>
-
-        <button
-          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            status === 'resolved'
-              ? 'bg-green-50 border-2 border-green-400 text-green-700'
-              : 'bg-white border border-gray-200 hover:bg-gray-50'
-          }`}
-          onClick={() => handleStatClick('resolved')}
-        >
-          <span className="h-2 w-2 rounded-full bg-green-500" />
-          <span>Resolved</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats.resolved}</span>
-        </button>
-
-        <button
-          className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-            status === 'closed'
-              ? 'bg-green-50 border-2 border-green-400 text-green-700'
-              : 'bg-white border border-gray-200 hover:bg-gray-50'
-          }`}
-          onClick={() => handleStatClick('closed')}
-        >
-          <span className="h-2 w-2 rounded-full bg-green-500" />
-          <span>Closed</span>
-          <span className="font-bold text-lg ml-2">{statsLoading ? '...' : stats.closed}</span>
-        </button>
-
-        {/* Metrics pills */}
-        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
-          <MessageSquare className="h-4 w-4 text-purple-500" />
-          <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(globalStats?.responseMetrics?.avgFirstResponseMinutes)}</span>
-          <span className="text-muted-foreground">Avg Response</span>
-        </div>
-
-        <div className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium bg-white border border-gray-200">
-          <Timer className="h-4 w-4 text-indigo-500" />
-          <span className="font-bold text-lg">{statsLoading ? '...' : formatDuration(globalStats?.responseMetrics?.avgResolutionMinutes)}</span>
-          <span className="text-muted-foreground">Avg Resolution</span>
+        {/* Metrics are facts, not filters, so they sit apart and stay quiet. */}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-[7px] text-sm">
+            <MessageSquare className="text-brand h-4 w-4" />
+            <span className="font-semibold tabular-nums">
+              {statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgFirstResponseMinutes)}
+            </span>
+            <span className="text-muted-foreground">avg response</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-[7px] text-sm">
+            <Timer className="text-brand h-4 w-4" />
+            <span className="font-semibold tabular-nums">
+              {statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgResolutionMinutes)}
+            </span>
+            <span className="text-muted-foreground">avg resolution</span>
+          </div>
         </div>
       </div>
 
@@ -682,10 +682,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Tickets Table */}
-      <div className="rounded-md border">
+      <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="bg-surface-muted">
+            <TableRow className="hover:bg-transparent">
               {visibleColumnDefs.map(col => {
                 const widthClass = col.key === 'brand' ? 'w-[100px]'
                   : col.key === 'subject' ? ''
@@ -701,8 +701,14 @@ export default function DashboardPage() {
                   : col.key === 'updatedAge' ? 'w-[120px]'
                   : '';
                 return (
-                  <TableHead key={col.key} className={widthClass}>
-                    <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort(col.key)}>
+                  <TableHead
+                    key={col.key}
+                    className={cn('text-muted-foreground h-11 px-3 text-xs font-semibold', widthClass)}
+                  >
+                    <button
+                      className="hover:text-foreground inline-flex items-center gap-1 transition-colors"
+                      onClick={() => handleSort(col.key)}
+                    >
                       {col.label} <SortIcon column={col.key} />
                     </button>
                   </TableHead>
@@ -731,33 +737,36 @@ export default function DashboardPage() {
                 return (
                 <TableRow
                   key={ticket.id}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="hover:bg-surface-muted cursor-pointer"
                   onClick={() =>
                     router.push(`/brands/${ticket.brandId}/tickets/${ticket.id}`)
                   }
                 >
                   {visibleColumnDefs.map(col => (
-                    <TableCell key={col.key}>
+                    <TableCell key={col.key} className="px-3 py-2.5">
                       {col.key === 'brand' && (
-                        <div className="flex items-center gap-2">
-                          {ticket.brand.iconUrl ? (
-                            <img
-                              src={ticket.brand.iconUrl}
-                              alt={ticket.brand.name}
-                              className="w-5 h-5 rounded"
-                            />
-                          ) : (
-                            <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground">
-                              {ticket.brand.ticketPrefix?.charAt(0) || 'B'}
-                            </div>
-                          )}
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {ticket.brand.ticketPrefix}
-                          </Badge>
-                        </div>
+                        /* The tile carries the brand's uploaded icon when it has
+                           one and its generated colour when it does not, so the
+                           column is scannable even for brands that never set a
+                           logo. The prefix stays alongside it: it is what the
+                           ticket numbers in every other surface are built from,
+                           and dropping it would make this column decorative. */
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex w-fit cursor-default items-center gap-2">
+                                <BrandTile name={ticket.brand.name} iconUrl={ticket.brand.iconUrl} />
+                                <span className="text-subtle font-mono text-xs">
+                                  {ticket.brand.ticketPrefix}
+                                </span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>{ticket.brand.name}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       {col.key === 'subject' && (
-                        <div className="font-medium truncate max-w-[400px]">
+                        <div className="max-w-[440px] truncate font-medium" title={ticket.title}>
                           {ticket.title}
                         </div>
                       )}

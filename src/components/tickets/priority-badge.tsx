@@ -1,29 +1,19 @@
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Pill } from './pill';
 
 type NonNullPriority = 'low' | 'normal' | 'medium' | 'high' | 'urgent';
 
+/**
+ * Priority climbs from quiet to loud: grey, then the brand violet for the
+ * default, then blue, then a red tint, and finally a solid red that is the one
+ * chip in a row allowed to shout.
+ */
 const priorityConfig: Record<NonNullPriority, { label: string; className: string }> = {
-  low: {
-    label: 'Low',
-    className: 'bg-slate-100 text-slate-600 hover:bg-slate-100',
-  },
-  normal: {
-    label: 'Normal',
-    className: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-100',
-  },
-  medium: {
-    label: 'Medium',
-    className: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
-  },
-  high: {
-    label: 'High',
-    className: 'bg-rose-100 text-rose-600 hover:bg-rose-100',
-  },
-  urgent: {
-    label: 'Urgent',
-    className: 'bg-red-200 text-red-700 hover:bg-red-200',
-  },
+  low: { label: 'Low', className: 'bg-secondary text-muted-foreground' },
+  normal: { label: 'Normal', className: 'bg-brand-soft text-brand' },
+  medium: { label: 'Medium', className: 'bg-info-soft text-info' },
+  high: { label: 'High', className: 'bg-danger-soft text-danger' },
+  urgent: { label: 'Urgent', className: 'bg-danger text-white' },
 };
 
 interface PriorityBadgeProps {
@@ -32,14 +22,15 @@ interface PriorityBadgeProps {
 }
 
 export function PriorityBadge({ priority, className }: PriorityBadgeProps) {
-  const config = priorityConfig[priority];
+  // The API's priority vocabulary can grow ahead of this map, and callers cast
+  // a plain string into the prop -- so an unknown value renders as itself in
+  // grey rather than throwing and taking the whole table down with it.
+  const config = priorityConfig[priority] ?? {
+    label: priority,
+    className: 'bg-secondary text-muted-foreground',
+  };
 
-  return (
-    <Badge
-      variant="secondary"
-      className={cn(config.className, className)}
-    >
-      {config.label}
-    </Badge>
-  );
+  // Priority is read next to status, and two dotted chips side by side read as
+  // one list rather than two separate facts -- so this one goes without.
+  return <Pill dot={false} className={cn(config.className, className)}>{config.label}</Pill>;
 }
