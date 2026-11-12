@@ -22,7 +22,7 @@ const CHOICES: PresenceStatus[] = ['available', 'busy', 'away', 'offline'];
  * brand). It records intent; whether they are actually reachable comes from
  * this tab's live connection, so closing the laptop goes offline on its own.
  */
-export function AvailabilityToggle() {
+export function AvailabilityToggle({ compact = false }: { compact?: boolean } = {}) {
   const { data } = useMyPresence();
   const setPresence = useSetMyPresence();
 
@@ -39,13 +39,27 @@ export function AvailabilityToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 px-2 text-sm">
+        <Button
+          variant="ghost"
+          size="sm"
+          className={
+            compact
+              ? 'h-7 shrink-0 gap-1.5 rounded-full border px-2 text-xs font-medium'
+              : 'w-full justify-start gap-2 px-2 text-sm'
+          }
+        >
           <PresenceDot status={unreachable ? 'offline' : shown} />
           <span className="truncate">
             {intended === 'mixed' ? 'Mixed' : PRESENCE_LABELS[shown]}
             {unreachable && <span className="text-muted-foreground"> · reconnecting</span>}
           </span>
-          <ChevronsUpDown className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+          <ChevronsUpDown
+            className={
+              compact
+                ? 'text-muted-foreground h-3 w-3'
+                : 'text-muted-foreground ml-auto h-3.5 w-3.5'
+            }
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="start" side="top">

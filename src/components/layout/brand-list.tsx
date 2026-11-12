@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import { useBrands, useCreateBrand, useUsage, useDashboardStats } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,8 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Plus, Search } from 'lucide-react';
 import { BRAND_NAV_TABS } from './brand-nav';
+import { SidebarSection, SidebarSectionHeader, NavItem } from './sidebar-nav';
+import { BrandTile } from '@/components/brand-tile';
 
 /**
  * Above this many brands the flat list becomes a filtered, scrollable region
@@ -115,50 +116,56 @@ export function BrandList() {
 
   return (
     <>
-      <div className="px-3">
-        <div className="mb-2 flex items-center justify-between px-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Brands
-          </h3>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    disabled={isAtBrandLimit}
-                    aria-label="Create brand"
-                    onClick={() => setCreateDialogOpen(true)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isAtBrandLimit ? (
-                  <>
-                    <p>Brand limit reached ({usageData?.brandLimit})</p>
-                    <p className="text-xs text-zinc-400">Upgrade to create more</p>
-                  </>
-                ) : (
-                  <p>Create brand</p>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+      <SidebarSection>
+        <SidebarSectionHeader
+          action={
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      disabled={isAtBrandLimit}
+                      aria-label="Create brand"
+                      onClick={() => setCreateDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isAtBrandLimit ? (
+                    <>
+                      <p>Brand limit reached ({usageData?.brandLimit})</p>
+                      <p className="text-xs text-zinc-400">Upgrade to create more</p>
+                    </>
+                  ) : (
+                    <p>Create brand</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          }
+        >
+          Brands
+          {sortedBrands.length > 0 && (
+            <span className="text-subtle ml-1.5 font-normal tracking-normal">
+              {sortedBrands.length}
+            </span>
+          )}
+        </SidebarSectionHeader>
 
         {showFilter && (
-          <div className="relative mb-2">
-            <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative mb-2 px-0.5">
+            <Search className="text-subtle absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
             <Input
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder={`Filter ${sortedBrands.length} brands...`}
+              placeholder="Filter brands"
               aria-label="Filter brands"
-              className="h-8 pl-7 text-sm"
+              className="h-8 pl-8 text-[13.5px]"
             />
           </div>
         )}
@@ -171,8 +178,14 @@ export function BrandList() {
         ) : (
           <nav
             className={cn(
-              'space-y-1',
-              showFilter && 'max-h-64 overflow-y-auto'
+              'space-y-0.5',
+              // Past the filter threshold the list scrolls instead of pushing
+              // the Workspace section below the fold. Five rows, like the
+              // design. The negative margin plus matching padding keeps the
+              // active row's accent bar INSIDE the scroll box -- at -left-3 it
+              // would otherwise be clipped by the overflow.
+              showFilter &&
+                '-mx-3 max-h-[11.25rem] overflow-y-auto overscroll-contain px-3'
             )}
           >
             {visibleBrands.map((brand) => {
@@ -184,32 +197,24 @@ export function BrandList() {
                 : 0;
 
               return (
-                <Link
+                <NavItem
                   key={brand.id}
                   href={`/brands/${brand.id}/${currentSection}`}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={cn(
-                    'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
-                    isActive
-                      ? 'bg-secondary font-medium text-foreground'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <span className="truncate">{brand.name}</span>
-                  {activeCount > 0 && (
-                    <span
-                      className="ml-auto shrink-0 text-xs opacity-70"
-                      title={`${brandStats!.open} open · ${brandStats!.pending} pending`}
-                    >
-                      {activeCount}
-                    </span>
-                  )}
-                </Link>
+                  active={isActive}
+                  icon={<BrandTile name={brand.name} iconUrl={brand.iconUrl} size="sm" />}
+                  label={brand.name}
+                  count={activeCount}
+                  title={
+                    brandStats
+                      ? `${brand.name} · ${brandStats.open} open · ${brandStats.pending} pending`
+                      : brand.name
+                  }
+                />
               );
             })}
 
             {visibleBrands.length === 0 && (
-              <p className="px-2 py-1.5 text-sm text-muted-foreground">
+              <p className="text-muted-foreground px-2.5 py-1.5 text-sm">
                 {sortedBrands.length === 0
                   ? 'No brands found'
                   : 'No brands match that filter'}
@@ -217,8 +222,7 @@ export function BrandList() {
             )}
           </nav>
         )}
-      </div>
-
+      </SidebarSection>
       {/* Create Brand Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent>

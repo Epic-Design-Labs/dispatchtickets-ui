@@ -3,9 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,8 +19,25 @@ import { useProfile, useBrands, useDashboardStats, useDashboardTickets } from '@
 import { BrandList } from './brand-list';
 import { OrgSwitcher } from './org-switcher';
 import { NotificationBell } from './notification-bell';
+import { SidebarSection, SidebarSectionHeader, NavItem } from './sidebar-nav';
 import { AvailabilityToggle } from '@/components/presence/availability-toggle';
-import { Inbox, User, AlertCircle, Key, Rocket, BarChart3 } from 'lucide-react';
+import {
+  Inbox,
+  User,
+  AlertCircle,
+  Key,
+  Rocket,
+  BarChart3,
+  Users,
+  CreditCard,
+  LifeBuoy,
+  Lightbulb,
+  LogOut,
+  UserCog,
+} from 'lucide-react';
+
+/** Every sidebar glyph is the same weight and size, per the design. */
+const ICON = 'h-[18px] w-[18px]';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -46,6 +61,9 @@ export function Sidebar() {
   );
   const myTicketsCount = myTicketsData?.data?.length ?? 0;
 
+  const activeCount = (stats?.open || 0) + (stats?.pending || 0);
+  const hasBrands = !!brands && brands.length > 0;
+
   // Get display name: profile > email-derived > email
   const displayName = profile?.displayName || (email ? email.split('@')[0].split(/[._-]/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User');
 
@@ -61,8 +79,8 @@ export function Sidebar() {
   };
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-background">
-      <div className="flex h-14 items-center justify-between border-b px-4">
+    <div className="bg-card flex h-full w-[264px] flex-col border-r">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b pr-4 pl-5">
         <Link href="/dashboard" className="flex items-center">
           <Image
             src="/logo.svg"
@@ -75,206 +93,100 @@ export function Sidebar() {
         <NotificationBell />
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4">
+      <div className="flex-1 overflow-y-auto">
         {/* When no brands exist, show Getting Started prominently at top */}
-        {(!brands || brands.length === 0) && (
-          <div className="px-3 mb-4">
-            <Button
-              variant={pathname === '/getting-started' ? 'secondary' : 'ghost'}
-              className={cn(
-                'w-full justify-start gap-2',
-                pathname === '/getting-started' && 'bg-secondary'
-              )}
-              asChild
-            >
-              <Link href="/getting-started">
-                <Rocket className="h-4 w-4" />
-                Getting Started
-              </Link>
-            </Button>
-          </div>
+        {!hasBrands && (
+          <SidebarSection>
+            <nav className="space-y-0.5">
+              <NavItem
+                href="/getting-started"
+                icon={<Rocket className={ICON} />}
+                label="Getting Started"
+                active={pathname === '/getting-started'}
+              />
+            </nav>
+          </SidebarSection>
         )}
 
         {/* Dashboard Views - only show when brands exist */}
-        {brands && brands.length > 0 && (
+        {hasBrands && (
           <>
-            <div className="px-3 mb-2">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-2">
-                Queue
-              </h3>
-              <nav className="space-y-1">
-                <Link
+            <SidebarSection>
+              <SidebarSectionHeader>Queue</SidebarSectionHeader>
+              <nav className="space-y-0.5">
+                <NavItem
                   href="/dashboard"
-                  className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
-                    isDashboard && view === 'all'
-                      ? 'bg-secondary text-foreground font-medium'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <Inbox className="h-4 w-4" />
-                  All Active
-                  {stats && (
-                    <span className="ml-auto text-xs opacity-70">{(stats.open || 0) + (stats.pending || 0)}</span>
-                  )}
-                </Link>
-                <Link
+                  icon={<Inbox className={ICON} />}
+                  label="All Active"
+                  active={isDashboard && view === 'all'}
+                  count={activeCount}
+                />
+                <NavItem
                   href="/dashboard?view=mine"
-                  className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
-                    isDashboard && view === 'mine'
-                      ? 'bg-secondary text-foreground font-medium'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <User className="h-4 w-4" />
-                  My Tickets
-                  {myTicketsCount > 0 && (
-                    <span className="ml-auto text-xs opacity-70">{myTicketsCount}</span>
-                  )}
-                </Link>
-                <Link
+                  icon={<User className={ICON} />}
+                  label="My Tickets"
+                  active={isDashboard && view === 'mine'}
+                  count={myTicketsCount}
+                />
+                <NavItem
                   href="/dashboard?view=unassigned"
-                  className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
-                    isDashboard && view === 'unassigned'
-                      ? 'bg-secondary text-foreground font-medium'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <AlertCircle className="h-4 w-4" />
-                  Unassigned
-                </Link>
-                <Link
+                  icon={<AlertCircle className={ICON} />}
+                  label="Unassigned"
+                  active={isDashboard && view === 'unassigned'}
+                />
+                <NavItem
                   href="/stats"
-                  className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors',
-                    pathname === '/stats'
-                      ? 'bg-secondary text-foreground font-medium'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Statistics
-                </Link>
+                  icon={<BarChart3 className={ICON} />}
+                  label="Statistics"
+                  active={pathname === '/stats'}
+                />
               </nav>
-            </div>
-
-            <Separator className="mb-4" />
+            </SidebarSection>
 
             {/* Flat brand list with active-ticket counts */}
             <BrandList />
           </>
         )}
-      </div>
 
-      {/* Organization section */}
-      <div className="border-t p-3">
-        <nav className="space-y-1">
-          <Button
-            variant={pathname === '/team' ? 'secondary' : 'ghost'}
-            className={cn(
-              'w-full justify-start gap-2',
-              pathname === '/team' && 'bg-secondary'
+        <SidebarSection className="border-b-0">
+          <SidebarSectionHeader>Workspace</SidebarSectionHeader>
+          <nav className="space-y-0.5">
+            <NavItem
+              href="/team"
+              icon={<Users className={ICON} />}
+              label="Team"
+              active={pathname === '/team'}
+            />
+            {(session?.orgRole === 'owner' || session?.orgRole === 'admin') && (
+              <NavItem
+                href="/api-keys"
+                icon={<Key className={ICON} />}
+                label="API Keys"
+                active={pathname === '/api-keys'}
+              />
             )}
-            asChild
-          >
-            <Link href="/team">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              Team
-            </Link>
-          </Button>
-          {(session?.orgRole === 'owner' || session?.orgRole === 'admin') && (
-            <Button
-              variant={pathname === '/api-keys' ? 'secondary' : 'ghost'}
-              className={cn(
-                'w-full justify-start gap-2',
-                pathname === '/api-keys' && 'bg-secondary'
-              )}
-              asChild
-            >
-              <Link href="/api-keys">
-                <Key className="h-4 w-4" />
-                API Keys
-              </Link>
-            </Button>
-          )}
-          {session?.orgRole === 'owner' && (
-            <Button
-              variant={pathname === '/billing' ? 'secondary' : 'ghost'}
-              className={cn(
-                'w-full justify-start gap-2',
-                pathname === '/billing' && 'bg-secondary'
-              )}
-              asChild
-            >
-              <Link href="/billing">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                  />
-                </svg>
-                Billing
-              </Link>
-            </Button>
-          )}
-        </nav>
-      </div>
-
-      {/* Support section */}
-      <div className="border-t p-3">
-        <nav className="space-y-1">
-          <Button
-            variant={pathname === '/support' ? 'secondary' : 'ghost'}
-            className={cn(
-              'w-full justify-start gap-2',
-              pathname === '/support' && 'bg-secondary'
+            {session?.orgRole === 'owner' && (
+              <NavItem
+                href="/billing"
+                icon={<CreditCard className={ICON} />}
+                label="Billing"
+                active={pathname === '/billing'}
+              />
             )}
-            asChild
-          >
-            <Link href="/support">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-              Support
-            </Link>
-          </Button>
-          <Button
-            variant={pathname === '/feature-requests' ? 'secondary' : 'ghost'}
-            className={cn(
-              'w-full justify-start gap-2',
-              pathname === '/feature-requests' && 'bg-secondary'
-            )}
-            asChild
-          >
-            <Link href="/feature-requests">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                />
-              </svg>
-              Feature Requests
-            </Link>
-          </Button>
-        </nav>
+            <NavItem
+              href="/support"
+              icon={<LifeBuoy className={ICON} />}
+              label="Support"
+              active={pathname === '/support'}
+            />
+            <NavItem
+              href="/feature-requests"
+              icon={<Lightbulb className={ICON} />}
+              label="Feature Requests"
+              active={pathname === '/feature-requests'}
+            />
+          </nav>
+        </SidebarSection>
       </div>
 
       {/* Org switcher.
@@ -305,7 +217,7 @@ export function Sidebar() {
           Until then, the backstop is the organizationMembership.deleted
           webhook, which runs the same cleanup for a removal that never
           touched the API. */}
-      <div className="border-t px-3 pt-2">
+      <div className="shrink-0 border-t px-3 py-2">
         <SignedIn>
           <OrganizationSwitcher
             hidePersonal
@@ -331,77 +243,54 @@ export function Sidebar() {
           the legacy dropdown. Clerk's <SignedOut> treats Stackbe-authenticated
           sessions as "signed-out" since Clerk has no session for them, which is
           exactly the routing we want during the parallel-mode period. */}
-      <div className="border-t p-3">
-        <div className="mb-1">
-          <AvailabilityToggle />
-        </div>
+      <div className="shrink-0 border-t px-3 py-3">
         <SignedIn>
-          <div className="flex items-center gap-2 px-2">
+          <div className="flex items-center gap-2.5 px-1">
             <UserButton
               appearance={{ elements: { rootBox: 'flex items-center' } }}
               afterSignOutUrl="/login"
             />
-            <Link href="/profile" className="truncate text-sm hover:underline">
+            <Link href="/profile" className="min-w-0 flex-1 truncate text-sm font-medium hover:underline">
               {displayName}
             </Link>
+            <AvailabilityToggle compact />
           </div>
         </SignedIn>
         <SignedOut>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={profile?.avatarUrl || undefined} alt={displayName} />
-                <AvatarFallback className="text-xs">
-                  {getInitials()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="truncate text-sm">{displayName}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="start" side="top">
-            <DropdownMenuLabel className="font-normal">
-              <p className="text-sm font-medium">{displayName}</p>
-              <p className="text-xs text-muted-foreground truncate">{email}</p>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/profile">
-                <svg
-                  className="mr-2 h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-                Profile Settings
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600">
-              <svg
-                className="mr-2 h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="min-w-0 flex-1 justify-start gap-2.5 px-1">
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={profile?.avatarUrl || undefined} alt={displayName} />
+                    <AvatarFallback className="text-xs">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate text-sm font-medium">{displayName}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="start" side="top">
+                <DropdownMenuLabel className="font-normal">
+                  <p className="text-sm font-medium">{displayName}</p>
+                  <p className="text-muted-foreground truncate text-xs">{email}</p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/profile">
+                    <UserCog className="mr-2 h-4 w-4" />
+                    Profile Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AvailabilityToggle compact />
+          </div>
         </SignedOut>
       </div>
     </div>
