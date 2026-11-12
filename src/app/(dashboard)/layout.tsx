@@ -167,7 +167,7 @@ export default function DashboardLayout({
 
         <ConnectionWarningBanner />
         {brandId && <BrandNav brandId={brandId} />}
-        <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-canvas">{children}</main>
       </div>
       <KeyboardShortcutsModal />
     </div>

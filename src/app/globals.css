@@ -3,11 +3,54 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+  Design tokens follow the Dispatch app design (Diana, Oct 2026).
+
+  The rule the whole palette rests on: surfaces are WHITE and the page behind
+  them is a faintly violet grey. That is why `--background` stays #fff -- the
+  codebase already uses `bg-background` to mean "a white surface" (sticky table
+  columns, textareas, chat panes), and tinting it would desync those from the
+  rows and cards they sit against. The page canvas is its own token,
+  `--canvas`, applied to the scroll container in the dashboard shell.
+*/
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Page canvas + the two quiet surfaces that sit on it. */
+  --color-canvas: var(--canvas);
+  --color-surface-muted: var(--surface-muted);
+  --color-border-strong: var(--border-strong);
+  /* Third-level text: counts, timestamps, placeholders. Quieter than
+     muted-foreground, which is still meant to be read. */
+  --color-subtle: var(--subtle);
+
+  /* Brand violet. `primary` is the same colour; these exist so a soft-filled
+     chip can say what it means (`bg-brand-soft text-brand`) instead of
+     leaning on primary/10. */
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-softer: var(--brand-softer);
+
+  /* Status palette. Each has a fill, a soft background and the text colour
+     that is legible on that background -- the soft/text pairs are NOT the
+     same value (amber on amber-50 fails contrast), which is why
+     `*-foreground` exists here. */
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --font-sans: var(--font-inter);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -37,6 +80,19 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Shadows are nearly flat by design: the border carries the edge and the
+     shadow only lifts the element off the canvas. */
+  --shadow-2xs: 0 1px 1px rgba(20, 20, 40, 0.03);
+  --shadow-xs: 0 1px 2px rgba(20, 20, 40, 0.04);
+  --shadow-sm: 0 1px 2px rgba(20, 20, 40, 0.04);
+  --shadow-md: 0 2px 8px rgba(20, 20, 40, 0.06);
+  --shadow-lg: 0 8px 24px rgba(20, 20, 40, 0.08);
+  --shadow-xl: 0 16px 40px rgba(20, 20, 40, 0.10);
+
+  /* 11px base: buttons and inputs (rounded-md) land on 9px and cards
+     (rounded-xl) on 15px, matching the design's 9/12 family closely enough
+     that nothing needed per-component overrides. */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -47,79 +103,143 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.6875rem;
+
+  --background: #ffffff;
+  --foreground: #1b1b25;
+  --canvas: #f7f7fb;
+  --surface-muted: #fafafc;
+  --subtle: #9a9aab;
+
+  --card: #ffffff;
+  --card-foreground: #1b1b25;
+  --popover: #ffffff;
+  --popover-foreground: #1b1b25;
+
+  --brand: #7c4dff;
+  --brand-strong: #6a3cf0;
+  --brand-soft: #efe9ff;
+  --brand-softer: #e3d9ff;
+
+  --primary: #7c4dff;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f1f5;
+  --secondary-foreground: #1b1b25;
+  --muted: #f1f1f5;
+  --muted-foreground: #5b5b6b;
+  --accent: #f1f1f5;
+  --accent-foreground: #1b1b25;
+
+  --info: #2f6bff;
+  --info-soft: #e8f0ff;
+  --success: #22c55e;
+  --success-soft: #e6f8ee;
+  --success-foreground: #16a34a;
+  --warning: #f59e0b;
+  --warning-soft: #fff3e0;
+  --warning-foreground: #c26a00;
+  --danger: #ef4444;
+  --danger-soft: #fdecec;
+  --destructive: #ef4444;
+
+  --border: #ececf2;
+  /* Inputs and secondary buttons carry a stronger edge than card borders so a
+     field reads as a field without a fill. */
+  --border-strong: #e1e1ea;
+  --input: #e1e1ea;
+  --ring: #7c4dff;
+
+  --chart-1: #7c4dff;
+  --chart-2: #2f6bff;
+  --chart-3: #22c55e;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1b1b25;
+  --sidebar-primary: #7c4dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #efe9ff;
+  --sidebar-accent-foreground: #6a3cf0;
+  --sidebar-border: #ececf2;
+  --sidebar-ring: #7c4dff;
 }
 
+/*
+  The app ships light-only -- there is no theme toggle and `html` never gets
+  the `dark` class. This block is kept so the ~30 `dark:` utilities already in
+  the codebase resolve to something coherent if dark mode is ever switched on,
+  and so it does not drift back to greyscale while the light theme moves.
+*/
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: #15151c;
+  --foreground: #f4f4f7;
+  --canvas: #101016;
+  --surface-muted: #1d1d26;
+  --subtle: #7b7b8c;
+
+  --card: #1b1b25;
+  --card-foreground: #f4f4f7;
+  --popover: #1b1b25;
+  --popover-foreground: #f4f4f7;
+
+  --brand: #9b7bff;
+  --brand-strong: #8964ff;
+  --brand-soft: #2a2140;
+  --brand-softer: #352a52;
+
+  --primary: #9b7bff;
+  --primary-foreground: #15151c;
+  --secondary: #26262f;
+  --secondary-foreground: #f4f4f7;
+  --muted: #26262f;
+  --muted-foreground: #a3a3b2;
+  --accent: #26262f;
+  --accent-foreground: #f4f4f7;
+
+  --info: #6a94ff;
+  --info-soft: #182542;
+  --success: #4ade80;
+  --success-soft: #13301f;
+  --success-foreground: #4ade80;
+  --warning: #fbbf24;
+  --warning-soft: #342413;
+  --warning-foreground: #fbbf24;
+  --danger: #f87171;
+  --danger-soft: #3a1b1b;
+  --destructive: #f87171;
+
   --border: oklch(1 0 0 / 10%);
+  --border-strong: oklch(1 0 0 / 16%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: #9b7bff;
+
+  --chart-1: #9b7bff;
+  --chart-2: #6a94ff;
+  --chart-3: #4ade80;
+  --chart-4: #fbbf24;
+  --chart-5: #f87171;
+
+  --sidebar: #1b1b25;
+  --sidebar-foreground: #f4f4f7;
+  --sidebar-primary: #9b7bff;
+  --sidebar-primary-foreground: #15151c;
+  --sidebar-accent: #2a2140;
+  --sidebar-accent-foreground: #c4b1ff;
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: #9b7bff;
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
