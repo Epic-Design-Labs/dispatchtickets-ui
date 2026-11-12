@@ -138,6 +138,13 @@ function CreateKeyDialog({ onSuccess }: { onSuccess: (key: ApiKey) => void }) {
               <Switch checked={allBrands} onCheckedChange={setAllBrands} />
             </div>
 
+            {allBrands && (
+              <p className="text-sm text-amber-600">
+                This key can read and change every brand&apos;s tickets, including brands you add
+                later. For a key that serves one integration, turn this off and pick its brands.
+              </p>
+            )}
+
             {!allBrands && brands && brands.length > 0 && (
               <div className="border rounded-md p-3 space-y-2">
                 <Label className="text-sm font-medium">Select brands</Label>
