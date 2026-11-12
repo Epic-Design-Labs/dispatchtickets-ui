@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Pill } from '@/components/tickets/pill';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -244,23 +245,31 @@ export default function BillingPage() {
     });
   };
 
+  /**
+   * Cancelling and Past Due both used to render as the same destructive red,
+   * and they are the two states on this page a customer acts on most
+   * differently: one is a change they scheduled themselves and can undo with
+   * the button right beside it, the other is a failed payment that ends the
+   * service if they ignore it. Cancelling takes the warning tone, Past Due
+   * keeps red to itself.
+   */
   const getStatusBadge = (status: string, cancelAtPeriodEnd: boolean) => {
     if (cancelAtPeriodEnd) {
-      return <Badge variant="destructive">Cancelling</Badge>;
+      return <Pill className="bg-warning-soft text-warning-foreground">Cancelling</Pill>;
     }
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-500">Active</Badge>;
+        return <Pill className="bg-success-soft text-success-foreground">Active</Pill>;
       case 'trialing':
-        return <Badge className="bg-blue-500">Trial</Badge>;
+        return <Pill className="bg-info-soft text-info">Trial</Pill>;
       case 'past_due':
-        return <Badge variant="destructive">Past Due</Badge>;
+        return <Pill className="bg-danger-soft text-danger">Past Due</Pill>;
       case 'canceled':
-        return <Badge variant="secondary">Cancelled</Badge>;
+        return <Pill className="bg-secondary text-muted-foreground">Cancelled</Pill>;
       case 'paused':
-        return <Badge variant="secondary">Paused</Badge>;
+        return <Pill className="bg-secondary text-muted-foreground">Paused</Pill>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Pill className="bg-secondary text-muted-foreground">{status}</Pill>;
     }
   };
 
@@ -413,8 +422,8 @@ export default function BillingPage() {
                   <div className="space-y-6">
                     {/* Scheduled (deferred) plan change banner */}
                     {subscription.pendingPlanName && (
-                      <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-900/60 dark:bg-amber-950/30 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-amber-900 dark:text-amber-200">
+                      <div className="border-warning/25 bg-warning-soft flex flex-col gap-3 rounded-lg border p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-warning-foreground">
                           Your plan changes to <span className="font-semibold">{subscription.pendingPlanName}</span>
                           {subscription.pendingEffectiveAt ? ` on ${formatDate(subscription.pendingEffectiveAt)}` : ''}.
                           You keep your current plan until then.
@@ -448,7 +457,7 @@ export default function BillingPage() {
                       <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm py-3 border-y">
                         {getPlanFeatures(currentPlan, subscription.planName.replace(/\s*\(?(?:Monthly|Annual)\)?$/i, '')).map((feature, i) => (
                           <div key={i} className="flex items-center gap-2">
-                            <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="text-success h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                             <span className="text-muted-foreground">{feature}</span>
@@ -552,7 +561,7 @@ export default function BillingPage() {
                       <span className={`text-sm font-medium transition-colors ${billingPeriod === 'annual' ? 'text-foreground' : 'text-muted-foreground'}`}>
                         Annual
                       </span>
-                      <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                      <Badge variant="secondary" className="bg-success-soft text-success-foreground text-xs">
                         Save up to 34%
                       </Badge>
                     </div>
@@ -589,7 +598,7 @@ export default function BillingPage() {
                             </Badge>
                           )}
                           {billingPeriod === 'annual' && savings && !isCurrent && (
-                            <Badge className="absolute -top-2 left-2 bg-green-600">
+                            <Badge className="bg-success absolute -top-2 left-2 text-white">
                               Save {savings}%
                             </Badge>
                           )}
@@ -607,7 +616,7 @@ export default function BillingPage() {
                           <ul className="space-y-2 text-sm text-muted-foreground mb-4 flex-1">
                             {getPlanFeatures(plan, group.baseName).map((feature, i) => (
                               <li key={i} className="flex items-center gap-2">
-                                <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="text-success h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                                 {feature}
@@ -615,7 +624,7 @@ export default function BillingPage() {
                             ))}
                             {/* Overage pricing */}
                             <li className="flex items-center gap-2 pt-2 border-t">
-                              <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="text-info h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               </svg>
                               <span>$0.02/ticket overage</span>
@@ -684,10 +693,10 @@ export default function BillingPage() {
                         <div
                           className={`h-2 rounded-full ${
                             usageData.ticketCount >= usageData.planLimit
-                              ? 'bg-destructive'
+                              ? 'bg-danger'
                               : usageData.ticketCount >= usageData.planLimit * 0.8
-                              ? 'bg-yellow-500'
-                              : 'bg-primary'
+                              ? 'bg-warning'
+                              : 'bg-brand'
                           }`}
                           style={{
                             width: `${Math.min(100, (usageData.ticketCount / usageData.planLimit) * 100)}%`,
@@ -696,7 +705,7 @@ export default function BillingPage() {
                       </div>
                     )}
                     {usageData.ticketCount > (usageData.planLimit || 0) && usageData.planLimit && (
-                      <p className="text-sm text-amber-600">
+                      <p className="text-warning-foreground text-sm">
                         You&apos;re {usageData.ticketCount - usageData.planLimit} tickets over your limit.
                         Overage charges: ${((usageData.ticketCount - usageData.planLimit) * 0.02).toFixed(2)}
                       </p>

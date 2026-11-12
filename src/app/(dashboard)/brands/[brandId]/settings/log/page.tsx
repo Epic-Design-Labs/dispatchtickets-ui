@@ -48,20 +48,44 @@ const entityIcons: Record<string, React.ElementType> = {
   email_connection: Mail,
 };
 
-// Color mapping for event types
-const eventColors: Record<string, string> = {
-  'ticket.created': 'bg-green-500',
-  'ticket.updated': 'bg-blue-500',
-  'ticket.deleted': 'bg-red-500',
-  'ticket.merged': 'bg-purple-500',
-  'ticket.spam_marked': 'bg-orange-500',
-  'comment.created': 'bg-green-400',
-  'contact.created': 'bg-green-400',
-  default: 'bg-gray-500',
+/**
+ * The timeline dot's colour, keyed on the event's VERB rather than its full
+ * name.
+ *
+ * `AuditEventLabels` already carries thirty-odd events and the API grows the
+ * list whenever a module learns to log something, so a per-event map is a map
+ * that is always a little out of date -- the version this replaced coloured
+ * seven events and dropped the other twenty-three into grey, including every
+ * deletion that was not a ticket's. Keying on the verb means a new
+ * `webhook.deleted` arrives already wearing red.
+ *
+ * The fills are soft, where this page used to draw saturated circles with a
+ * white glyph inside. A log is a dense list read top to bottom; forty solid
+ * dots down the page is a colour chart rather than a signal, and it buries the
+ * two entries an operator actually reacts to -- a deletion and a spam mark.
+ */
+const eventTones: Record<string, string> = {
+  created: 'bg-success-soft text-success-foreground',
+  restored: 'bg-success-soft text-success-foreground',
+  uploaded: 'bg-success-soft text-success-foreground',
+  added_to_ticket: 'bg-success-soft text-success-foreground',
+  updated: 'bg-info-soft text-info',
+  deleted: 'bg-danger-soft text-danger',
+  removed_from_ticket: 'bg-danger-soft text-danger',
+  error: 'bg-danger-soft text-danger',
+  merged: 'bg-brand-soft text-brand',
+  spam_marked: 'bg-warning-soft text-warning-foreground',
+  // Undoing a spam mark is a correction, not an alarm: it stays quiet.
+  spam_unmarked: 'bg-secondary text-muted-foreground',
 };
 
-function getEventColor(event: string): string {
-  return eventColors[event] || eventColors.default;
+const DEFAULT_EVENT_TONE = 'bg-secondary text-muted-foreground';
+
+function getEventTone(event: string): string {
+  // 'ticket.spam_marked' -> 'spam_marked'. An event with no dot in it falls
+  // through to the default rather than matching on its whole name by accident.
+  const verb = event.includes('.') ? event.slice(event.indexOf('.') + 1) : '';
+  return eventTones[verb] ?? DEFAULT_EVENT_TONE;
 }
 
 function formatPerformedBy(performedBy?: AuditLog['performedBy']): string {
@@ -141,7 +165,7 @@ function AuditLogItem({ log, brandId }: { log: AuditLog; brandId: string }) {
       {/* Timeline indicator */}
       <div className="flex flex-col items-center">
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${getEventColor(log.event)}`}
+          className={`w-8 h-8 rounded-full flex items-center justify-center ${getEventTone(log.event)}`}
         >
           <Icon className="w-4 h-4" />
         </div>
