@@ -159,9 +159,10 @@ function Authorize() {
             <li>Add custom ticket fields</li>
           </ul>
           <p className="text-muted-foreground">
-            It can&apos;t delete tickets or brands, change brand or email settings, add people to email
-            threads, see other brands, or manage your team, API keys or billing. It can only change or
-            remove webhooks and chat buttons it created.
+            It can&apos;t delete tickets or brands, change who a ticket&apos;s emails go to, add people to
+            email threads, mark tickets as spam, change brand or email settings, see other brands, or
+            manage your team, API keys or billing. It can only change or remove webhooks and chat
+            buttons it created.
           </p>
         </div>
 
