@@ -48,10 +48,15 @@ export function WaitingBadge({
       title={`The visitor has been waiting for a reply since ${new Date(since).toLocaleTimeString()}`}
       className={cn(
         'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium',
+        // Level 1 goes soft rather than solid: white on amber is about 2:1 and
+        // was unreadable at this size, and a tint is the honest middle step
+        // between the quiet badge and the solid red, the same ladder the
+        // priority chip climbs. Level 2 keeps the solid fill -- it is the one
+        // badge in the row allowed to shout.
         level >= 2
-          ? 'bg-red-600 text-white'
+          ? 'bg-danger text-white'
           : level === 1
-            ? 'bg-amber-500 text-white'
+            ? 'bg-warning-soft text-warning-foreground'
             : 'bg-muted text-muted-foreground',
         className,
       )}

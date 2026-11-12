@@ -108,7 +108,7 @@ function ChatRow({
         )}
       >
         <div className="flex items-center gap-2">
-          {unread && <span className="h-2 w-2 shrink-0 rounded-full bg-blue-600" aria-label="Unread" />}
+          {unread && <span className="bg-info h-2 w-2 shrink-0 rounded-full" aria-label="Unread" />}
           <span className={cn('truncate text-sm', unread ? 'font-semibold' : 'font-medium')}>{who}</span>
           <span className="ml-auto shrink-0">
             <WaitingBadge ticket={ticket} />

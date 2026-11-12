@@ -877,7 +877,7 @@ export function TicketTable({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className={isOverdue ? 'text-red-600 font-medium' : isDueSoon ? 'text-amber-600' : 'text-muted-foreground'}>
+                <span className={isOverdue ? 'text-danger font-medium' : isDueSoon ? 'text-warning-foreground' : 'text-muted-foreground'}>
                   {formatTimeAgo(ticket.dueAt)}
                 </span>
               </TooltipTrigger>
@@ -1041,7 +1041,7 @@ export function TicketTable({
               size="sm"
               onClick={openMergeDialog}
               disabled={isProcessing}
-              className="text-purple-600 hover:text-purple-700"
+              className="text-brand hover:text-brand-strong"
             >
               <Merge className="mr-1 h-4 w-4" />
               Merge
@@ -1053,7 +1053,7 @@ export function TicketTable({
             size="sm"
             onClick={() => handleBulkAction('spam')}
             disabled={isProcessing}
-            className="text-orange-600 hover:text-orange-700"
+            className="text-warning-foreground hover:text-warning-foreground/80"
           >
             <Ban className="mr-1 h-4 w-4" />
             Spam
@@ -1245,14 +1245,14 @@ export function TicketTable({
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          className="text-green-600"
+                          className="text-success-foreground"
                           onClick={() => onTicketAction?.('resolve', ticket)}
                         >
                           <CheckCircle className="mr-2 h-4 w-4" />
                           Mark as Resolved
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="text-amber-600"
+                          className="text-warning-foreground"
                           onClick={() => onTicketAction?.('pending', ticket)}
                         >
                           <Clock className="mr-2 h-4 w-4" />
@@ -1290,7 +1290,7 @@ export function TicketTable({
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          className="text-red-600"
+                          className="text-destructive"
                           onClick={() => onTicketAction?.('delete', ticket)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />

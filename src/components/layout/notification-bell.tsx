@@ -31,7 +31,7 @@ export function NotificationBell() {
         <Button variant="ghost" size="icon" className="relative h-8 w-8">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white px-1">
+            <span className="bg-danger absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium text-white">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -89,7 +89,7 @@ function NotificationItem({
         onClick={onAcknowledge}
       >
         <div className="flex items-center gap-2 w-full">
-          <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+          <div className="bg-info h-2 w-2 shrink-0 rounded-full" />
           <span className="text-sm font-medium">
             {mention.mentionedBy ? `${mention.mentionedBy} mentioned you` : 'You were mentioned'}
           </span>

@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Pill } from '@/components/tickets/pill';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RoleBadge } from './role-badge';
 import { TeamMember, OrgRole } from '@/types';
@@ -175,13 +176,9 @@ export function TeamMemberTable({
                 </TableCell>
                 <TableCell>
                   {isPending ? (
-                    <Badge variant="outline" className="text-amber-600 border-amber-300">
-                      Pending
-                    </Badge>
+                    <Pill className="bg-warning-soft text-warning-foreground">Pending</Pill>
                   ) : (
-                    <Badge variant="outline" className="text-green-600 border-green-300">
-                      Active
-                    </Badge>
+                    <Pill className="bg-success-soft text-success-foreground">Active</Pill>
                   )}
                 </TableCell>
                 <TableCell>
