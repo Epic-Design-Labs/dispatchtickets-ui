@@ -4,20 +4,35 @@ import Link from 'next/link';
 import { cn, formatTimeAgo } from '@/lib/utils';
 import { WaitingBadge } from '@/components/chat/waiting-badge';
 import { useUnreadChats, useVisitorTyping } from '@/lib/live/chat-activity';
-import type { Ticket } from '@/types';
+import { BrandTile } from '@/components/brand-tile';
+import type { Ticket, BrandInfo } from '@/types';
+
+/** The cross-brand endpoint attaches `brand`; the per-brand one does not. */
+function brandOf(ticket: Ticket): BrandInfo | undefined {
+  return (ticket as Ticket & { brand?: BrandInfo }).brand;
+}
+
+/** Where a row points. Each ticket carries its own brandId, so the per-brand
+ *  and cross-brand pages differ only in the URL they build. */
+export type ChatHref = (ticket: Ticket) => string;
+
+const brandChatHref: ChatHref = (t) => `/brands/${t.brandId}/chat?t=${t.id}`;
 
 /**
  * The Chat tab's left column. "Waiting" is every chat whose visitor spoke
  * last, oldest first (the API's sort); "Replied" is the rest of the open chats.
  */
 export function ChatList({
-  brandId,
   tickets,
   selectedId,
+  hrefFor = brandChatHref,
+  showBrand = false,
 }: {
-  brandId: string;
   tickets: Ticket[];
   selectedId: string | null;
+  hrefFor?: ChatHref;
+  /** The cross-brand page labels each row, since "who" is not enough there. */
+  showBrand?: boolean;
 }) {
   const unread = useUnreadChats();
   const waiting = tickets.filter((t) => t.awaitingReplySince);
@@ -38,12 +53,12 @@ export function ChatList({
       </p>
       <Section title="Waiting" count={waiting.length}>
         {waiting.map((t) => (
-          <ChatRow key={t.id} brandId={brandId} ticket={t} selected={t.id === selectedId} unread={unread.has(t.id)} />
+          <ChatRow key={t.id} ticket={t} href={hrefFor(t)} selected={t.id === selectedId} unread={unread.has(t.id)} showBrand={showBrand} />
         ))}
       </Section>
       <Section title="Replied" count={replied.length}>
         {replied.map((t) => (
-          <ChatRow key={t.id} brandId={brandId} ticket={t} selected={t.id === selectedId} unread={unread.has(t.id)} />
+          <ChatRow key={t.id} ticket={t} href={hrefFor(t)} selected={t.id === selectedId} unread={unread.has(t.id)} showBrand={showBrand} />
         ))}
       </Section>
     </div>
@@ -53,7 +68,7 @@ export function ChatList({
 function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="sticky top-0 z-10 bg-gray-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <h3 className="sticky top-0 z-10 bg-canvas px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {title} <span className="tabular-nums">({count})</span>
       </h3>
       {count === 0 ? <p className="px-4 pb-3 text-xs text-muted-foreground">None</p> : <ul>{children}</ul>}
@@ -62,15 +77,17 @@ function Section({ title, count, children }: { title: string; count: number; chi
 }
 
 function ChatRow({
-  brandId,
   ticket,
+  href,
   selected,
   unread,
+  showBrand,
 }: {
-  brandId: string;
   ticket: Ticket;
+  href: string;
   selected: boolean;
   unread: boolean;
+  showBrand: boolean;
 }) {
   const typing = useVisitorTyping(ticket.id);
   const who =
@@ -82,7 +99,7 @@ function ChatRow({
   return (
     <li>
       <Link
-        href={`/brands/${brandId}/chat?t=${ticket.id}`}
+        href={href}
         scroll={false}
         aria-current={selected ? 'true' : undefined}
         className={cn(
@@ -100,8 +117,15 @@ function ChatRow({
         <div className="mt-0.5 truncate text-xs text-muted-foreground">
           {typing ? <span className="italic text-foreground">typing…</span> : ticket.title}
         </div>
-        <div className="mt-0.5 text-xs text-muted-foreground">
-          #{ticket.ticketNumber} · {formatTimeAgo(ticket.updatedAt)}
+        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          {showBrand && brandOf(ticket) && (
+            <>
+              <BrandTile name={brandOf(ticket)!.name} iconUrl={brandOf(ticket)!.iconUrl} size="sm" />
+              <span className="max-w-[9rem] truncate">{brandOf(ticket)!.name}</span>
+              <span aria-hidden="true">·</span>
+            </>
+          )}
+          <span>#{ticket.ticketNumber} · {formatTimeAgo(ticket.updatedAt)}</span>
         </div>
       </Link>
     </li>

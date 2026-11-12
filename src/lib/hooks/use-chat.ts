@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { chatApi, type ConvertChatInput } from '@/lib/api/chat';
-import { ticketsApi } from '@/lib/api';
+import { ticketsApi, dashboardApi } from '@/lib/api';
+import { dashboardKeys } from '@/lib/hooks/use-dashboard';
 import { ticketKeys } from '@/lib/hooks/use-tickets';
 import { commentKeys } from '@/lib/hooks/use-comments';
 import type { TicketFilters } from '@/types';
@@ -41,6 +42,26 @@ export function useChatQueue(brandId: string, enabled = true) {
     queryKey: ticketKeys.list(brandId, CHAT_QUEUE_FILTERS),
     queryFn: () => ticketsApi.list(brandId, CHAT_QUEUE_FILTERS),
     enabled: enabled && !!brandId,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+}
+
+/**
+ * The same queue across every brand, for the global Chat page and the
+ * sidebar's waiting count.
+ *
+ * Scoping is the API's job, not ours: GET /tickets runs the requested brands
+ * through `memberBrandScope`, so a member with access to two of twenty brands
+ * gets chats from those two. There is no brandIds filter here on purpose --
+ * sending one could only ever NARROW what they are already allowed to see,
+ * and leaving it off means the page keeps working when their access changes.
+ */
+export function useGlobalChatQueue(enabled = true) {
+  return useQuery({
+    queryKey: dashboardKeys.tickets(CHAT_QUEUE_FILTERS),
+    queryFn: () => dashboardApi.listTickets(CHAT_QUEUE_FILTERS),
+    enabled,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });

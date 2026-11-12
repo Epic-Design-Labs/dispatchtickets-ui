@@ -86,7 +86,7 @@ function ChatWorkspace() {
     <div className="flex h-full min-h-0">
       <div
         className={cn(
-          'w-full shrink-0 overflow-y-auto border-r bg-gray-50 md:w-80',
+          'w-full shrink-0 overflow-y-auto border-r bg-canvas md:w-80',
           selectedId && 'hidden md:block',
         )}
       >
@@ -96,7 +96,7 @@ function ChatWorkspace() {
             <Skeleton className="h-14 w-full" />
           </div>
         ) : (
-          <ChatList brandId={brandId} tickets={tickets} selectedId={selectedId} />
+          <ChatList tickets={tickets} selectedId={selectedId} />
         )}
       </div>
 

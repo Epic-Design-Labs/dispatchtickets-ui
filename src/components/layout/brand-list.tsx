@@ -23,9 +23,15 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Star } from 'lucide-react';
 import { BRAND_NAV_TABS } from './brand-nav';
-import { SidebarSection, SidebarSectionHeader, NavItem } from './sidebar-nav';
+import {
+  SidebarSection,
+  SidebarSectionHeader,
+  NavItem,
+  useSidebarIsCollapsed,
+} from './sidebar-nav';
+import { useFavoriteBrands } from '@/lib/ui-prefs';
 import { BrandTile } from '@/components/brand-tile';
 
 /**
@@ -51,6 +57,9 @@ export function BrandList() {
   const { data: stats } = useDashboardStats();
   const createBrand = useCreateBrand();
 
+  const collapsed = useSidebarIsCollapsed();
+  const { isFavorite, toggle: toggleFavorite } = useFavoriteBrands();
+
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState('');
   const [filter, setFilter] = useState('');
@@ -73,11 +82,26 @@ export function BrandList() {
 
   const showFilter = sortedBrands.length > FILTER_THRESHOLD;
 
-  const visibleBrands = useMemo(() => {
+  const matchingBrands = useMemo(() => {
     if (!showFilter || !filter.trim()) return sortedBrands;
     const needle = filter.trim().toLowerCase();
     return sortedBrands.filter((b) => b.name.toLowerCase().includes(needle));
   }, [sortedBrands, filter, showFilter]);
+
+  // Starred brands float to the top, alphabetical within each group. The
+  // split is kept so the list can draw a rule between them -- without it,
+  // "why is Northwind above Acme" has no visible answer.
+  const { favoriteBrands, otherBrands } = useMemo(
+    () => ({
+      favoriteBrands: matchingBrands.filter((b) => isFavorite(b.id)),
+      otherBrands: matchingBrands.filter((b) => !isFavorite(b.id)),
+    }),
+    [matchingBrands, isFavorite]
+  );
+  const visibleBrands = useMemo(
+    () => [...favoriteBrands, ...otherBrands],
+    [favoriteBrands, otherBrands]
+  );
 
   // Check if user is at their brand limit
   const isAtBrandLimit =
@@ -157,7 +181,7 @@ export function BrandList() {
           )}
         </SidebarSectionHeader>
 
-        {showFilter && (
+        {showFilter && !collapsed && (
           <div className="relative mb-2 px-0.5">
             <Search className="text-subtle absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
             <Input
@@ -185,31 +209,74 @@ export function BrandList() {
               // active row's accent bar INSIDE the scroll box -- at -left-3 it
               // would otherwise be clipped by the overflow.
               showFilter &&
-                '-mx-3 max-h-[11.25rem] overflow-y-auto overscroll-contain px-3'
+                (collapsed
+                  ? '-mx-2.5 max-h-[12.5rem] overflow-y-auto overscroll-contain px-2.5'
+                  : '-mx-3 max-h-[11.25rem] overflow-y-auto overscroll-contain px-3')
             )}
           >
-            {visibleBrands.map((brand) => {
+            {visibleBrands.map((brand, index) => {
               const isActive = brand.id === currentBrandId;
               const brandStats = stats?.byBrand?.[brand.id];
               // "Active" matches the All Active queue above: open + pending.
               const activeCount = brandStats
                 ? brandStats.open + brandStats.pending
                 : 0;
+              const favorite = isFavorite(brand.id);
+              // The rule goes above the first unstarred brand, and only when
+              // there is something on both sides of it.
+              const startsRest =
+                !collapsed && index === favoriteBrands.length && favoriteBrands.length > 0;
 
-              return (
+              const item = (
                 <NavItem
-                  key={brand.id}
                   href={`/brands/${brand.id}/${currentSection}`}
                   active={isActive}
                   icon={<BrandTile name={brand.name} iconUrl={brand.iconUrl} size="sm" />}
                   label={brand.name}
                   count={activeCount}
+                  // The star is a sibling, not an overlay: a <button> cannot
+                  // live inside the <a>, and floating it over the row put it
+                  // on top of the count.
+                  className={collapsed ? undefined : 'min-w-0 flex-1'}
                   title={
                     brandStats
                       ? `${brand.name} · ${brandStats.open} open · ${brandStats.pending} pending`
                       : brand.name
                   }
                 />
+              );
+
+              return (
+                <div key={brand.id}>
+                  {startsRest && <div className="bg-border mx-2.5 my-1 h-px" role="separator" />}
+                  {collapsed ? (
+                    item
+                  ) : (
+                    <div className="group/brand flex items-center">
+                      {item}
+                      <button
+                        type="button"
+                        onClick={() => toggleFavorite(brand.id)}
+                        aria-pressed={favorite}
+                        aria-label={
+                          favorite
+                            ? `Remove ${brand.name} from favourites`
+                            : `Add ${brand.name} to favourites`
+                        }
+                        title={favorite ? 'Remove from favourites' : 'Add to favourites'}
+                        className={cn(
+                          'grid h-6 w-6 shrink-0 place-items-center rounded-md transition-opacity',
+                          'hover:bg-muted focus-visible:ring-ring/50 focus-visible:opacity-100 focus-visible:ring-[3px] focus-visible:outline-none',
+                          favorite
+                            ? 'text-amber-500 opacity-100'
+                            : 'text-subtle opacity-0 group-hover/brand:opacity-100'
+                        )}
+                      >
+                        <Star className={cn('h-3.5 w-3.5', favorite && 'fill-current')} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               );
             })}
 
