@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,13 @@ export default function IntegrationsPage() {
         <h2 className="text-2xl font-bold tracking-tight">Integrations</h2>
         <p className="text-muted-foreground">
           Connect third-party tools to enhance your support workflow
+        </p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Apps you approved with &ldquo;Connect to Dispatch&rdquo; are listed under{' '}
+          <Link href="/integrations" className="underline underline-offset-2 hover:text-foreground">
+            Workspace › Integrations
+          </Link>
+          .
         </p>
       </div>
 

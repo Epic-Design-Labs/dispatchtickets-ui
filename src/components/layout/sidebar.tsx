@@ -35,6 +35,7 @@ import {
   User,
   AlertCircle,
   Key,
+  Plug,
   Rocket,
   BarChart3,
   Users,
@@ -242,6 +243,14 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
                   icon={<Key className={ICON} />}
                   label="API Keys"
                   active={pathname === '/api-keys'}
+                />
+              )}
+              {(session?.orgRole === 'owner' || session?.orgRole === 'admin') && (
+                <NavItem
+                  href="/integrations"
+                  icon={<Plug className={ICON} />}
+                  label="Integrations"
+                  active={pathname === '/integrations'}
                 />
               )}
               {session?.orgRole === 'owner' && (
