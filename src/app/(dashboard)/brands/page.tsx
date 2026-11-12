@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useBrands, useCreateBrand, useUsage } from '@/lib/hooks';
+import { useBrands, useCreateBrand, useUsage, useDashboardStats } from '@/lib/hooks';
 import { Header } from '@/components/layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,14 +24,20 @@ import {
 } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatDateTime } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
+import { BrandTile } from '@/components/brand-tile';
+import { useFavoriteBrands } from '@/lib/ui-prefs';
 import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
+import { Plus, Star, Inbox } from 'lucide-react';
 
 export default function BrandsPage() {
   const router = useRouter();
   const { data: brands, isLoading, error } = useBrands();
   const { data: usageData } = useUsage();
+  // The same per-brand open+pending figures the sidebar shows, so a brand's
+  // count agrees wherever you read it.
+  const { data: stats } = useDashboardStats();
+  const { isFavorite, toggle: toggleFavorite } = useFavoriteBrands();
   const createBrand = useCreateBrand();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState('');
@@ -113,17 +119,20 @@ export default function BrandsPage() {
         </div>
 
         {isLoading && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
             {[1, 2, 3].map((i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-5 w-32" />
-                  <Skeleton className="h-4 w-24" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-full" />
-                </CardContent>
-              </Card>
+              <div key={i} className="bg-card rounded-xl border p-[18px] shadow-sm">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded-[11px]" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <div className="mt-3.5 border-t pt-3">
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -139,45 +148,89 @@ export default function BrandsPage() {
         )}
 
         {!isLoading && !error && brands && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {brands.slice().sort((a, b) => a.name.localeCompare(b.name)).map((brand) => (
-              <Link key={brand.id} href={`/brands/${brand.id}`}>
-                <Card className="cursor-pointer transition-colors hover:bg-accent">
-                  <CardHeader>
-                    <CardTitle>{brand.name}</CardTitle>
-                    <CardDescription>{brand.slug}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Created {formatDateTime(brand.createdAt)}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+            {brands
+              .slice()
+              // Favourites first, then alphabetical -- the same order as the
+              // sidebar, so the two lists never disagree about where a brand is.
+              .sort((a, b) => {
+                const fa = Number(isFavorite(b.id)) - Number(isFavorite(a.id));
+                return fa !== 0 ? fa : a.name.localeCompare(b.name);
+              })
+              .map((brand) => {
+                const brandStats = stats?.byBrand?.[brand.id];
+                const activeCount = brandStats ? brandStats.open + brandStats.pending : 0;
+                const favorite = isFavorite(brand.id);
+                return (
+                  <div key={brand.id} className="group/brand relative">
+                    <Link
+                      href={`/brands/${brand.id}`}
+                      className={cn(
+                        'bg-card flex h-full flex-col gap-3.5 rounded-xl border p-[18px] shadow-sm',
+                        'hover:border-brand-softer transition-[border-color,box-shadow]',
+                        'hover:shadow-[0_4px_16px_rgba(124,77,255,0.08)]'
+                      )}
+                    >
+                      {/* pr-7 keeps a long name clear of the star above it. */}
+                      <div className="flex items-center gap-3 pr-7">
+                        <BrandTile name={brand.name} iconUrl={brand.iconUrl} size="xl" />
+                        <div className="min-w-0">
+                          <h3 className="truncate text-[15px] font-semibold">{brand.name}</h3>
+                          <p className="text-subtle mt-0.5 truncate text-xs">{brand.slug}</p>
+                        </div>
+                      </div>
+                      <div className="text-muted-foreground mt-auto flex items-center justify-between gap-2 border-t pt-3 text-xs">
+                        <span className="truncate">Created {formatDate(brand.createdAt)}</span>
+                        {activeCount > 0 ? (
+                          <span className="bg-brand-soft text-brand-strong shrink-0 rounded-md px-2 py-0.5 font-semibold tabular-nums">
+                            {activeCount} active
+                          </span>
+                        ) : (
+                          <span className="bg-secondary text-subtle shrink-0 rounded-md px-2 py-0.5">
+                            None active
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                    {/* A sibling of the link, not a child: a button cannot live
+                        inside an anchor, and the two would fight for the click. */}
+                    <button
+                      type="button"
+                      onClick={() => toggleFavorite(brand.id)}
+                      aria-pressed={favorite}
+                      aria-label={favorite ? `Unfavourite ${brand.name}` : `Favourite ${brand.name}`}
+                      title={favorite ? 'Remove from favourites' : 'Add to favourites'}
+                      className={cn(
+                        'absolute top-2.5 right-2.5 grid h-7 w-7 place-items-center rounded-md transition',
+                        'hover:bg-muted focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
+                        // An unstarred brand only shows its star on hover or
+                        // keyboard focus; a starred one always shows it, since
+                        // that star is now information about the brand.
+                        favorite
+                          ? 'text-warning opacity-100'
+                          : 'text-subtle opacity-0 group-hover/brand:opacity-100 focus-visible:opacity-100'
+                      )}
+                    >
+                      <Star className={cn('h-4 w-4', favorite && 'fill-current')} />
+                    </button>
+                  </div>
+                );
+              })}
 
             {brands.length === 0 && (
-              <Card className="col-span-full">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <svg
-                    className="mb-4 h-12 w-12 text-muted-foreground"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                    />
-                  </svg>
-                  <p className="text-lg font-medium">No brands found</p>
-                  <p className="text-muted-foreground">
-                    Click the button above to create your first brand
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="bg-card col-span-full flex flex-col items-center justify-center rounded-xl border px-5 py-14 text-center">
+                <span className="bg-brand-soft text-brand mb-3.5 grid h-12 w-12 place-items-center rounded-[14px]">
+                  <Inbox className="h-6 w-6" />
+                </span>
+                <p className="text-base font-semibold">No brands yet</p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  A brand is an isolated container of tickets, with its own email identity.
+                </p>
+                <Button className="mt-4" onClick={() => setCreateDialogOpen(true)} disabled={isAtBrandLimit}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create your first brand
+                </Button>
+              </div>
             )}
           </div>
         )}

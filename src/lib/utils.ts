@@ -20,6 +20,22 @@ export function formatDateTime(date: string | Date): string {
 }
 
 /**
+ * Format a date with no time of day, e.g. "Mar 3, 2024".
+ *
+ * For dates where the minute is noise rather than information -- when a brand
+ * was created, when a plan renews. Everywhere the exact moment matters (a
+ * comment, a status change) still wants formatDateTime.
+ */
+export function formatDate(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/**
  * Format a date as relative time, e.g. "5m ago", "3h ago", "2d ago"
  * Falls back to formatDateTime for dates older than 7 days.
  */

@@ -268,7 +268,7 @@ export function BrandList() {
                           'grid h-6 w-6 shrink-0 place-items-center rounded-md transition-opacity',
                           'hover:bg-muted focus-visible:ring-ring/50 focus-visible:opacity-100 focus-visible:ring-[3px] focus-visible:outline-none',
                           favorite
-                            ? 'text-amber-500 opacity-100'
+                            ? 'text-warning opacity-100'
                             : 'text-subtle opacity-0 group-hover/brand:opacity-100'
                         )}
                       >
