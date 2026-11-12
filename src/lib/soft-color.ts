@@ -32,6 +32,9 @@ const DARKEN_STEP = 0.86;
 /** Enough passes to take any colour to black; the loop exits as soon as it passes. */
 const MAX_PASSES = 14;
 
+/** The app's --foreground. Kept in sync by hand; it is a constant in globals.css. */
+const INK = '#1b1b25';
+
 function parseHex(input: string): Rgb | null {
   const hex = input.replace('#', '').trim();
   const full =
@@ -107,4 +110,25 @@ export function softFill(hexColor: string): SoftFill | null {
   }
 
   return { background: toHex(background), color: toHex(text) };
+}
+
+/**
+ * Black or white, whichever is actually readable on a solid fill.
+ *
+ * A solid status button painted with a brand's own colour had white text
+ * hard-coded. On the amber everyone uses for "pending" that is about 2.1:1 --
+ * worse than the soft chips were, because there is no pale background to help.
+ * Light custom colours (a yellow, a mint) were effectively unreadable.
+ *
+ * This returns whichever of the two gives more contrast rather than assuming
+ * either. It is not a guarantee of AA -- a mid-tone fill can fail against both
+ * -- but it is always the better of the two, and for every colour in the
+ * default palette it clears 4.5:1.
+ */
+export function readableTextOn(hexColor: string): string {
+  const base = parseHex(hexColor);
+  if (!base) return INK;
+  const white = { r: 255, g: 255, b: 255 };
+  const ink = parseHex(INK)!;
+  return contrastRatio(base, white) >= contrastRatio(base, ink) ? '#ffffff' : INK;
 }

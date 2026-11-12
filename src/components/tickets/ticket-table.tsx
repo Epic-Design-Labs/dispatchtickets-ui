@@ -70,6 +70,7 @@ import { Tag } from '@/lib/api/tags';
 import { BulkActionType } from '@/lib/hooks/use-tickets';
 import { getGravatarUrl } from '@/lib/gravatar';
 import { formatTicketNumber } from '@/lib/ticket-number';
+import { readableTextOn } from '@/lib/soft-color';
 import { Ban, CheckCircle, Clock, Trash2, X, Merge, UserPlus, FolderOpen, Tags, ChevronDown, UserMinus, ArrowUpDown, ArrowUp, ArrowDown, Settings2, GripVertical, MoreVertical, Eye, ExternalLink, UserCheck, Inbox } from 'lucide-react';
 
 // Column definitions - built-in columns use these keys
@@ -1365,6 +1366,10 @@ export function TicketTable({
                   className="cursor-pointer"
                   style={{
                     backgroundColor: selectedTagNames.includes(tag.name) ? (tag.color ?? undefined) : undefined,
+                    color:
+                      selectedTagNames.includes(tag.name) && tag.color
+                        ? readableTextOn(tag.color)
+                        : undefined,
                     borderColor: tag.color ?? undefined,
                   }}
                   onClick={() => toggleTagSelection(tag.name)}

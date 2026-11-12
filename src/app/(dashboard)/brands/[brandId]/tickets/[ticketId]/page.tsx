@@ -45,6 +45,8 @@ import { TicketStatus, TicketPriority, CloseReason, CLOSE_REASONS, Comment } fro
 import { Trash2, Building2, User, UserX, Ticket, Merge, FolderOpen, Tag, X, Plus, History, Layers, Pencil, Check, Clock, MessageSquare, MoreHorizontal, ChevronDown, Paperclip, FileIcon, Download, ExternalLink, Upload, Loader2 } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { formatTicketNumber } from '@/lib/ticket-number';
+import { readableTextOn, softFill } from '@/lib/soft-color';
+import { Pill } from '@/components/tickets/pill';
 import { ConvertChatButton } from '@/components/chat/convert-chat-button';
 import { CustomFieldInput } from '@/components/fields';
 
@@ -610,31 +612,34 @@ export default function TicketDetailPage() {
                 </DropdownMenu>
 
                 {/* Time badge */}
-                <div className="flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs md:text-sm">
-                  <Clock className="h-3 md:h-3.5 w-3 md:w-3.5" />
+                <Pill dot={false} className="bg-warning-soft text-warning-foreground gap-1.5 md:text-sm">
+                  <Clock className="h-3 w-3 md:h-3.5 md:w-3.5" />
                   <span>{getTicketAge()}</span>
                   <span className="hidden sm:inline">•</span>
                   <span className="hidden sm:inline">{formatDateTime(ticket.createdAt)}</span>
-                </div>
+                </Pill>
 
                 {/* Source indicator */}
                 {ticket.source && ticket.source !== 'api' && (
-                  <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium capitalize">
+                  <Pill dot={false} className="bg-info-soft text-info capitalize">
                     {ticket.source}
-                  </span>
+                  </Pill>
                 )}
 
                 {/* The address the customer wrote to, from its to:<address> tag */}
                 {ticket.tags
                   ?.filter((tag) => tag.name.startsWith('to:'))
                   .map((tag) => (
-                    <span
+                    /* Quieter than source or age: for a brand funnelling
+                       several mailboxes into one queue this matters, and for
+                       everyone else it is noise. */
+                    <Pill
                       key={tag.id}
-                      className="px-2 py-1 rounded-full bg-sky-100 text-sky-700 text-xs font-medium"
-                      title="The address this email was sent to"
+                      dot={false}
+                      className="bg-secondary text-muted-foreground"
                     >
-                      to {tag.name.slice(3)}
-                    </span>
+                      <span title="The address this email was sent to">to {tag.name.slice(3)}</span>
+                    </Pill>
                   ))}
               </div>
             </>
@@ -701,10 +706,14 @@ export default function TicketDetailPage() {
                 const statusName = statusFromList?.name || defaultNames[statusKey] || ticket.statusRef?.name || (statusKey.charAt(0).toUpperCase() + statusKey.slice(1));
 
                 return (
+                  /* The fill is the brand's own status colour, so the text
+                     cannot be assumed white: on the amber used for "pending"
+                     that is 2.1:1. readableTextOn picks whichever of black or
+                     white is legible on this particular fill. */
                   <Button
-                    className="text-white rounded-full px-4 hover:opacity-90"
+                    className="rounded-full px-4 hover:opacity-90"
                     size="sm"
-                    style={{ backgroundColor: statusColor }}
+                    style={{ backgroundColor: statusColor, color: readableTextOn(statusColor) }}
                   >
                     <Check className="h-4 w-4 mr-1.5" />
                     {statusName}
@@ -1251,10 +1260,7 @@ export default function TicketDetailPage() {
                       <span
                         key={tag.id}
                         className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium"
-                        style={{
-                          backgroundColor: tag.color ? `${tag.color}20` : '#6366f120',
-                          color: tag.color || '#6366f1',
-                        }}
+                        style={softFill(tag.color || '#6366f1') ?? undefined}
                       >
                         {tag.name}
                         <button onClick={() => handleRemoveTag(tag.name)} className="hover:opacity-70">
