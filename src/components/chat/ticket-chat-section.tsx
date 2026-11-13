@@ -1,12 +1,14 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { isAxiosError } from 'axios';
 import { toast } from 'sonner';
-import { MessageSquare } from 'lucide-react';
+import { Copy, MessageSquare } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatTimeAgo } from '@/lib/utils';
+import { formatDateTime, formatTimeAgo } from '@/lib/utils';
+import { describeLocale, parseUserAgent, shortenUrl } from '@/lib/user-agent';
 import { useChatVisitor, useResendChatConfirmation } from '@/lib/hooks/use-chat';
 import type { ChatVisitor } from '@/lib/api/chat';
 
@@ -15,7 +17,9 @@ import type { ChatVisitor } from '@/lib/api/chat';
  * page (so whether a reply lands live or waits), and what they told us.
  *
  * Everything under "visitor" was sent by an anonymous browser. It renders as
- * text, never as a link, and the email is labelled for what it is.
+ * text, never as a link, and the email is labelled for what it is. The URLs
+ * get a copy button instead of an anchor for exactly that reason: copying is
+ * the agent deciding to go somewhere, a link is us sending them.
  */
 export function TicketChatSection({
   brandId,
@@ -33,17 +37,15 @@ export function TicketChatSection({
   if (!isChat || !data) return null;
 
   const { visitor } = data;
-  const rows: [string, string | undefined][] = [
-    ['Page', visitor.pageUrl],
-    ['Referrer', visitor.referrer],
-    ['Locale', visitor.locale],
-    ['Browser', visitor.userAgent],
-  ];
+  const userAgent = visitor.userAgent;
+  const { browser, system } = parseUserAgent(userAgent);
+  const language = describeLocale(visitor.locale);
+  const hasDevice = browser || system || language;
 
   return (
     <>
       <Separator />
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <MessageSquare className="h-4 w-4" />
@@ -85,8 +87,14 @@ export function TicketChatSection({
               <Badge className="bg-success hover:bg-success text-white">Verified</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Confirmed by your app ({data.verified.userId}). Replies are emailed to them if they leave.
+              Confirmed by your app. Replies are emailed to them if they leave.
             </p>
+            {/* The id your app vouched for. It belongs to the brand's own
+                system, not ours, so it sits in its own labelled row instead
+                of inside a sentence, where it read as noise. */}
+            <div className="pt-1 text-xs text-muted-foreground">
+              Your user ID <span className="font-mono break-all text-foreground">{data.verified.userId}</span>
+            </div>
           </div>
         )}
 
@@ -105,18 +113,88 @@ export function TicketChatSection({
           </div>
         )}
 
-        <dl className="space-y-1 text-sm">
-          {rows
-            .filter(([, value]) => value)
-            .map(([label, value]) => (
-              <div key={label} className="grid grid-cols-[72px_1fr] gap-2">
-                <dt className="text-xs text-muted-foreground pt-0.5">{label}</dt>
-                <dd className="break-all text-xs">{value}</dd>
-              </div>
-            ))}
-        </dl>
+        <VisitorSection title="Conversation">
+          <VisitorRow label="Started" value={formatTimeAgo(data.startedAt)} title={formatDateTime(data.startedAt)} />
+          <VisitorRow
+            label="Last seen"
+            value={data.present ? 'On the page now' : formatTimeAgo(data.lastSeenAt)}
+            title={formatDateTime(data.lastSeenAt)}
+          />
+        </VisitorSection>
+
+        {(visitor.pageUrl || visitor.referrer) && (
+          <VisitorSection title="Where they are">
+            <UrlRow label="Current page" url={visitor.pageUrl} caption={visitor.title} />
+            <UrlRow label="Came from" url={visitor.referrer} />
+          </VisitorSection>
+        )}
+
+        {hasDevice && (
+          <VisitorSection title="Device">
+            {/* The raw user-agent hangs off the title attribute on both rows:
+                the parse is a guess at a self-reported string, so the string
+                itself stays one hover away rather than being discarded. */}
+            <VisitorRow label="Browser" value={browser} title={userAgent} />
+            <VisitorRow label="System" value={system} title={userAgent} />
+            <VisitorRow label="Language" value={language} title={visitor.locale} />
+          </VisitorSection>
+        )}
       </div>
     </>
+  );
+}
+
+function VisitorSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
+      {children}
+    </div>
+  );
+}
+
+function VisitorRow({ label, value, title }: { label: string; value: string | null | undefined; title?: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-xs">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span className="truncate text-right" title={title}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * A URL the visitor's browser reported, in a box with a copy button.
+ *
+ * Shortened for display only -- the clipboard and the tooltip both get the
+ * whole thing, so what an agent pastes is exactly what was sent.
+ */
+function UrlRow({ label, url, caption }: { label: string; url?: string; caption?: string }) {
+  if (!url) return null;
+  return (
+    <div className="flex items-start gap-1 rounded-md border bg-background px-2 py-1.5">
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] text-muted-foreground">{label}</div>
+        <div className="truncate text-xs" title={url}>
+          {shortenUrl(url)}
+        </div>
+        {caption && <div className="truncate text-[11px] text-muted-foreground">{caption}</div>}
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 shrink-0"
+        aria-label={`Copy ${label.toLowerCase()} link`}
+        onClick={() => {
+          navigator.clipboard.writeText(url);
+          toast.success('Link copied');
+        }}
+      >
+        <Copy className="h-3 w-3" />
+      </Button>
+    </div>
   );
 }
 
