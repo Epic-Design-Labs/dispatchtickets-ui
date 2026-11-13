@@ -73,6 +73,29 @@ import {
 
 type ViewType = 'all' | 'mine' | 'unassigned';
 
+/**
+ * What each queue is called and what it holds.
+ *
+ * All three queues are this one page under a `?view=` parameter, and the page
+ * used to be headed "Tickets" in every one of them -- so the only thing that
+ * said which queue you were looking at was the highlight in the sidebar, which
+ * is gone the moment the rail is collapsed or the window is narrow.
+ */
+const VIEW_HEADINGS: Record<ViewType, { title: string; description: string }> = {
+  all: {
+    title: 'All active',
+    description: 'Open and pending tickets across all brands.',
+  },
+  mine: {
+    title: 'My tickets',
+    description: 'Tickets assigned to you.',
+  },
+  unassigned: {
+    title: 'Unassigned',
+    description: 'Tickets nobody has picked up yet.',
+  },
+};
+
 
 // Column definitions for global dashboard (matching brand view + brand column)
 interface DashboardColumnDef {
@@ -524,34 +547,15 @@ export default function DashboardPage() {
 
   return (
     <div className="h-full overflow-auto p-6">
-      {/* Status filters + the two response metrics */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        <StatusTabs value={status} onSelect={handleStatClick} counts={tabCounts} loading={statsLoading} />
-        {/* Metrics are facts, not filters, so they sit apart and stay quiet. */}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <MetricChip
-            icon={MessageSquare}
-            value={statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgFirstResponseMinutes)}
-            label="avg response"
-          />
-          <MetricChip
-            icon={Timer}
-            value={statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgResolutionMinutes)}
-            label="avg resolution"
-          />
+      {/* The queue's own name, above the controls -- a page should say what it
+          is before it offers ways to narrow it. */}
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">
+            {VIEW_HEADINGS[view].title}
+          </h2>
+          <p className="text-muted-foreground">{VIEW_HEADINGS[view].description}</p>
         </div>
-      </div>
-
-      {/* Tickets Section Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold">
-          Tickets
-          {status && status !== 'active' && (
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              (filtered by {status === 'all' ? 'all statuses' : status})
-            </span>
-          )}
-        </h3>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -568,6 +572,24 @@ export default function DashboardPage() {
               Create Ticket
             </Button>
           </CreateTicketDialog>
+        </div>
+      </div>
+
+      {/* Status filters + the two response metrics */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <StatusTabs value={status} onSelect={handleStatClick} counts={tabCounts} loading={statsLoading} />
+        {/* Metrics are facts, not filters, so they sit apart and stay quiet. */}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <MetricChip
+            icon={MessageSquare}
+            value={statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgFirstResponseMinutes)}
+            label="avg response"
+          />
+          <MetricChip
+            icon={Timer}
+            value={statsLoading ? '–' : formatDuration(globalStats?.responseMetrics?.avgResolutionMinutes)}
+            label="avg resolution"
+          />
         </div>
       </div>
 
