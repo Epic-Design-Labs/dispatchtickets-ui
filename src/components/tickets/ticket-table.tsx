@@ -196,6 +196,24 @@ interface TicketTableProps {
   onSortChange?: (sort: SortState) => void;
   /** Callback for row-level actions (triple dot menu) */
   onTicketAction?: (action: TicketRowAction, ticket: Ticket, options?: { assigneeId?: string }) => void;
+  /**
+   * Render exactly these columns, in this order, and hide the Columns menu.
+   *
+   * Column choices are otherwise a single preference shared by every table in
+   * the app -- one localStorage key, no page scoping -- so a column switched on
+   * for the brand's ticket list appears on every other list too. That is right
+   * for lists of live tickets, which differ only in which tickets they hold,
+   * and wrong for a list whose rows cannot populate those columns: on Spam,
+   * Status reads "Spam" on every row and Assignee, Priority and Category are
+   * empty on every row, because nothing triages spam. Four columns of nothing,
+   * inherited from a preference the page had no say in.
+   *
+   * A table given this prop opts out of the shared preference entirely rather
+   * than seeding it, so it neither reads the user's choice nor writes over it.
+   */
+  fixedColumns?: string[];
+  /** Rename a column for this table only, e.g. Created -> Received on Spam. */
+  columnLabels?: Record<string, string>;
 }
 
 export type TicketRowAction = 'view' | 'resolve' | 'pending' | 'assign' | 'openNewTab' | 'delete';
@@ -216,6 +234,8 @@ export function TicketTable({
   sortState: controlledSortState,
   onSortChange,
   onTicketAction,
+  fixedColumns,
+  columnLabels,
 }: TicketTableProps) {
   const router = useRouter();
   const isControlledSort = !!onSortChange;
@@ -342,15 +362,28 @@ export function TicketTable({
     return ordered;
   }, [allColumns, columnSettings.order]);
 
-  // Visible columns in order
+  // Visible columns in order. `fixedColumns` wins outright: its order is the
+  // caller's, not the user's stored order, and a key it names that no column
+  // defines is skipped rather than throwing.
   const visibleColumns = useMemo(() => {
+    if (fixedColumns) {
+      const columnMap = new Map(allColumns.map(c => [c.key, c]));
+      return fixedColumns
+        .map(key => columnMap.get(key))
+        .filter((c): c is ColumnDef => !!c)
+        .map(c => (columnLabels?.[c.key] ? { ...c, label: columnLabels[c.key] } : c));
+    }
     return orderedColumns.filter(c => columnSettings.visible.includes(c.key));
-  }, [orderedColumns, columnSettings.visible]);
+  }, [fixedColumns, columnLabels, allColumns, orderedColumns, columnSettings.visible]);
 
-  // Persist column settings
+  // Persist column settings -- but never from a fixed-column table. It shows
+  // what the caller asked for, so it has no opinion to save, and writing here
+  // would let one such page quietly overwrite the preference every other list
+  // reads from.
   useEffect(() => {
+    if (fixedColumns) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(columnSettings));
-  }, [columnSettings]);
+  }, [columnSettings, fixedColumns]);
 
   // Persist sort state (uncontrolled mode only)
   useEffect(() => {
@@ -1074,8 +1107,10 @@ export function TicketTable({
         </div>
       )}
 
-      {/* Columns Settings Dropdown - rendered via portal if ref provided */}
-      {(() => {
+      {/* Columns Settings Dropdown - rendered via portal if ref provided.
+          A fixed-column table offers no menu: the columns are not the
+          viewer's to change. */}
+      {!fixedColumns && (() => {
         const columnsDropdown = (
           <DropdownMenu open={columnSettingsOpen} onOpenChange={setColumnSettingsOpen}>
             <DropdownMenuTrigger asChild>

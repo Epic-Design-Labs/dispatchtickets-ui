@@ -58,6 +58,15 @@ export default function SpamPage() {
               ticketPrefix={brand?.ticketPrefix}
               isLoading={isLoading}
               customFields={ticketFields}
+              /* Spam asks one question -- is this really spam? -- and these
+                 are the three values that answer it. The columns the shared
+                 preference would otherwise bring along cannot: Status says
+                 "Spam" on every row by definition, and Assignee, Priority and
+                 Category are empty on every row, because nothing triages
+                 spam. "Received" rather than "Created": the brand did not
+                 create these, they arrived. */
+              fixedColumns={['subject', 'customer', 'created']}
+              columnLabels={{ created: 'Received' }}
               renderActions={(ticket) => (
                 <Button
                   variant="outline"
