@@ -59,24 +59,9 @@ function GlobalChatWorkspace() {
     router.replace(`/chat?t=${firstId}`, { scroll: false });
   }, [selectedId, firstId, router]);
 
-  // Alt+Up / Alt+Down move through the list. Not J/K: the reply box keeps
-  // focus here, so plain letters belong to the reply.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!e.altKey || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || tickets.length === 0) return;
-      e.preventDefault();
-      const ordered = [
-        ...tickets.filter((t) => t.awaitingReplySince),
-        ...tickets.filter((t) => !t.awaitingReplySince),
-      ];
-      const at = ordered.findIndex((t) => t.id === selectedId);
-      const step = e.key === 'ArrowDown' ? 1 : -1;
-      const next = ordered[(at + step + ordered.length) % ordered.length] ?? ordered[0];
-      router.replace(`/chat?t=${next.id}`, { scroll: false });
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [tickets, selectedId, router]);
+  // Alt+Up / Alt+Down stepping through the queue lives in ChatList, which is
+  // the only place that knows the order actually on screen once its search
+  // has narrowed the list.
 
   // Tells the live stream which chat needs no alert or unread dot.
   useEffect(() => {
