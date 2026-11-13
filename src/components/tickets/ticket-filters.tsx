@@ -352,23 +352,14 @@ export function TicketFilters({
           className="w-64"
         />
 
-        {/* Status Button Bar */}
-      <div className="flex items-center rounded-md border bg-muted/30 p-0.5">
-        {statusOptions.map((option) => (
-          <button
-            key={option.value}
-            onClick={() => updateFilter('status', option.value)}
-            className={cn(
-              'px-3 py-1 text-sm rounded transition-colors',
-              (filters.status ?? 'active') === option.value
-                ? 'bg-background shadow-sm font-medium'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+        {/* No status control here, deliberately. Both pages that render this
+            component -- the brand ticket list and the dashboard -- put a
+            `StatusTabs` row above it with the same six choices AND their
+            counts, so a second, countless copy in the filter row was the same
+            filter asked for twice, three inches apart, with the sparser one
+            lower down the page. The tabs are the status control; this row is
+            for everything else. Mobile still gets status in the filter sheet,
+            where the tabs are a cramped horizontal scroller. */}
 
       {/* Priority Dropdown */}
       <DropdownMenu>

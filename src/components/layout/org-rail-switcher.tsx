@@ -152,7 +152,14 @@ export function ClerkOrgRailSwitcher() {
   const orgs: OrgOption[] = memberships.map((m) => ({
     id: m.organization.id,
     name: m.organization.name,
-    imageUrl: m.organization.imageUrl,
+    // `hasImage` is the whole point. Clerk hands back an `imageUrl` for EVERY
+    // organization -- a generated gradient with a building glyph on it when
+    // nobody uploaded a logo -- and `BrandTile` lets any icon win over the
+    // colour tile. Passing it through unguarded put exactly the Clerk-styled
+    // circle this component exists to avoid onto the rail, under a comment
+    // saying it had been avoided. Only a logo someone actually uploaded gets
+    // to beat the palette.
+    imageUrl: m.organization.hasImage ? m.organization.imageUrl : null,
   }));
 
   const handleSwitch = async (nextOrgId: string) => {

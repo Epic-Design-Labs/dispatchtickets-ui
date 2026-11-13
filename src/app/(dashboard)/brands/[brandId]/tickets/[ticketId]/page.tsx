@@ -52,6 +52,42 @@ import { getGravatarUrl } from '@/lib/gravatar';
 import { ConvertChatButton } from '@/components/chat/convert-chat-button';
 import { CustomFieldInput } from '@/components/fields';
 
+/**
+ * The quick due dates offered beside a ticket, and the day they land on.
+ *
+ * All three are built in LOCAL time on purpose. A due date is a promise made
+ * to a person inside their own working day: "end of today" has to mean 5pm
+ * where the agent is sitting, not 5pm UTC, or an agent in California sets a
+ * deadline that has already passed.
+ */
+function endOfDay(daysFromNow: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  d.setHours(17, 0, 0, 0);
+  return d;
+}
+
+/** The coming Monday at 9am. On a Monday this means a week today, not today. */
+function nextWeekMorning() {
+  const d = new Date();
+  d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+  d.setHours(9, 0, 0, 0);
+  return d;
+}
+
+/**
+ * A `<input type="date">` value for a local date.
+ *
+ * NOT `toISOString().slice(0, 10)`, which is UTC: west of Greenwich any
+ * evening due date reads back as the day before, so the field redrew a
+ * different date than the one just saved. The datetime-local field this
+ * replaced had exactly that bug, and it drifted the time on every edit.
+ */
+function toDateInputValue(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export default function TicketDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -1077,7 +1113,23 @@ export default function TicketDetailPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Clock className="h-4 w-4" />
-              Due Date
+              Due date
+              {ticket.dueAt && (
+                <button
+                  type="button"
+                  className="text-brand hover:text-brand-strong ml-auto text-xs font-normal"
+                  onClick={async () => {
+                    try {
+                      await updateTicket.mutateAsync({ dueAt: null });
+                      toast.success('Due date cleared');
+                    } catch {
+                      toast.error('Failed to clear due date');
+                    }
+                  }}
+                >
+                  Clear
+                </button>
+              )}
             </div>
             {ticket.dueAt ? (() => {
               const isOverdue = new Date(ticket.dueAt) < new Date();
@@ -1095,43 +1147,61 @@ export default function TicketDetailPage() {
                   </div>
                 </div>
               );
-            })() : (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <span className="text-sm">No due date</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Input
-                type="datetime-local"
-                className="h-8 text-xs"
-                value={ticket.dueAt ? new Date(ticket.dueAt).toISOString().slice(0, 16) : ''}
-                onChange={async (e) => {
-                  try {
-                    const dueAt = e.target.value ? new Date(e.target.value).toISOString() : null;
-                    await updateTicket.mutateAsync({ dueAt });
-                    toast.success(dueAt ? 'Due date updated' : 'Due date cleared');
-                  } catch {
-                    toast.error('Failed to update due date');
-                  }
-                }}
-              />
-              {ticket.dueAt && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 flex-shrink-0"
+            })() : null}
+            {/* Quick dates rather than a date field. Setting a deadline is a
+                decision about this week, not an act of data entry, and the four
+                answers below cover nearly every one of them. "Pick date" is a
+                real date input wearing the same chip -- the picker is still
+                there for the rare exact day, it just isn't the default thing
+                anyone has to read and parse. */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {([
+                ['Today', () => endOfDay(0)],
+                ['Tomorrow', () => endOfDay(1)],
+                ['Next week', nextWeekMorning],
+              ] as const).map(([label, when]) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="border-border-strong hover:bg-secondary rounded-md border px-2.5 py-1 text-xs transition-colors"
                   onClick={async () => {
                     try {
-                      await updateTicket.mutateAsync({ dueAt: null } as any);
-                      toast.success('Due date cleared');
+                      await updateTicket.mutateAsync({ dueAt: when().toISOString() });
+                      toast.success('Due date updated');
                     } catch {
-                      toast.error('Failed to clear due date');
+                      toast.error('Failed to update due date');
                     }
                   }}
                 >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
+                  {label}
+                </button>
+              ))}
+              {/* The input is visually hidden rather than `display: none` so it
+                  stays focusable and reachable by keyboard and screen reader --
+                  a label wrapping a hidden input is otherwise a button nobody
+                  but a mouse can press. */}
+              <label className="border-border-strong hover:bg-secondary focus-within:ring-brand/40 cursor-pointer rounded-md border px-2.5 py-1 text-xs transition-colors focus-within:ring-2">
+                Pick date
+                <input
+                  type="date"
+                  className="sr-only"
+                  aria-label="Pick a due date"
+                  value={ticket.dueAt ? toDateInputValue(new Date(ticket.dueAt)) : ''}
+                  onChange={async (e) => {
+                    if (!e.target.value) return;
+                    try {
+                      // 17:00 local, the same end-of-day the chips use, so a
+                      // date picked here and a date chipped here mean the same
+                      // thing.
+                      const picked = new Date(`${e.target.value}T17:00:00`);
+                      await updateTicket.mutateAsync({ dueAt: picked.toISOString() });
+                      toast.success('Due date updated');
+                    } catch {
+                      toast.error('Failed to update due date');
+                    }
+                  }}
+                />
+              </label>
             </div>
           </div>
 
