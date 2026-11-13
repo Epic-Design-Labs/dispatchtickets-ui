@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useDashboardStats, useDashboardTrends, useBrands } from '@/lib/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, Clock, MessageCircle } from 'lucide-react';
+import { TrendingUp, Clock, MessageCircle, Layers } from 'lucide-react';
 import { StatusTabs } from '@/components/tickets';
+import { BrandTile } from '@/components/brand-tile';
+import { cn } from '@/lib/utils';
 import {
   Area,
   AreaChart,
@@ -22,6 +24,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const RANGES = [7, 30, 90] as const;
+
 function formatChartDate(date: string): string {
   const d = new Date(date);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -38,6 +42,16 @@ function formatMinutes(minutes: number | null): string {
   return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
 }
 
+/** One figure under the chart: a number and what it counts. */
+function VolumeStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <div className="text-xl font-semibold tabular-nums">{value}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
 export default function StatsPage() {
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [days, setDays] = useState<number>(30);
@@ -51,21 +65,86 @@ export default function StatsPage() {
     days,
   });
 
+  const brandName =
+    selectedBrands.length === 0
+      ? 'all brands'
+      : brands?.find((b) => b.id === selectedBrands[0])?.name ?? 'this brand';
+
+  /**
+   * Everything the volume panel reports is summed from the SAME series the
+   * chart draws, so a figure here can never disagree with the line above it.
+   *
+   * `resolved` is the API's own definition -- tickets now resolved or closed
+   * whose last update fell on that day -- so the backlog figure is a reading
+   * of that series, not an independent count of closures.
+   */
+  const volume = useMemo(() => {
+    const points = trends?.data ?? [];
+    if (points.length === 0) return null;
+    const created = points.reduce((sum, p) => sum + p.created, 0);
+    const resolved = points.reduce((sum, p) => sum + p.resolved, 0);
+    const busiest = points.reduce((a, b) => (b.created > a.created ? b : a));
+    return {
+      created,
+      resolved,
+      net: created - resolved,
+      perDay: created / points.length,
+      busiestDate: busiest.created > 0 ? formatChartDate(busiest.date) : '–',
+      // Capped at 100: a quiet week can resolve more tickets than it opened,
+      // and a bar past its own track reads as a rendering fault.
+      resolutionRate: Math.min(100, Math.round((resolved / Math.max(1, created)) * 100)),
+    };
+  }, [trends?.data]);
+
+  /**
+   * Busiest brands, from the stats endpoint's own per-brand breakdown. Its
+   * `total` is already scoped to the selected window, so this is tickets
+   * CREATED in the period and not an all-time tally.
+   */
+  const busiestBrands = useMemo(() => {
+    const rows = Object.entries(stats?.byBrand ?? {})
+      .map(([id, b]) => ({ id, name: b.name, total: b.total }))
+      .filter((b) => b.total > 0)
+      .sort((a, b) => b.total - a.total);
+    return rows.slice(0, 7);
+  }, [stats?.byBrand]);
+
+  const maxBrandTotal = busiestBrands[0]?.total ?? 1;
+
   return (
     <div className="h-full overflow-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Statistics</h1>
-        <div className="flex gap-3">
-          <Select value={days.toString()} onValueChange={(v) => setDays(parseInt(v))}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 days</SelectItem>
-              <SelectItem value="30">30 days</SelectItem>
-              <SelectItem value="90">90 days</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Statistics</h1>
+          <p className="text-muted-foreground">
+            Tickets across {brandName}, last {days} days.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Three fixed ranges read better as one control than as a dropdown:
+              every option is visible, and switching is one click, not two. */}
+          <div
+            role="group"
+            aria-label="Date range"
+            className="inline-flex rounded-md border p-0.5"
+          >
+            {RANGES.map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setDays(n)}
+                aria-pressed={days === n}
+                className={cn(
+                  'rounded-[5px] px-3 py-1 text-sm font-medium transition-colors',
+                  days === n
+                    ? 'bg-secondary text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {n} days
+              </button>
+            ))}
+          </div>
           <Select
             value={selectedBrands.length === 0 ? 'all' : selectedBrands[0]}
             onValueChange={(v) => setSelectedBrands(v === 'all' ? [] : [v])}
@@ -100,7 +179,7 @@ export default function StatsPage() {
       />
 
       {/* Response Metrics */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid gap-4 mb-6 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Avg. First Response</CardTitle>
@@ -129,6 +208,46 @@ export default function StatsPage() {
             </p>
           </CardContent>
         </Card>
+        {/* Whether the queue is growing is the one question the other two
+            cards cannot answer: a fast team can still be losing ground. */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Backlog Change</CardTitle>
+            <Layers className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-2">
+              <div className="text-2xl font-bold tabular-nums">
+                {trendsLoading || !volume
+                  ? '...'
+                  : `${volume.net > 0 ? '+' : ''}${volume.net}`}
+              </div>
+              {volume && !trendsLoading && (
+                <span
+                  className={cn(
+                    'text-xs font-medium',
+                    volume.net > 0 ? 'text-destructive' : 'text-success-foreground'
+                  )}
+                >
+                  {volume.net > 0 ? 'Growing' : 'Shrinking'}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {trendsLoading || !volume
+                ? '...'
+                : `${volume.resolved} resolved of ${volume.created} created (${volume.resolutionRate}%)`}
+            </p>
+            {volume && !trendsLoading && (
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="bg-success h-full rounded-full"
+                  style={{ width: `${volume.resolutionRate}%` }}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Trends Chart */}
@@ -138,6 +257,14 @@ export default function StatsPage() {
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
+          {volume && !trendsLoading && (
+            <div className="mb-4 grid grid-cols-2 gap-4 border-b pb-4 sm:grid-cols-4">
+              <VolumeStat value={String(volume.created)} label="Created" />
+              <VolumeStat value={String(volume.resolved)} label="Resolved" />
+              <VolumeStat value={volume.perDay.toFixed(1)} label="Created per day" />
+              <VolumeStat value={volume.busiestDate} label="Busiest day" />
+            </div>
+          )}
           {trendsLoading ? (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
               Loading trends...
@@ -233,6 +360,41 @@ export default function StatsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Only worth drawing when there is something to compare: one bar at
+          full width tells you nothing you did not already know. */}
+      {busiestBrands.length > 1 && (
+        <Card className="mt-6">
+          <CardHeader className="flex flex-row items-baseline justify-between space-y-0 pb-2">
+            <CardTitle className="text-base font-medium">Busiest brands</CardTitle>
+            <span className="text-xs text-muted-foreground">Tickets created</span>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            {busiestBrands.map((brand, i) => (
+              <div key={brand.id} className="flex items-center gap-3">
+                <span className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[220px]">
+                  <BrandTile
+                    name={brand.name}
+                    iconUrl={brands?.find((b) => b.id === brand.id)?.iconUrl}
+                    size="sm"
+                  />
+                  <span className="truncate text-sm">{brand.name}</span>
+                </span>
+                <span className="hidden h-2 flex-1 overflow-hidden rounded-full bg-secondary sm:block">
+                  <span
+                    className={cn(
+                      'block h-full rounded-full',
+                      i === 0 ? 'bg-primary' : 'bg-primary/40'
+                    )}
+                    style={{ width: `${Math.round((brand.total / maxBrandTotal) * 100)}%` }}
+                  />
+                </span>
+                <span className="w-10 text-right text-sm tabular-nums">{brand.total}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
