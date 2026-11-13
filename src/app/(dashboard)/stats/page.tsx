@@ -90,6 +90,13 @@ export default function StatsPage() {
       net: created - resolved,
       perDay: created / points.length,
       busiestDate: busiest.created > 0 ? formatChartDate(busiest.date) : '–',
+      // Throughput, NOT a cohort: `resolved` counts every ticket that reached
+      // resolved/closed inside the window, including ones opened long before
+      // it, so these two are different populations and the copy says "against
+      // 154 new", never "of 154 created". Production makes the gap visible --
+      // 41 resolved in a window whose 154 new tickets contain only 10 that
+      // are resolved today.
+      //
       // Capped at 100: a quiet week can resolve more tickets than it opened,
       // and a bar past its own track reads as a rendering fault.
       resolutionRate: Math.min(100, Math.round((resolved / Math.max(1, created)) * 100)),
@@ -236,7 +243,7 @@ export default function StatsPage() {
             <p className="text-xs text-muted-foreground mt-1">
               {trendsLoading || !volume
                 ? '...'
-                : `${volume.resolved} resolved of ${volume.created} created (${volume.resolutionRate}%)`}
+                : `${volume.resolved} resolved against ${volume.created} new (${volume.resolutionRate}%)`}
             </p>
             {volume && !trendsLoading && (
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">

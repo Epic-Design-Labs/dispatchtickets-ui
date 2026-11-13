@@ -206,24 +206,24 @@ function ChatRow({
         <div className="mt-0.5 truncate text-xs text-muted-foreground">
           {typing ? <span className="italic text-foreground">typing…</span> : ticket.title}
         </div>
+        {/* One line, never two. Everything left of "Unassigned" truncates:
+            formatTimeAgo gives up on relative time after a week and returns a
+            full date, and a chat that has been waiting sixteen days is exactly
+            the row where that long string would otherwise push the flag onto a
+            second line in a 20rem column. */}
         <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
           {showBrand && brandOf(ticket) && (
             <>
               <BrandTile name={brandOf(ticket)!.name} iconUrl={brandOf(ticket)!.iconUrl} size="sm" />
-              <span className="max-w-[9rem] truncate">{brandOf(ticket)!.name}</span>
+              <span className="min-w-0 max-w-[7rem] truncate">{brandOf(ticket)!.name}</span>
               <span aria-hidden="true">·</span>
             </>
           )}
-          <span>#{ticket.ticketNumber} · {formatTimeAgo(ticket.updatedAt)}</span>
+          <span className="min-w-0 truncate">#{ticket.ticketNumber} · {formatTimeAgo(ticket.updatedAt)}</span>
           {/* Only the absence is worth a word. Naming the assignee would mean
               fetching the team on both pages that render this list; saying
               nobody has it yet needs only the id that is already here. */}
-          {!ticket.assigneeId && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>Unassigned</span>
-            </>
-          )}
+          {!ticket.assigneeId && <span className="ml-auto shrink-0">Unassigned</span>}
         </div>
       </Link>
     </li>
