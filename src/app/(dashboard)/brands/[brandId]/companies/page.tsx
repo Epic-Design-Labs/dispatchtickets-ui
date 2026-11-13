@@ -9,6 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BrandTile } from '@/components/brand-tile';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -57,11 +66,22 @@ export default function CompaniesPage() {
   return (
     <div className="flex flex-col">
       <div className="flex-1 p-4 md:p-6">
+        <div className="mb-6">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-6 w-6 text-muted-foreground" />
+            <h2 className="text-2xl font-bold tracking-tight">Companies</h2>
+          </div>
+          <p className="text-muted-foreground">
+            Organizations linked to your contacts. A contact joins one automatically
+            when their email domain matches.
+          </p>
+        </div>
+
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search companies..."
+              placeholder="Search companies or domains"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -74,69 +94,109 @@ export default function CompaniesPage() {
         </div>
 
         {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-10 w-10 rounded-lg" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Company</TableHead>
+                  <TableHead className="text-right">Contacts</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="w-[90px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-[9px]" />
+                        <div className="space-y-1">
+                          <Skeleton className="h-4 w-40" />
+                          <Skeleton className="h-3 w-28" />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell><Skeleton className="h-4 w-8 ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-14" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ) : companies.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Building2 className="h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">No companies yet</h3>
+              <h3 className="mt-4 text-lg font-medium">
+                {search ? `No companies match "${search}"` : 'No companies yet'}
+              </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Create companies to group contacts from the same organization.
+                {search
+                  ? 'Try a name or domain.'
+                  : 'Create companies to group contacts from the same organization.'}
               </p>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {companies.map((company) => (
-              <Card key={company.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                        <Building2 className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{company.name}</p>
-                        {company.domain && (
-                          <p className="text-sm text-muted-foreground">
-                            {company.domain}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          {company._count?.customers || 0} contacts
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDateTime(company.createdAt)}
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/brands/${brandId}/companies/${company.id}`}>
-                          View
+          /* A table, not a stack of cards. Each company is a name, a domain, a
+             count and a date -- four short values that line up into columns,
+             and the card layout spent a whole row's height on each one, so
+             four companies filled the screen where eleven fit here. */
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Company</TableHead>
+                  <TableHead className="text-right">Contacts</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="w-[90px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {companies.map((company) => {
+                  const contactCount = company._count?.customers || 0;
+                  return (
+                    <TableRow key={company.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <Link
+                          href={`/brands/${brandId}/companies/${company.id}`}
+                          className="flex items-center gap-3"
+                        >
+                          {/* A square, not a circle: the mock reserves circles
+                              for people and rounded squares for organizations,
+                              and BrandTile already colours one from the name. */}
+                          <BrandTile name={company.name} size="lg" />
+                          <div>
+                            <p className="font-medium text-sm">{company.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {company.domain || 'No domain'}
+                            </p>
+                          </div>
                         </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {contactCount ? (
+                          contactCount
+                        ) : (
+                          <span className="text-muted-foreground/60">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {formatDateTime(company.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/brands/${brandId}/companies/${company.id}`}>
+                            View
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>

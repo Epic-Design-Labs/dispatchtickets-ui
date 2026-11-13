@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PersonAvatar } from '@/components/person-avatar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -204,13 +204,16 @@ export default function ContactDetailPage() {
             <CardContent className="space-y-6">
               {/* Avatar & Name */}
               <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={contact.avatarUrl || undefined} />
-                  <AvatarFallback className="text-lg">
-                    {contact.name?.slice(0, 2).toUpperCase() ||
-                      contact.email.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                {/* PersonAvatar, not a hand-rolled Avatar: the palette colour
+                    and `brandInitials` are shared with every other circle in
+                    the app, so this contact is the same colour and the same
+                    two letters here as in the list and on their tickets. */}
+                <PersonAvatar
+                  name={contact.name || contact.email}
+                  imageUrl={contact.avatarUrl || undefined}
+                  size="lg"
+                  className="h-16 w-16 text-lg"
+                />
                 <div className="flex-1">
                   {isEditing ? (
                     <div className="space-y-2">
