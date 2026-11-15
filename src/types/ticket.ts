@@ -95,6 +95,12 @@ export interface UpdateTicketInput {
   closeReason?: CloseReason;
   priority?: TicketPriority;
   assigneeId?: string | null;
+  /**
+   * Claim rather than assign: the API puts the "nobody holds it" test in the
+   * UPDATE's own WHERE and answers 409 { error: 'already_assigned', assigneeId }
+   * when someone else got there first. Needs an assigneeId to claim for.
+   */
+  ifUnassigned?: boolean;
   categoryId?: string | null;
   companyId?: string | null;
   tags?: string[];

@@ -22,6 +22,13 @@ interface CommentEditorProps {
   ticketId: string;
   /** A live chat: Enter sends, and the email-only controls (From, CC) go away. */
   chat?: boolean;
+  /**
+   * What the send button says for a reply. The chat pane works out whether the
+   * next reply lands in the widget or goes by email (chat-delivery.ts) and
+   * passes the same answer its banner gives, so the button and the banner can
+   * never say different things. A note always says "Add note".
+   */
+  sendLabel?: string;
 }
 
 type SubmitAction = 'comment' | 'pending' | 'resolved';
@@ -33,7 +40,7 @@ interface UploadedFile {
   isImage: boolean;
 }
 
-export function CommentEditor({ brandId, ticketId, chat = false }: CommentEditorProps) {
+export function CommentEditor({ brandId, ticketId, chat = false, sendLabel }: CommentEditorProps) {
   const [body, setBody] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -581,7 +588,13 @@ export function CommentEditor({ brandId, ticketId, chat = false }: CommentEditor
           >
             <Send className="h-4 w-4 md:mr-2" />
             <span className="hidden md:inline">
-              {createComment.isPending ? 'Adding...' : chat && !isInternal ? 'Send to chat' : 'Send'}
+              {createComment.isPending
+                ? 'Adding...'
+                : isInternal
+                  ? chat
+                    ? 'Add note'
+                    : 'Send'
+                  : sendLabel || (chat ? 'Send to chat' : 'Send')}
             </span>
           </Button>
         </div>

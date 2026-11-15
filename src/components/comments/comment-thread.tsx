@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MarkdownContent } from '@/components/ui/markdown-content';
 import { PersonAvatar } from '@/components/person-avatar';
 import { Pill } from '@/components/tickets/pill';
-import { getGravatarUrl } from '@/lib/gravatar';
+import { authorAvatarUrl, authorLabel, isInternalNote } from './comment-author';
 
 interface CommentThreadProps {
   comments: Comment[];
@@ -47,64 +47,13 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
     );
   }
 
-  const findMemberForComment = (comment: Comment): TeamMember | undefined => {
-    if (comment.authorType !== 'AGENT') return undefined;
-    // Match by authorId first
-    if (comment.authorId) {
-      const byId = teamMembers.find(m => m.id === comment.authorId);
-      if (byId) return byId;
-    }
-    // Match by authorName in metadata
-    const authorName = comment.metadata?.authorName as string | undefined;
-    if (authorName) {
-      return teamMembers.find(m => {
-        const fullName = [m.firstName, m.lastName].filter(Boolean).join(' ');
-        return fullName === authorName || m.firstName === authorName || m.email === authorName;
-      });
-    }
-    return undefined;
-  };
-
-  const getAuthorAvatarUrl = (comment: Comment): string | undefined => {
-    if (comment.authorType === 'AGENT') {
-      const member = findMemberForComment(comment);
-      if (member?.avatarUrl) return member.avatarUrl;
-      if (member?.email) return getGravatarUrl(member.email, 32);
-      return undefined;
-    }
-    if (comment.authorType === 'CUSTOMER') {
-      if (customer?.avatarUrl) return customer.avatarUrl;
-      if (customer?.email) return getGravatarUrl(customer.email, 32);
-      return undefined;
-    }
-    return undefined;
-  };
-
-  const getAuthorLabel = (comment: Comment) => {
-    // Check for author name in metadata
-    const authorName = comment.metadata?.authorName as string | undefined;
-    if (authorName) return authorName;
-
-    // Fall back to type-based labels
-    if (comment.authorType === 'AGENT') return 'Agent';
-    if (comment.authorType === 'SYSTEM') return 'System';
-    // Use customer name or email if available
-    if (customer?.name) return customer.name;
-    if (customer?.email) return customer.email;
-    return comment.authorId || 'Contact';
-  };
-
-  const isInternal = (comment: Comment) => {
-    return comment.metadata?.isInternal === true;
-  };
-
   const sortedComments = order === 'newest' ? [...comments].reverse() : comments;
 
   return (
     <div className="space-y-4">
       {sortedComments.map((comment) => {
-        const label = getAuthorLabel(comment);
-        const internal = isInternal(comment);
+        const label = authorLabel(comment, { customer });
+        const internal = isInternalNote(comment);
         const system = comment.authorType === 'SYSTEM';
         // Three kinds of message, told apart by their fill rather than by a
         // label someone has to read: a note the customer will never see is
@@ -117,7 +66,7 @@ export function CommentThread({ comments, isLoading, brandId, customer, teamMemb
             key={comment.id}
             className="flex gap-3 border-t pt-4 first:border-t-0 first:pt-0"
           >
-            <PersonAvatar name={label} imageUrl={getAuthorAvatarUrl(comment)} system={system} />
+            <PersonAvatar name={label} imageUrl={authorAvatarUrl(comment, { customer, teamMembers })} system={system} />
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <span className="text-sm font-semibold">{label}</span>

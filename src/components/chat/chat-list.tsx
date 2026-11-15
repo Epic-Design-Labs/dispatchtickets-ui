@@ -10,6 +10,7 @@ import { cn, formatTimeAgo } from '@/lib/utils';
 import { WaitingBadge } from '@/components/chat/waiting-badge';
 import { useUnreadChats, useVisitorTyping } from '@/lib/live/chat-activity';
 import { BrandTile } from '@/components/brand-tile';
+import { chatWho } from '@/components/chat/chat-who';
 import type { Ticket, BrandInfo } from '@/types';
 
 /** The cross-brand endpoint attaches `brand`; the per-brand one does not. */
@@ -23,16 +24,6 @@ export type ChatHref = (ticket: Ticket) => string;
 
 const brandChatHref: ChatHref = (t) => `/brands/${t.brandId}/chat?t=${t.id}`;
 
-/** Who the row is about: the same fallback chain the row itself renders. */
-function whoOf(ticket: Ticket): string {
-  return (
-    ticket.customer?.name ||
-    ticket.customer?.email ||
-    (ticket.customFields?.requesterName as string | undefined) ||
-    'Visitor'
-  );
-}
-
 /**
  * Filter the queue client-side.
  *
@@ -43,7 +34,7 @@ function whoOf(ticket: Ticket): string {
  */
 function matches(ticket: Ticket, needle: string): boolean {
   const haystack = [
-    whoOf(ticket),
+    chatWho(ticket),
     ticket.customer?.email,
     ticket.title,
     `#${ticket.ticketNumber}`,
@@ -183,7 +174,7 @@ function ChatRow({
   showBrand: boolean;
 }) {
   const typing = useVisitorTyping(ticket.id);
-  const who = whoOf(ticket);
+  const who = chatWho(ticket);
 
   return (
     <li>
