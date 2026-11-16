@@ -754,6 +754,7 @@ export default function DashboardPage() {
             teamMembers={teamMembers}
             memberId={session?.memberId}
             view={view}
+            partial={hasNextPage}
             emptyMessage={
               view === 'mine'
                 ? 'Nothing is assigned to you right now.'

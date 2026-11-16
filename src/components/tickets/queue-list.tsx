@@ -41,6 +41,7 @@ export function QueueList({
   memberId,
   view,
   emptyMessage,
+  partial = false,
 }: {
   groups: QueueGroup[];
   teamMembers?: TeamMember[];
@@ -48,6 +49,12 @@ export function QueueList({
   memberId?: string;
   view: 'all' | 'mine' | 'unassigned';
   emptyMessage: string;
+  /**
+   * Whether another page is still unfetched. A heading counts the rows under
+   * it, and with 50 of 100-odd loaded that number reads as the size of the
+   * queue, which it is not -- so it says "50+" until the last page is in.
+   */
+  partial?: boolean;
 }) {
   const action = useQueueTicketAction();
 
@@ -73,7 +80,10 @@ export function QueueList({
               />
             )}
             <span className="text-sm font-semibold">{group.title}</span>
-            <span className="text-subtle text-sm tabular-nums">{group.items.length}</span>
+            <span className="text-subtle text-sm tabular-nums">
+              {group.items.length}
+              {partial ? '+' : ''}
+            </span>
             {group.hint && (
               <span className="text-subtle hidden text-xs sm:inline">· {group.hint}</span>
             )}
@@ -83,6 +93,7 @@ export function QueueList({
               <QueueRow
                 key={ticket.id}
                 ticket={ticket}
+                showBrand={!group.brand}
                 teamMembers={teamMembers}
                 memberId={memberId}
                 view={view}
@@ -97,10 +108,31 @@ export function QueueList({
   );
 }
 
+/**
+ * The row's one date, short enough to stay on one line.
+ *
+ * `formatTimeAgo` gives up past a week and returns a full datetime --
+ * "Nov 6, 2026, 9:28 AM" -- which is right in a table cell and wraps onto two
+ * lines in a 5rem column, bending the whole row. Past a week the day is what
+ * is being read anyway; the full stamp stays in the tooltip.
+ */
+function age(iso: string): string {
+  const then = new Date(iso);
+  const days = (Date.now() - then.getTime()) / 86_400_000;
+  if (days < 7) return formatTimeAgo(iso);
+  const sameYear = then.getFullYear() === new Date().getFullYear();
+  return then.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+}
+
 type ActionRunner = ReturnType<typeof useQueueTicketAction>['mutateAsync'];
 
 function QueueRow({
   ticket,
+  showBrand,
   teamMembers,
   memberId,
   view,
@@ -108,6 +140,8 @@ function QueueRow({
   busy,
 }: {
   ticket: DashboardTicket;
+  /** False under a brand heading, where the tile and name are already said. */
+  showBrand: boolean;
   teamMembers?: TeamMember[];
   memberId?: string;
   view: 'all' | 'mine' | 'unassigned';
@@ -175,7 +209,9 @@ function QueueRow({
       </Link>
 
       <div className="pointer-events-none flex min-w-0 flex-1 items-center gap-3">
-        <BrandTile name={ticket.brand?.name ?? ''} iconUrl={ticket.brand?.iconUrl} size="sm" />
+        {showBrand && (
+          <BrandTile name={ticket.brand?.name ?? ''} iconUrl={ticket.brand?.iconUrl} size="sm" />
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-medium">{ticket.title}</span>
@@ -183,7 +219,8 @@ function QueueRow({
           </div>
           <div className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1.5 text-xs">
             <span className="min-w-0 truncate">
-              {contact ?? 'No contact'} · {number} · {ticket.brand?.name}
+              {contact ?? 'No contact'} · {number}
+              {showBrand ? ` · ${ticket.brand?.name}` : ''}
               {/* Who holds it only earns room where it is not already the
                   answer to the whole page: in My tickets that is me, and in
                   Unassigned it is nobody. */}
@@ -219,7 +256,7 @@ function QueueRow({
         className="text-subtle pointer-events-none hidden w-20 shrink-0 text-right text-xs sm:block"
         title={`Last activity ${formatDateTime(ticket.updatedAt)}`}
       >
-        {formatTimeAgo(ticket.updatedAt)}
+        {age(ticket.updatedAt)}
       </span>
 
       <div className="relative flex shrink-0 items-center gap-1.5">
