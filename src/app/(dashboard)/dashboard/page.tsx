@@ -968,7 +968,12 @@ export default function DashboardPage() {
       </div>
       )}
 
-      {/* Both layouts page the same way. The button used to be decoration. */}
+      {/* Both layouts page the same way. The button used to be decoration.
+          The running total sits under it because a new page sorts INTO the
+          groups rather than onto the end -- an older ticket lands near the top
+          of its group, far above the button -- so without a number here the
+          press looks like it did nothing, which is what this button used to
+          do for real. */}
       {hasNextPage && (
         <div className="mt-4 text-center">
           <Button
@@ -979,6 +984,7 @@ export default function DashboardPage() {
           >
             {isFetchingNextPage ? 'Loading...' : 'Load more'}
           </Button>
+          <p className="text-subtle mt-2 text-xs tabular-nums">{tickets.length} loaded</p>
         </div>
       )}
     </div>
