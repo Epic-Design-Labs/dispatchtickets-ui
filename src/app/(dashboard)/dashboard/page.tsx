@@ -20,7 +20,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useDashboardTickets, useDashboardStats, useBrands, useTeamMembers } from '@/lib/hooks';
+import {
+  useDashboardTickets,
+  useDashboardTicketsPaged,
+  useDashboardStats,
+  useBrands,
+  useTeamMembers,
+} from '@/lib/hooks';
+import { useQueueGrouping, useQueueLayout } from '@/lib/ui-prefs';
+import { QueueList } from '@/components/tickets/queue-list';
+import { groupQueue } from '@/components/tickets/queue-groups';
 import { useAuth } from '@/providers';
 import { DashboardTicketFilters, TicketFilters as TicketFiltersType } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +66,8 @@ import {
   MessageSquare,
   Timer,
   Settings2,
+  Rows3,
+  Table as TableIcon,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -207,6 +218,51 @@ const DASHBOARD_COLUMN_TO_API_SORT: Record<string, string> = {
   dueAt: 'dueAt',
 };
 
+/**
+ * The two-or-three-way toggles in the toolbar.
+ *
+ * A pair of buttons rather than a `<select>`: both options are worth seeing
+ * without opening anything, and which one is on is the thing being read.
+ */
+function Segmented<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: T;
+  onChange: (next: T) => void;
+  options: Array<{ value: T; label: string; icon?: React.ComponentType<{ className?: string }> }>;
+  label: string;
+}) {
+  return (
+    <div className="bg-surface-muted inline-flex items-center gap-0.5 rounded-lg border p-0.5" role="group" aria-label={label}>
+      {options.map((option) => {
+        const Icon = option.icon;
+        const on = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            aria-pressed={on}
+            title={option.label}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+              on
+                ? 'bg-card text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {Icon && <Icon className="h-3.5 w-3.5" />}
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function formatDuration(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return '-';
   if (minutes < 60) return `${minutes}m`;
@@ -343,6 +399,8 @@ export default function DashboardPage() {
 
   // Parse URL params
   const view = (searchParams.get('view') || 'all') as ViewType;
+  const [layout, setLayout] = useQueueLayout(view);
+  const [grouping, setGrouping] = useQueueGrouping();
   const status = searchParams.get('status') || undefined;
   const priority = searchParams.get('priority') || undefined;
   const search = searchParams.get('search') || undefined;
@@ -440,7 +498,13 @@ export default function DashboardPage() {
     }
   }, [apiStatus, priority, search, selectedBrands, view, session?.memberId, sortState]);
 
-  const { data: ticketsData, isLoading: ticketsLoading } = useDashboardTickets(apiFilters);
+  const {
+    data: ticketsData,
+    isLoading: ticketsLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useDashboardTicketsPaged(apiFilters);
   // For "all" view, use global stats; for "mine"/"unassigned", we need to fetch ALL tickets for that view
   // to get accurate counts (not just the first page)
   const allTicketsFilters: DashboardTicketFilters = useMemo(() => ({
@@ -509,7 +573,7 @@ export default function DashboardPage() {
   // Skip grouping when user has an explicit sort active
   const hasExplicitSort = !!sortState.column;
   const tickets = useMemo(() => {
-    const rawTickets = ticketsData?.data || [];
+    const rawTickets = ticketsData?.pages.flatMap((page) => page.data) ?? [];
     // Only apply grouping when showing "active" and no explicit sort
     if ((!status || status === 'active') && !hasExplicitSort) {
       const openTickets = rawTickets
@@ -534,7 +598,20 @@ export default function DashboardPage() {
     }
 
     return rawTickets;
-  }, [ticketsData?.data, status, hasExplicitSort, sortState]);
+  }, [ticketsData?.pages, status, hasExplicitSort, sortState]);
+
+  /**
+   * The grouped layout's sections.
+   *
+   * Built from the very same `tickets` the table renders, so the two layouts
+   * can never be showing different sets -- switching between them changes the
+   * shape and nothing else. Re-ordering inside a group is skipped while a sort
+   * column is active: that click was a decision.
+   */
+  const groups = useMemo(
+    () => groupQueue(tickets, { by: grouping, view, reorder: !hasExplicitSort }),
+    [tickets, grouping, view, hasExplicitSort]
+  );
 
   const tabCounts: Record<string, number> = {
     active: statsActive,
@@ -594,8 +671,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="flex-1">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-[260px] flex-1">
           <TicketFilters
             filters={currentFilters}
             onFiltersChange={handleFiltersChange}
@@ -606,9 +683,32 @@ export default function DashboardPage() {
             teamMembers={teamMembers}
           />
         </div>
+        <div className="flex shrink-0 items-center gap-2">
+        {layout === 'grouped' && (
+          <Segmented
+            label="Group by"
+            value={grouping}
+            onChange={setGrouping}
+            options={[
+              { value: 'urgency', label: 'By urgency' },
+              { value: 'brand', label: 'By brand' },
+            ]}
+          />
+        )}
+        <Segmented
+          label="Layout"
+          value={layout}
+          onChange={setLayout}
+          options={[
+            { value: 'grouped', label: 'Groups', icon: Rows3 },
+            { value: 'table', label: 'Table', icon: TableIcon },
+          ]}
+        />
+        {/* Columns only mean something to the table, so the control goes with
+            it rather than sitting there inert in the other layout. */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className={layout === 'grouped' ? 'hidden' : undefined}>
               <Settings2 className="mr-1 h-4 w-4" />
               Columns
               <ChevronDown className="ml-1 h-3 w-3" />
@@ -640,9 +740,30 @@ export default function DashboardPage() {
             </DndContext>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
-      {/* Tickets Table */}
+      {layout === 'grouped' ? (
+        ticketsLoading ? (
+          <div className="bg-card rounded-xl border p-10 text-center shadow-sm">
+            <p className="text-muted-foreground text-sm">Loading tickets...</p>
+          </div>
+        ) : (
+          <QueueList
+            groups={groups}
+            teamMembers={teamMembers}
+            memberId={session?.memberId}
+            view={view}
+            emptyMessage={
+              view === 'mine'
+                ? 'Nothing is assigned to you right now.'
+                : view === 'unassigned'
+                  ? 'Every ticket has someone on it.'
+                  : 'No tickets match these filters.'
+            }
+          />
+        )
+      ) : (
       <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
         <Table>
           <TableHeader className="bg-surface-muted">
@@ -844,12 +965,18 @@ export default function DashboardPage() {
           </TableBody>
         </Table>
       </div>
+      )}
 
-      {/* Load More */}
-      {ticketsData?.pagination?.hasMore && (
+      {/* Both layouts page the same way. The button used to be decoration. */}
+      {hasNextPage && (
         <div className="mt-4 text-center">
-          <Button variant="outline" size="sm">
-            Load More
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Loading...' : 'Load more'}
           </Button>
         </div>
       )}

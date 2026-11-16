@@ -16,6 +16,7 @@ import { ChatThread } from '@/components/chat/chat-thread';
 import { TicketChatSection } from '@/components/chat/ticket-chat-section';
 import { ConvertChatButton } from '@/components/chat/convert-chat-button';
 import { chatWho } from '@/components/chat/chat-who';
+import { memberName } from '@/lib/member-name';
 import { chatDelivery, sendLabelFor, type ChatDelivery } from '@/components/chat/chat-delivery';
 import { useComments, useTeamMembers, useTicket, useUpdateTicket } from '@/lib/hooks';
 import { useChatVisitor } from '@/lib/hooks/use-chat';
@@ -243,12 +244,6 @@ export function ChatConversation({ brandId, ticketId }: { brandId: string; ticke
       </aside>
     </div>
   );
-}
-
-function memberName(memberId: string, members: TeamMember[]): string | null {
-  const member = members.find((m) => m.id === memberId);
-  if (!member) return null;
-  return [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || null;
 }
 
 /**

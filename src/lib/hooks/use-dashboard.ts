@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api';
 import { DashboardTicketFilters } from '@/types';
 
@@ -22,6 +22,31 @@ export function useDashboardTickets(filters?: DashboardTicketFilters, options?: 
     queryFn: () => dashboardApi.listTickets(filters),
     enabled: options?.enabled !== false,
     staleTime: 60000, // Consider data fresh for 1 minute
+  });
+}
+
+/**
+ * The same cross-brand queue, page by page.
+ *
+ * The dashboard had a "Load More" button wired to nothing: it appeared
+ * whenever the API said `hasMore` and did nothing when pressed, so the queues
+ * silently ended at fifty tickets. The endpoint pages by cursor, so this is
+ * what that button needed all along -- and the grouped layout needs it more
+ * than the table did, because a group heading that says "Overdue 12" when a
+ * second page holds four more is a count that is wrong rather than short.
+ */
+export function useDashboardTicketsPaged(
+  filters?: DashboardTicketFilters,
+  options?: { enabled?: boolean },
+) {
+  return useInfiniteQuery({
+    queryKey: [...dashboardKeys.tickets(filters), 'paged'] as const,
+    queryFn: ({ pageParam }: { pageParam: string | null }) =>
+      dashboardApi.listTickets(pageParam ? { ...filters, cursor: pageParam } : filters),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => (last.pagination?.hasMore ? last.pagination.nextCursor : null),
+    enabled: options?.enabled !== false,
+    staleTime: 60000,
   });
 }
 

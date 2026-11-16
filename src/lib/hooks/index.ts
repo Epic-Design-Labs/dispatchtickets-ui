@@ -30,3 +30,4 @@ export * from './use-presence';
 export * from './use-saved-replies';
 export * from './use-automation';
 export * from './use-integrations';
+export * from './use-queue-actions';

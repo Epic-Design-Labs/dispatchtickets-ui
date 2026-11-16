@@ -4,3 +4,4 @@ export { BrandList } from './brand-list';
 export { BrandNav, BRAND_NAV_TABS } from './brand-nav';
 export { OrgSwitcher } from './org-switcher';
 export { NotificationBell } from './notification-bell';
+export { CommandPalette } from './command-palette';

@@ -72,6 +72,13 @@ interface NavItemProps {
    */
   count?: number | string;
   /**
+   * Draws `count` in amber instead of grey. For a count that is a backlog
+   * rather than a total: nobody needs to act on "303 active", but "25 nobody
+   * has picked up" is a number with a job attached. Still a quiet colour, not
+   * a badge -- it reports, it does not interrupt.
+   */
+  countTone?: 'default' | 'warn';
+  /**
    * An urgent count -- people waiting in chat. Unlike `count` this survives
    * the collapse, shrinking to a dot, because it is the one number worth
    * interrupting someone for.
@@ -88,6 +95,7 @@ export function NavItem({
   label,
   active = false,
   count,
+  countTone = 'default',
   badgeCount,
   title,
   className,
@@ -125,7 +133,9 @@ export function NavItem({
             'shrink-0 text-xs',
             active
               ? 'bg-brand-softer text-brand-strong rounded-md px-2 py-px font-semibold'
-              : 'text-subtle'
+              : countTone === 'warn'
+                ? 'text-warning-foreground font-semibold'
+                : 'text-subtle'
           )}
         >
           {count}

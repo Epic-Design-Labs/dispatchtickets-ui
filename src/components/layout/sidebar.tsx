@@ -207,6 +207,7 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
                     label="Unassigned"
                     active={isDashboard && view === 'unassigned'}
                     count={countFrom(unassignedData)}
+                    countTone="warn"
                   />
                   <NavItem
                     href="/chat"

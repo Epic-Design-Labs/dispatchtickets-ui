@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth as useStackbeAuth } from '@/providers';
 import { useAuth as useClerkAuth } from '@clerk/nextjs';
-import { Sidebar, BrandNav, NotificationBell } from '@/components/layout';
+import { Sidebar, BrandNav, NotificationBell, CommandPalette } from '@/components/layout';
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
 import { ConnectionWarningBanner } from '@/components/connection-warning-banner';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -170,6 +170,7 @@ export default function DashboardLayout({
         <main className="flex-1 overflow-y-auto bg-canvas">{children}</main>
       </div>
       <KeyboardShortcutsModal />
+      <CommandPalette />
     </div>
   );
 }

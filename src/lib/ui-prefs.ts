@@ -141,3 +141,33 @@ export function useFavoriteBrands(): FavoriteBrands {
 
   return { favorites, isFavorite, toggle };
 }
+
+const QUEUE_LAYOUT_KEY = 'dispatch_queue_layout';
+const QUEUE_GROUPING_KEY = 'dispatch_queue_grouping';
+
+/** The grouped list of rows, or the sortable table. */
+export type QueueLayout = 'grouped' | 'table';
+
+/**
+ * Which of the two queue layouts this agent uses -- kept PER QUEUE.
+ *
+ * Deliberately not one setting for all three: My tickets is a short list you
+ * work down, All active is three hundred rows you scan and sort, and the same
+ * person wants different shapes for them. The key carries the view, so
+ * choosing a table in one does not reshape the others.
+ */
+export function useQueueLayout(view: string): [QueueLayout, (next: QueueLayout) => void] {
+  const key = `${QUEUE_LAYOUT_KEY}_${view}`;
+  const raw = useStoredString(key, 'grouped');
+  const layout: QueueLayout = raw === 'table' ? 'table' : 'grouped';
+  const set = useCallback((next: QueueLayout) => writeRaw(key, next), [key]);
+  return [layout, set];
+}
+
+/** How the grouped layout cuts a queue up. One choice across all queues. */
+export function useQueueGrouping(): ['urgency' | 'brand', (next: 'urgency' | 'brand') => void] {
+  const raw = useStoredString(QUEUE_GROUPING_KEY, 'urgency');
+  const grouping = raw === 'brand' ? 'brand' : 'urgency';
+  const set = useCallback((next: 'urgency' | 'brand') => writeRaw(QUEUE_GROUPING_KEY, next), []);
+  return [grouping, set];
+}

@@ -135,9 +135,12 @@ export function TicketFilters({
     onBrandFilterChange(selectedBrandIds.filter((id) => id !== brandId));
   };
 
-  // Count active filters for mobile badge
+  // Count active filters for the mobile badge. The default status counts for
+  // nothing: every page that uses these filters starts at 'active', so
+  // including it meant the badge always read at least 1 and never meant
+  // anything.
   const activeFilterCount = [
-    filters.status,
+    filters.status && filters.status !== 'active',
     filters.priority,
     filters.source,
     filters.categoryId,

@@ -38,6 +38,8 @@ const shortcutGroups: ShortcutGroup[] = [
   {
     title: 'General',
     shortcuts: [
+      { keys: ['\u2318', 'K'], description: 'Search or jump to a page, brand or ticket' },
+      { keys: ['Alt', '\u2191\u2193'], description: 'Move through the chat queue' },
       { keys: ['?'], description: 'Show keyboard shortcuts' },
       { keys: ['Esc'], description: 'Close modal / Cancel' },
     ],
