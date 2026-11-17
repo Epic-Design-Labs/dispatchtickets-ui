@@ -2,13 +2,14 @@
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api';
+import type { DashboardStatsOptions } from '@/lib/api/dashboard';
 import { DashboardTicketFilters } from '@/types';
 
 export const dashboardKeys = {
   all: ['dashboard'] as const,
   tickets: (filters?: DashboardTicketFilters) =>
     ['dashboard', 'tickets', filters] as const,
-  stats: (options?: { brandIds?: string[]; days?: number }) =>
+  stats: (options?: DashboardStatsOptions) =>
     ['dashboard', 'stats', options] as const,
   trends: (options?: { brandIds?: string[]; days?: number }) =>
     ['dashboard', 'trends', options] as const,
@@ -50,10 +51,14 @@ export function useDashboardTicketsPaged(
   });
 }
 
-export function useDashboardStats(options?: { brandIds?: string[]; days?: number }) {
+export function useDashboardStats(
+  options?: DashboardStatsOptions,
+  query?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: dashboardKeys.stats(options),
     queryFn: () => dashboardApi.getStats(options),
+    enabled: query?.enabled !== false,
     staleTime: 60000, // Consider stats fresh for 1 minute
   });
 }

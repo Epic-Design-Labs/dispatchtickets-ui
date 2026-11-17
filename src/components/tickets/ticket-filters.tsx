@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -88,6 +88,53 @@ export function TicketFilters({
 }: TicketFiltersProps) {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
+  /**
+   * The search box types now and filters a moment later.
+   *
+   * `filters.search` is not local state on either page that renders this: the
+   * dashboard keeps it in the URL and the brand list sends it to the server,
+   * so an input bound straight to it renders one round trip behind the
+   * keyboard and drops whatever was typed in between -- "scorecard" arrived as
+   * `?search=d`. So the box owns what it shows, and the filter follows.
+   */
+  const [searchDraft, setSearchDraft] = useState(filters.search ?? '');
+  const [searchEchoed, setSearchEchoed] = useState(filters.search ?? '');
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Read in a timeout that fires after the render that scheduled it, by which
+  // time either could be a version behind.
+  const latest = useRef({ filters, onFiltersChange });
+
+  useEffect(() => {
+    latest.current = { filters, onFiltersChange };
+  }, [filters, onFiltersChange]);
+
+  useEffect(() => () => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+  }, []);
+
+  // A search set from outside -- Clear filters, the back button, a link
+  // carrying ?search= -- replaces the draft. The echo of what this box itself
+  // sent does not, or a slow commit would pull the cursor back through text
+  // the user has already typed past.
+  if ((filters.search ?? '') !== searchEchoed) {
+    setSearchEchoed(filters.search ?? '');
+    setSearchDraft(filters.search ?? '');
+  }
+
+  const commitSearch = (value: string) => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    setSearchEchoed(value);
+    const { filters: current, onFiltersChange: report } = latest.current;
+    report({ ...current, search: value || undefined });
+  };
+
+  const typeSearch = (value: string) => {
+    setSearchDraft(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => commitSearch(value), 300);
+  };
+
   const updateFilter = <K extends keyof TicketFiltersType>(
     key: K,
     value: TicketFiltersType[K]
@@ -96,6 +143,10 @@ export function TicketFilters({
   };
 
   const clearFilters = () => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    setSearchDraft('');
+    setSearchEchoed('');
     onFiltersChange({});
     if (onBrandFilterChange) {
       onBrandFilterChange([]);
@@ -320,8 +371,11 @@ export function TicketFilters({
       <div className="flex md:hidden items-center gap-2">
         <Input
           placeholder="Search tickets..."
-          value={filters.search || ''}
-          onChange={(e) => updateFilter('search', e.target.value)}
+          value={searchDraft}
+          onChange={(e) => typeSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitSearch(searchDraft);
+          }}
           className="flex-1"
         />
         <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
@@ -350,8 +404,11 @@ export function TicketFilters({
         {/* Search */}
         <Input
           placeholder="Search tickets..."
-          value={filters.search || ''}
-          onChange={(e) => updateFilter('search', e.target.value)}
+          value={searchDraft}
+          onChange={(e) => typeSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitSearch(searchDraft);
+          }}
           className="w-64"
         />
 

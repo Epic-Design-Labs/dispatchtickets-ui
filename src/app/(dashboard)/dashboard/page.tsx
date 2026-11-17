@@ -21,7 +21,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  useDashboardTickets,
   useDashboardTicketsPaged,
   useDashboardStats,
   useBrands,
@@ -505,44 +504,43 @@ export default function DashboardPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useDashboardTicketsPaged(apiFilters);
-  // For "all" view, use global stats; for "mine"/"unassigned", we need to fetch ALL tickets for that view
-  // to get accurate counts (not just the first page)
-  const allTicketsFilters: DashboardTicketFilters = useMemo(() => ({
-    brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
-    assigneeId: view === 'mine' ? session?.memberId : (view === 'unassigned' ? 'null' : undefined),
-    limit: 100, // Max allowed by API
-  }), [view, selectedBrands, session?.memberId]);
+  /**
+   * Every view's tab counts come from the stats endpoint.
+   *
+   * My tickets and Unassigned used to count statuses client-side out of a
+   * hundred-ticket fetch -- the API's maximum -- and show the answer where a
+   * total belongs: the Resolved tab read 2 above a group listing nineteen
+   * resolved tickets. The endpoint takes the same assignee filter the list
+   * does, so a count is now a count, and the page makes one request fewer.
+   */
+  const statsAssignee =
+    view === 'mine' ? session?.memberId : view === 'unassigned' ? 'null' : undefined;
 
-  const { data: allTicketsData, isLoading: allTicketsLoading } = useDashboardTickets(
-    allTicketsFilters,
-    { enabled: view !== 'all' } // Only fetch for mine/unassigned views
+  const statsOptions = useMemo(
+    () => ({
+      brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
+      assigneeId: statsAssignee,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [brandsParam, statsAssignee],
   );
-  const { data: globalStats, isLoading: globalStatsLoading } = useDashboardStats({
-    brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
+
+  // Asking for My tickets before the session has a member id would count the
+  // whole account and label it mine, so it waits instead.
+  const { data: globalStats, isLoading: globalStatsLoading } = useDashboardStats(statsOptions, {
+    enabled: view !== 'mine' || Boolean(session?.memberId),
   });
 
-  // Calculate stats - use global for "all" view, compute from tickets for "mine"/"unassigned"
-  const displayStats = useMemo(() => {
-    if (view === 'all') {
-      return {
-        open: globalStats?.open || 0,
-        pending: globalStats?.pending || 0,
-        resolved: globalStats?.resolved || 0,
-        closed: globalStats?.closed || 0,
-      };
-    }
-    // Calculate from loaded tickets
-    const tickets = allTicketsData?.data || [];
-    return {
-      open: tickets.filter(t => t.status === 'open').length,
-      pending: tickets.filter(t => t.status === 'pending').length,
-      resolved: tickets.filter(t => t.status === 'resolved').length,
-      closed: tickets.filter(t => t.status === 'closed').length,
-    };
-  }, [view, globalStats, allTicketsData?.data]);
-
-  const stats = displayStats;
-  const statsLoading = view === 'all' ? globalStatsLoading : allTicketsLoading;
+  const stats = useMemo(
+    () => ({
+      open: globalStats?.open || 0,
+      pending: globalStats?.pending || 0,
+      resolved: globalStats?.resolved || 0,
+      closed: globalStats?.closed || 0,
+    }),
+    [globalStats],
+  );
+  const statsLoading = globalStatsLoading;
   const statsTotal = stats.open + stats.pending + stats.resolved + stats.closed;
   const statsActive = stats.open + stats.pending;
 

@@ -8,6 +8,13 @@ import {
   TeamMetricsResponse,
 } from '@/types';
 
+/** What to count. `assigneeId: 'null'` is the tickets nobody holds. */
+export interface DashboardStatsOptions {
+  brandIds?: string[];
+  days?: number;
+  assigneeId?: string;
+}
+
 export const dashboardApi = {
   /**
    * List tickets across all brands
@@ -38,13 +45,16 @@ export const dashboardApi = {
   /**
    * Get ticket statistics across all brands
    */
-  getStats: async (options?: { brandIds?: string[]; days?: number }): Promise<DashboardStats> => {
+  getStats: async (options?: DashboardStatsOptions): Promise<DashboardStats> => {
     const params = new URLSearchParams();
     if (options?.brandIds?.length) {
       params.append('brandIds', options.brandIds.join(','));
     }
     if (options?.days) {
       params.append('days', String(options.days));
+    }
+    if (options?.assigneeId) {
+      params.append('assigneeId', options.assigneeId);
     }
     const response = await apiClient.get<DashboardStats>('/tickets/stats', {
       params,
