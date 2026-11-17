@@ -122,7 +122,11 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="mx-auto flex max-w-[1120px] gap-8 p-6">
+      {/* Left-aligned, not centred. The mock centres its settings column
+          because it is the whole window; here the app sidebar is already to
+          the left of it, and centring opened a 280px gap between the two that
+          read as a mistake on a wide screen. */}
+      <div className="flex max-w-[1120px] gap-8 p-6">
         <nav
           className="sticky top-6 hidden w-44 shrink-0 self-start lg:block"
           aria-label="Settings sections"
