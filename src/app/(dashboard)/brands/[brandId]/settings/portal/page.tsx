@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBrand, useUpdateBrand } from '@/lib/hooks';
+import { SettingsSaveBar } from '@/components/settings/settings-save-bar';
 import { toast } from 'sonner';
 import { Plus, Trash2, Globe, ExternalLink } from 'lucide-react';
 
@@ -185,16 +186,14 @@ export default function PortalSettingsPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-4 border-t">
-            <p className="text-sm text-muted-foreground">
-              {hasChanges ? 'You have unsaved changes' : 'All changes saved'}
-            </p>
-            <Button onClick={handleSave} disabled={updateBrand.isPending || !hasChanges}>
-              {updateBrand.isPending ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
         </CardContent>
       </Card>
+
+      <SettingsSaveBar
+        dirty={hasChanges}
+        saving={updateBrand.isPending}
+        onSave={handleSave}
+      />
 
       {/* Documentation Link */}
       <Card>

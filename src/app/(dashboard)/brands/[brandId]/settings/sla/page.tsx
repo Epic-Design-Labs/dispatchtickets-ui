@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useBrand, useUpdateBrand } from '@/lib/hooks';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { SettingsSaveBar } from '@/components/settings/settings-save-bar';
 import { toast } from 'sonner';
 
 const PRIORITIES = ['urgent', 'high', 'normal', 'low'] as const;
@@ -48,8 +48,9 @@ export default function SlaSettingsPage() {
   const [bhTimezone, setBhTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Sync from brand data
-  useEffect(() => {
+  // Sync from brand data. Also what Discard rewinds to, so the two can never
+  // disagree about what "unchanged" means.
+  const resetFromBrand = useCallback(() => {
     if (brand) {
       setSlaEnabled(brand.slaEnabled ?? false);
       setSlaDefaultHours(String(brand.slaDefaultHours ?? 72));
@@ -71,6 +72,10 @@ export default function SlaSettingsPage() {
       setIsDirty(false);
     }
   }, [brand]);
+
+  useEffect(() => {
+    resetFromBrand();
+  }, [resetFromBrand]);
 
   const handleSave = async () => {
     const byPriority: Record<string, number> = {};
@@ -251,17 +256,18 @@ export default function SlaSettingsPage() {
               )}
             </>
           )}
-
-          <div className="flex justify-end pt-2">
-            <Button
-              onClick={handleSave}
-              disabled={!isDirty || updateBrand.isPending}
-            >
-              {updateBrand.isPending ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Business hours sit at the top of this page and the Save button used
+          to sit under everything below them, so the control that keeps the
+          change was a scroll away from the change. */}
+      <SettingsSaveBar
+        dirty={isDirty}
+        saving={updateBrand.isPending}
+        onSave={handleSave}
+        onDiscard={resetFromBrand}
+      />
     </div>
   );
 }
