@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -406,10 +406,24 @@ export default function DashboardPage() {
   const brandsParam = searchParams.get('brands');
   const selectedBrands = brandsParam ? brandsParam.split(',').filter(Boolean) : [];
 
-  // Update URL params helper
+  /**
+   * The query string as it will be, not as it was last rendered.
+   *
+   * `searchParams` only catches up after Next has navigated, so two updates in
+   * one handler both built on the state before either -- and the second won
+   * outright. Clear filters is exactly that: it drops the status, priority and
+   * search, then clears the brands, and the brand push put the other three
+   * straight back. The button did nothing, visibly, every time.
+   */
+  const pending = useRef<URLSearchParams | null>(null);
+
+  useEffect(() => {
+    pending.current = new URLSearchParams(searchParams.toString());
+  }, [searchParams]);
+
   const updateUrlParams = useCallback(
     (updates: Record<string, string | undefined>) => {
-      const current = new URLSearchParams(searchParams.toString());
+      const current = pending.current ?? new URLSearchParams(searchParams.toString());
       Object.entries(updates).forEach(([key, value]) => {
         if (value) {
           current.set(key, value);
@@ -417,6 +431,7 @@ export default function DashboardPage() {
           current.delete(key);
         }
       });
+      pending.current = current;
       router.push(`/dashboard?${current.toString()}`);
     },
     [searchParams, router]
