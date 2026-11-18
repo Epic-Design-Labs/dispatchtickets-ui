@@ -121,7 +121,12 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   };
 
   return (
-    <div className="flex-1 overflow-auto">
+    // No overflow here, deliberately. The dashboard's <main> is already the
+    // scrolling box; an overflow on this wrapper adds a second scrollport that
+    // never scrolls -- and sticky resolves against the NEAREST one, so the nav
+    // below scrolled off the top and the save bar sat a screen under the fold.
+    // Both looked like position bugs and were this one line.
+    <div>
       {/* Left-aligned, not centred. The mock centres its settings column
           because it is the whole window; here the app sidebar is already to
           the left of it, and centring opened a 280px gap between the two that
