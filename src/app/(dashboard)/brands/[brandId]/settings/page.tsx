@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +18,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useBrand, useUpdateBrand, useDeleteBrand } from '@/lib/hooks';
+import { SettingsSaveBar } from '@/components/settings/settings-save-bar';
+import type { UpdateBrandInput } from '@/types';
 import { useAuth } from '@/providers/auth-provider';
 import { toast } from 'sonner';
 import { Copy, Trash2 } from 'lucide-react';
@@ -46,22 +47,38 @@ export default function SettingsPage() {
   // Delete confirmation state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // Initialize form with brand data
-  useEffect(() => {
-    if (brand) {
-      setName(brand.name);
-      setTicketPrefix(brand.ticketPrefix || '');
-      setNextTicketNumber(brand.nextTicketNumber || 1000);
-      setUrl(brand.url || '');
-      setIconUrl(brand.iconUrl || '');
-    }
+  // The saved brand, read into the form. Used for the first load and again as
+  // Discard, so "unchanged" means the same thing to both.
+  const resetFromBrand = useCallback(() => {
+    if (!brand) return;
+    setName(brand.name);
+    setTicketPrefix(brand.ticketPrefix || '');
+    setNextTicketNumber(brand.nextTicketNumber || 1000);
+    setUrl(brand.url || '');
+    setIconUrl(brand.iconUrl || '');
   }, [brand]);
+
+  useEffect(() => {
+    resetFromBrand();
+  }, [resetFromBrand]);
+
+  // Trimmed and upper-cased on both sides, because that is what Save sends:
+  // compared any other way a draft could never stop looking unsaved.
+  const hasChanges =
+    !!brand &&
+    (name.trim() !== brand.name ||
+      ticketPrefix.trim().toUpperCase() !== (brand.ticketPrefix || '') ||
+      nextTicketNumber !== (brand.nextTicketNumber || 1000) ||
+      url.trim() !== (brand.url || '') ||
+      iconUrl.trim() !== (brand.iconUrl || ''));
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard');
   };
 
+  // One save for the whole page. The two cards wrote through the same endpoint
+  // from two buttons, so saving one quietly left the other's edits behind.
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error('Brand name is required');
@@ -83,29 +100,34 @@ export default function SettingsPage() {
       return;
     }
 
+    // Only what changed. Sending the URL every time would make the API
+    // re-fetch the favicon on every save of an unrelated field.
+    const changes: UpdateBrandInput = {};
+    if (name.trim() !== brand?.name) changes.name = name.trim();
+    if (ticketPrefix.trim().toUpperCase() !== brand?.ticketPrefix) {
+      changes.ticketPrefix = ticketPrefix.trim().toUpperCase();
+    }
+    if (nextTicketNumber !== brand?.nextTicketNumber) {
+      changes.ticketNumberStart = nextTicketNumber;
+    }
+    if (url.trim() !== (brand?.url || '')) {
+      // null, not '', clears it: the API validates the field as a URL and
+      // rejects an empty string, but skips validation entirely on null.
+      changes.url = url.trim() || null;
+    }
+    if (iconUrl.trim() !== (brand?.iconUrl || '')) {
+      // Blank with a website set means "work it out from the site" -- the API
+      // only auto-fetches the favicon when no icon is supplied at all. Blank
+      // with no website left to read is a request to clear it.
+      if (iconUrl.trim()) changes.iconUrl = iconUrl.trim();
+      else if (!url.trim()) changes.iconUrl = null;
+    }
+
     try {
-      await updateBrand.mutateAsync({
-        name: name.trim(),
-        ticketPrefix: ticketPrefix.trim().toUpperCase(),
-        ...(nextTicketNumber !== brand?.nextTicketNumber && {
-          ticketNumberStart: nextTicketNumber,
-        }),
-      });
+      await updateBrand.mutateAsync(changes);
       toast.success('Settings saved');
     } catch {
       toast.error('Failed to save settings');
-    }
-  };
-
-  const handleSaveIdentity = async () => {
-    try {
-      await updateBrand.mutateAsync({
-        url: url.trim() || undefined,
-        iconUrl: iconUrl.trim() || undefined,
-      });
-      toast.success('Brand identity saved');
-    } catch {
-      toast.error('Failed to save brand identity');
     }
   };
 
@@ -199,12 +221,6 @@ export default function SettingsPage() {
                 The next ticket created will use this number.
               </p>
             </div>
-
-            <Separator />
-
-            <Button onClick={handleSave} disabled={updateBrand.isPending}>
-              {updateBrand.isPending ? 'Saving...' : 'Save Changes'}
-            </Button>
           </CardContent>
         </Card>
 
@@ -255,12 +271,6 @@ export default function SettingsPage() {
                 Custom icon URL (leave empty to auto-fetch from website)
               </p>
             </div>
-
-            <Separator />
-
-            <Button onClick={handleSaveIdentity} disabled={updateBrand.isPending}>
-              {updateBrand.isPending ? 'Saving...' : 'Save Brand Identity'}
-            </Button>
           </CardContent>
         </Card>
 
@@ -312,6 +322,13 @@ export default function SettingsPage() {
           </Card>
         )}
       </div>
+
+      <SettingsSaveBar
+        dirty={hasChanges}
+        saving={updateBrand.isPending}
+        onSave={handleSave}
+        onDiscard={resetFromBrand}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

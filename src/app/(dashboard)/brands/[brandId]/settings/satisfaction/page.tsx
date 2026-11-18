@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useBrand, useUpdateBrand } from '@/lib/hooks';
+import { SettingsSaveBar } from '@/components/settings/settings-save-bar';
 import { CsatType } from '@/types';
 import { toast } from 'sonner';
 import { ThumbsUp, Star, Hash, Copy, MessageSquare } from 'lucide-react';
@@ -51,16 +52,30 @@ export default function SatisfactionSettingsPage() {
   const [csatEmailSubject, setCsatEmailSubject] = useState('');
   const [csatEmailBody, setCsatEmailBody] = useState('');
 
-  // Initialize form with brand data
-  useEffect(() => {
-    if (brand) {
-      setCsatEnabled(brand.csatEnabled || false);
-      setCsatType(brand.csatType || 'thumbs');
-      setCsatDelayMinutes(String(brand.csatDelayMinutes || 60));
-      setCsatEmailSubject(brand.csatEmailSubject || '');
-      setCsatEmailBody(brand.csatEmailBody || '');
-    }
+  // The saved brand, read into the form. Used for the first load and again as
+  // Discard, so "unchanged" means the same thing to both.
+  const resetFromBrand = useCallback(() => {
+    if (!brand) return;
+    setCsatEnabled(brand.csatEnabled || false);
+    setCsatType(brand.csatType || 'thumbs');
+    setCsatDelayMinutes(String(brand.csatDelayMinutes || 60));
+    setCsatEmailSubject(brand.csatEmailSubject || '');
+    setCsatEmailBody(brand.csatEmailBody || '');
   }, [brand]);
+
+  useEffect(() => {
+    resetFromBrand();
+  }, [resetFromBrand]);
+
+  // Compared against what Save actually sends -- trimmed, because the save
+  // trims, and a draft with a trailing space would otherwise never look saved.
+  const hasChanges =
+    !!brand &&
+    (csatEnabled !== (brand.csatEnabled || false) ||
+      csatType !== (brand.csatType || 'thumbs') ||
+      csatDelayMinutes !== String(brand.csatDelayMinutes || 60) ||
+      csatEmailSubject.trim() !== (brand.csatEmailSubject || '') ||
+      csatEmailBody.trim() !== (brand.csatEmailBody || ''));
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -267,12 +282,6 @@ export default function SatisfactionSettingsPage() {
               </div>
             </>
           )}
-
-          <Separator />
-
-          <Button onClick={handleSaveCsatSettings} disabled={updateBrand.isPending}>
-            {updateBrand.isPending ? 'Saving...' : 'Save Settings'}
-          </Button>
         </CardContent>
       </Card>
 
@@ -334,6 +343,13 @@ export default function SatisfactionSettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <SettingsSaveBar
+        dirty={hasChanges}
+        saving={updateBrand.isPending}
+        onSave={handleSaveCsatSettings}
+        onDiscard={resetFromBrand}
+      />
     </div>
   );
 }

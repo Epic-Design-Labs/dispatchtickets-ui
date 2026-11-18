@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ import {
 } from '@/lib/hooks';
 import { OutboundReplyMode } from '@/lib/api/domains';
 import { EmailStyleCard } from '@/components/email/email-style-card';
+import { SettingsSaveBar } from '@/components/settings/settings-save-bar';
 import { toast } from 'sonner';
 import {
   CheckCircle,
@@ -101,22 +102,44 @@ We'll reach back out soon!
   // Get outbound domain
   const outboundDomain = domains?.find((d) => d.type === 'OUTBOUND' && d.isPrimary);
 
-  // Initialize form with brand/domain data
-  useEffect(() => {
-    if (brand) {
-      setAutoresponseEnabled(brand.autoresponseEnabled || false);
-      setAutoresponseSubject(brand.autoresponseSubject || '');
-      setAutoresponseBody(brand.autoresponseBody || '');
-    }
+  // The saved values, read back into the two forms. Used for the first load
+  // and again as Discard, so "unchanged" means the same thing to both.
+  const resetAutoresponse = useCallback(() => {
+    if (!brand) return;
+    setAutoresponseEnabled(brand.autoresponseEnabled || false);
+    setAutoresponseSubject(brand.autoresponseSubject || '');
+    setAutoresponseBody(brand.autoresponseBody || '');
   }, [brand]);
 
-  useEffect(() => {
-    if (outboundDomain) {
-      setFromName(outboundDomain.fromName || '');
-      setFromEmail(outboundDomain.fromEmail || '');
-      setReplyMode(outboundDomain.replyMode || 'SINGLE');
-    }
+  const resetOutbound = useCallback(() => {
+    if (!outboundDomain) return;
+    setFromName(outboundDomain.fromName || '');
+    setFromEmail(outboundDomain.fromEmail || '');
+    setReplyMode(outboundDomain.replyMode || 'SINGLE');
   }, [outboundDomain]);
+
+  useEffect(() => {
+    resetAutoresponse();
+  }, [resetAutoresponse]);
+
+  useEffect(() => {
+    resetOutbound();
+  }, [resetOutbound]);
+
+  // Two drafts, two endpoints: the auto-reply is brand settings, the sending
+  // identity belongs to the domain. Tracked apart so a save only writes the
+  // half that changed, and reported together so one bar covers the page.
+  const autoresponseChanged =
+    !!brand &&
+    (autoresponseEnabled !== (brand.autoresponseEnabled || false) ||
+      autoresponseSubject.trim() !== (brand.autoresponseSubject || '') ||
+      autoresponseBody.trim() !== (brand.autoresponseBody || ''));
+
+  const outboundChanged =
+    !!outboundDomain &&
+    (fromName.trim() !== (outboundDomain.fromName || '') ||
+      fromEmail.trim() !== (outboundDomain.fromEmail || '') ||
+      replyMode !== (outboundDomain.replyMode || 'SINGLE'));
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -154,31 +177,6 @@ We'll reach back out soon!
     }
   };
 
-  const handleSaveOutboundSettings = async () => {
-    if (!outboundDomain) return;
-
-    // Validate fromEmail is on the domain
-    if (fromEmail && !fromEmail.endsWith(`@${outboundDomain.domain}`)) {
-      toast.error(`Email must be on ${outboundDomain.domain}`);
-      return;
-    }
-
-    try {
-      await updateDomain.mutateAsync({
-        brandId,
-        domainId: outboundDomain.id,
-        data: {
-          fromName: fromName || undefined,
-          fromEmail: fromEmail || undefined,
-          replyMode,
-        },
-      });
-      toast.success('Sending settings saved');
-    } catch {
-      toast.error('Failed to save settings');
-    }
-  };
-
   const handleRemoveDomain = async (domainId: string) => {
     try {
       await removeDomain.mutateAsync({ brandId, domainId });
@@ -188,8 +186,11 @@ We'll reach back out soon!
     }
   };
 
-  const handleSaveAutoresponse = async () => {
-    if (autoresponseEnabled) {
+  // One save for both halves of the page. Everything is validated before
+  // anything is written, so a From address on the wrong domain cannot leave the
+  // page half saved.
+  const handleSave = async () => {
+    if (autoresponseChanged && autoresponseEnabled) {
       if (!autoresponseSubject.trim()) {
         toast.error('Autoresponse subject is required when enabled');
         return;
@@ -200,16 +201,41 @@ We'll reach back out soon!
       }
     }
 
-    try {
-      await updateBrand.mutateAsync({
-        autoresponseEnabled,
-        autoresponseSubject: autoresponseSubject.trim() || undefined,
-        autoresponseBody: autoresponseBody.trim() || undefined,
-      });
-      toast.success('Autoresponse settings saved');
-    } catch {
-      toast.error('Failed to save autoresponse settings');
+    if (outboundChanged && outboundDomain && fromEmail && !fromEmail.endsWith(`@${outboundDomain.domain}`)) {
+      toast.error(`Email must be on ${outboundDomain.domain}`);
+      return;
     }
+
+    try {
+      if (outboundChanged && outboundDomain) {
+        await updateDomain.mutateAsync({
+          brandId,
+          domainId: outboundDomain.id,
+          data: {
+            fromName: fromName.trim() || undefined,
+            fromEmail: fromEmail.trim() || undefined,
+            replyMode,
+          },
+        });
+      }
+
+      if (autoresponseChanged) {
+        await updateBrand.mutateAsync({
+          autoresponseEnabled,
+          autoresponseSubject: autoresponseSubject.trim() || undefined,
+          autoresponseBody: autoresponseBody.trim() || undefined,
+        });
+      }
+
+      toast.success('Email settings saved');
+    } catch {
+      toast.error('Failed to save email settings');
+    }
+  };
+
+  const handleDiscard = () => {
+    resetAutoresponse();
+    resetOutbound();
   };
 
   const isLoading = brandLoading || domainsLoading;
@@ -565,13 +591,6 @@ We'll reach back out soon!
                         </div>
                       </RadioGroup>
                     </div>
-
-                    <Button
-                      onClick={handleSaveOutboundSettings}
-                      disabled={updateDomain.isPending}
-                    >
-                      {updateDomain.isPending ? 'Saving...' : 'Save Sending Settings'}
-                    </Button>
                   </div>
                 )}
               </div>
@@ -688,13 +707,15 @@ We'll reach back out soon!
               </div>
             </>
           )}
-
-          <Separator />
-          <Button onClick={handleSaveAutoresponse} disabled={updateBrand.isPending}>
-            {updateBrand.isPending ? 'Saving...' : 'Save Auto-Reply Settings'}
-          </Button>
         </CardContent>
       </Card>
+
+      <SettingsSaveBar
+        dirty={autoresponseChanged || outboundChanged}
+        saving={updateBrand.isPending || updateDomain.isPending}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
 
       {/* ================================================================== */}
       {/* DIALOGS */}

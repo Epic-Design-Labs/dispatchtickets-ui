@@ -93,9 +93,10 @@ export interface UpdateBrandInput {
   emailShowHistory?: boolean;
   emailTagReceivingAddress?: boolean;
   emailBrandedReplyTo?: boolean;
-  // Brand identity
-  url?: string;
-  iconUrl?: string;
+  // Brand identity. null clears the stored value: the API validates these as
+  // URLs and rejects '', but skips validation entirely on null.
+  url?: string | null;
+  iconUrl?: string | null;
   // Outbound email settings
   fromName?: string;
   fromEmail?: string;
