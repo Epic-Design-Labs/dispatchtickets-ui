@@ -152,8 +152,11 @@ export default function MemberDetailPage() {
   const handleRemove = async () => {
     if (!member) return;
     try {
-      await removeMember.mutateAsync(memberId);
-      toast.success(`${member.email} has been removed`);
+      const result = await removeMember.mutateAsync(memberId);
+      // The API says what removal moved -- how many tickets went back to
+      // Unassigned -- and that is worth more than a generic line, because
+      // handing work back to the queue should never happen silently.
+      toast.success(result?.message || `${member.email} has been removed`);
       router.push('/team');
     } catch (error) {
       toast.error('Failed to remove member');
@@ -466,7 +469,7 @@ export default function MemberDetailPage() {
                   <p className="text-sm text-muted-foreground">
                     {isPending
                       ? 'Cancel the pending invitation.'
-                      : 'Remove this member from the organization.'}
+                      : 'Remove this member from the organization. Every ticket assigned to them is unassigned.'}
                   </p>
                 </div>
                 <AlertDialog>
@@ -487,7 +490,10 @@ export default function MemberDetailPage() {
                         {!isPending && (
                           <>
                             <br /><br />
-                            They will lose access to all brands immediately.
+                            They lose access to every brand right away. Tickets assigned to them
+                            are unassigned and land in the Unassigned queue, and they stop getting
+                            emails about tickets they were watching. Their past replies and notes
+                            keep their name.
                           </>
                         )}
                       </AlertDialogDescription>

@@ -1,10 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useInviteMember, useBrands } from '@/lib/hooks';
+import { useInviteMember, useBrands, useTeamMembers } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,272 +12,267 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { OrgRole } from '@/types';
+import { UserPlus } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { OrgRole } from '@/types';
 
-const inviteMemberSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  role: z.enum(['admin', 'member'] as const),
-});
+/** What each invitable role can do. Owner is not invitable: it is transferred. */
+export const ROLE_HELP: Record<OrgRole, string> = {
+  owner: 'Full access, including billing and deleting the organization',
+  admin: 'Manage brands, team members and settings',
+  member: 'Work on tickets and chats in their brands',
+};
 
-type InviteMemberForm = z.infer<typeof inviteMemberSchema>;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Addresses as typed: split on commas, semicolons and whitespace, de-duplicated. */
+function parseEmails(raw: string): string[] {
+  const seen = new Set<string>();
+  return raw
+    .split(/[\s,;]+/)
+    .map((e) => e.trim())
+    .filter((e) => {
+      const key = e.toLowerCase();
+      if (!e || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function errorMessage(error: unknown): string | undefined {
+  const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+  return typeof message === 'string' ? message : undefined;
+}
 
 interface InviteMemberDialogProps {
   children?: React.ReactNode;
+  /** Called after at least one invite went out, so the page can show them. */
+  onInvited?: () => void;
 }
 
-export function InviteMemberDialog({ children }: InviteMemberDialogProps) {
+export function InviteMemberDialog({ children, onInvited }: InviteMemberDialogProps) {
   const [open, setOpen] = useState(false);
+  const [emails, setEmails] = useState('');
+  const [role, setRole] = useState<'member' | 'admin'>('member');
   const [allBrands, setAllBrands] = useState(true);
   const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+
   const inviteMember = useInviteMember();
   const { data: brands } = useBrands();
+  const { data: team } = useTeamMembers();
 
-  const form = useForm<InviteMemberForm>({
-    resolver: zodResolver(inviteMemberSchema),
-    defaultValues: {
-      email: '',
-      role: 'member',
-    },
-  });
-
-  const handleAllBrandsChange = (checked: boolean) => {
-    setAllBrands(checked);
-    if (checked) {
-      setSelectedBrandIds([]);
-    }
+  const reset = () => {
+    setEmails('');
+    setRole('member');
+    setAllBrands(true);
+    setSelectedBrandIds([]);
+    setError(null);
   };
 
-  const handleBrandToggle = (brandId: string) => {
-    if (allBrands) {
-      setAllBrands(false);
-    }
+  const toggleBrand = (brandId: string) =>
     setSelectedBrandIds((prev) =>
       prev.includes(brandId) ? prev.filter((id) => id !== brandId) : [...prev, brandId]
     );
-  };
 
-  const resetForm = () => {
-    form.reset();
-    setAllBrands(true);
-    setSelectedBrandIds([]);
-  };
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const list = parseEmails(emails);
+    const onTeam = new Set(
+      [...(team?.members ?? []), ...(team?.invites ?? [])].map((m) => m.email.toLowerCase())
+    );
+    const bad = list.filter((e) => !EMAIL.test(e));
+    const already = list.filter((e) => onTeam.has(e.toLowerCase()));
 
-  const onSubmit = async (data: InviteMemberForm) => {
-    try {
-      await inviteMember.mutateAsync({
-        email: data.email,
-        role: data.role as OrgRole,
-        allBrands,
-        brandIds: allBrands ? [] : selectedBrandIds,
-      });
-      toast.success(`Invitation sent to ${data.email}`);
-      setOpen(false);
-      resetForm();
-    } catch {
-      toast.error('Failed to send invitation');
+    if (!list.length) return setError('Enter at least one email address.');
+    if (bad.length) return setError(`Check ${bad.join(', ')}`);
+    if (already.length) {
+      return setError(`${already.join(', ')} ${already.length > 1 ? 'are' : 'is'} already on the team or invited.`);
     }
-  };
+    if (!allBrands && selectedBrandIds.length === 0) return setError('Pick at least one brand.');
+    setError(null);
 
-  const roleLabels: Record<string, string> = {
-    admin: 'Admin',
-    member: 'Member',
+    // One request per address, in turn rather than all at once: the endpoint
+    // takes a single invite, and a burst of them is what a rate limiter sees.
+    // A failure does not stop the rest -- one typo should not hold up five
+    // colleagues -- and whatever failed stays in the box to be fixed.
+    setSending(true);
+    const sent: string[] = [];
+    const failed: { email: string; reason?: string }[] = [];
+    for (const email of list) {
+      try {
+        await inviteMember.mutateAsync({
+          email,
+          role: role as OrgRole,
+          allBrands,
+          brandIds: allBrands ? [] : selectedBrandIds,
+        });
+        sent.push(email);
+      } catch (err) {
+        failed.push({ email, reason: errorMessage(err) });
+      }
+    }
+    setSending(false);
+
+    if (sent.length) {
+      toast.success(sent.length === 1 ? `Invite sent to ${sent[0]}` : `${sent.length} invites sent`);
+      onInvited?.();
+    }
+    if (failed.length === 0) {
+      setOpen(false);
+      reset();
+      return;
+    }
+    setEmails(failed.map((f) => f.email).join(', '));
+    setError(
+      failed.length === 1
+        ? `Couldn't invite ${failed[0].email}${failed[0].reason ? `: ${failed[0].reason}` : '.'}`
+        : `Couldn't invite ${failed.map((f) => f.email).join(', ')}. They're left above to try again.`
+    );
   };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(isOpen) => {
+        if (sending) return;
         setOpen(isOpen);
-        if (!isOpen) resetForm();
+        if (!isOpen) reset();
       }}
     >
       <DialogTrigger asChild>
         {children || (
           <Button>
-            <svg
-              className="mr-2 h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-              />
-            </svg>
-            Invite Member
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite people
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Invite Team Member</DialogTitle>
+          <DialogTitle>Invite people</DialogTitle>
           <DialogDescription>
-            Send an invitation to join your organization. They will receive an email with a link to
-            accept.
+            They&apos;ll get an email with a link to join your organization.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input placeholder="colleague@company.com" type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="invite-emails">Email addresses</Label>
+            <Textarea
+              id="invite-emails"
+              value={emails}
+              onChange={(e) => setEmails(e.target.value)}
+              placeholder="name@company.com, another@company.com"
+              className="min-h-[76px]"
+              aria-invalid={!!error}
+              aria-describedby="invite-emails-help"
+              autoFocus
             />
+            <p id="invite-emails-help" className="text-muted-foreground text-xs">
+              Separate several addresses with commas or new lines.
+            </p>
+          </div>
 
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between">
-                        {roleLabels[field.value]}
-                        <svg
-                          className="ml-2 h-4 w-4 opacity-50"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 9l4-4 4 4m0 6l-4 4-4-4"
-                          />
-                        </svg>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-full">
-                      <DropdownMenuRadioGroup value={field.value} onValueChange={field.onChange}>
-                        <DropdownMenuRadioItem value="member">
-                          <div>
-                            <p>Member</p>
-                            <p className="text-xs text-muted-foreground">
-                              Can view and manage tickets
-                            </p>
-                          </div>
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="admin">
-                          <div>
-                            <p>Admin</p>
-                            <p className="text-xs text-muted-foreground">
-                              Can manage team and settings
-                            </p>
-                          </div>
-                        </DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Brand Access Section */}
-            <div className="space-y-3 pt-2">
-              <FormLabel>Brand Access</FormLabel>
-
-              {/* All brands toggle */}
-              <div className="flex items-center justify-between rounded-lg border p-3">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">All current and future brands</p>
-                  <p className="text-xs text-muted-foreground">
-                    Automatically includes any new brands created
-                  </p>
-                </div>
-                <Switch checked={allBrands} onCheckedChange={handleAllBrandsChange} />
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Or select specific brands
+          <fieldset className="space-y-2">
+            <legend className="mb-2 text-sm font-medium">Role</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(['member', 'admin'] as const).map((r) => (
+                <label
+                  key={r}
+                  className={cn(
+                    'flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors',
+                    role === r ? 'border-brand bg-brand-soft' : 'hover:bg-surface-muted'
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="invite-role"
+                    value={r}
+                    checked={role === r}
+                    onChange={() => setRole(r)}
+                    className="accent-brand mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium capitalize">{r}</span>
+                    <span className="text-muted-foreground block text-xs">{ROLE_HELP[r]}</span>
                   </span>
-                </div>
-              </div>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
-              {/* Individual brand toggles */}
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                {brands?.map((brand) => {
-                  const isSelected = allBrands || selectedBrandIds.includes(brand.id);
-                  return (
-                    <div
+          <fieldset className="space-y-2">
+            <legend className="mb-2 text-sm font-medium">Brand access</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                { all: true, title: 'All brands', help: 'Including brands created later' },
+                { all: false, title: 'Selected brands', help: 'Choose below' },
+              ].map((option) => (
+                <label
+                  key={option.title}
+                  className={cn(
+                    'flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors',
+                    allBrands === option.all ? 'border-brand bg-brand-soft' : 'hover:bg-surface-muted'
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="invite-brands"
+                    checked={allBrands === option.all}
+                    onChange={() => setAllBrands(option.all)}
+                    className="accent-brand mt-0.5"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">{option.title}</span>
+                    <span className="text-muted-foreground block text-xs">{option.help}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {!allBrands && (
+              <div className="max-h-[200px] space-y-1 overflow-y-auto rounded-lg border p-2">
+                {brands?.length ? (
+                  brands.map((brand) => (
+                    <label
                       key={brand.id}
-                      className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
-                        allBrands ? 'opacity-50' : ''
-                      }`}
+                      className="hover:bg-surface-muted flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{brand.name}</span>
-                        {isSelected && !allBrands && (
-                          <Badge variant="secondary" className="text-xs">
-                            Selected
-                          </Badge>
-                        )}
-                      </div>
-                      <Switch
-                        checked={isSelected}
-                        onCheckedChange={() => handleBrandToggle(brand.id)}
-                        disabled={allBrands}
+                      <Checkbox
+                        checked={selectedBrandIds.includes(brand.id)}
+                        onCheckedChange={() => toggleBrand(brand.id)}
                       />
-                    </div>
-                  );
-                })}
-
-                {(!brands || brands.length === 0) && (
-                  <p className="text-center text-sm text-muted-foreground py-4">
-                    No brands available. Create a workspace first.
+                      {brand.name}
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground py-4 text-center text-sm">
+                    No brands yet. Create one first.
                   </p>
                 )}
               </div>
-            </div>
+            )}
+          </fieldset>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={inviteMember.isPending}>
-                {inviteMember.isPending ? 'Sending...' : 'Send Invitation'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          {error && (
+            <p role="alert" className="text-destructive text-sm">
+              {error}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={sending}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={sending}>
+              {sending ? 'Sending...' : 'Send invites'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

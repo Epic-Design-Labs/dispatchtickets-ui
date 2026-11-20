@@ -1,220 +1,288 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMemo, useState } from 'react';
+import { CheckCircle2, Radio, Search, ShieldCheck, Star, Users, MailPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { TeamMemberTable, InviteMemberDialog } from '@/components/team';
-import { useTeamMembers, useOrganization, useUpdateOrganization, useTeamMetrics } from '@/lib/hooks';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { InviteMemberDialog, TeamMemberTable } from '@/components/team';
+import type { TeamRow } from '@/components/team/team-member-table';
+import { MetricChip, StatusTabs, type StatusTabDef } from '@/components/tickets/status-tabs';
+import {
+  useOrganization,
+  useResendInvite,
+  useTeamMembers,
+  useTeamMetrics,
+  useUpdateOrganization,
+} from '@/lib/hooks';
+import { useTeamPresence } from '@/lib/hooks/use-presence';
+import type { PresenceStatus } from '@/lib/api/presence';
 import { useAuth } from '@/providers';
-import { OrgRole } from '@/types';
+import type { OrgRole, TeamMember } from '@/types';
 import { toast } from 'sonner';
-import { ThumbsUp, TrendingUp, BarChart3 } from 'lucide-react';
 
-function getCsatColor(score: number | null): string {
-  if (score === null) return 'text-muted-foreground';
-  if (score >= 80) return 'text-success-foreground';
-  if (score >= 60) return 'text-warning-foreground';
-  return 'text-danger';
+type Filter = 'all' | 'online' | 'admins' | 'invited';
+type Sort = 'resolved' | 'name';
+
+const TEAM_TABS: StatusTabDef[] = [
+  { key: 'all', label: 'Everyone', icon: Users, tone: 'bg-secondary text-muted-foreground' },
+  { key: 'online', label: 'Online now', icon: Radio, tone: 'bg-success-soft text-success-foreground' },
+  { key: 'admins', label: 'Owners & admins', icon: ShieldCheck, tone: 'bg-brand-soft text-brand' },
+  { key: 'invited', label: 'Invited', icon: MailPlus, tone: 'bg-warning-soft text-warning-foreground' },
+];
+
+/**
+ * The window the Resolved and Satisfaction figures cover. It was all-time and
+ * unlabelled; the column now says "30 days" and means it. Computed once per
+ * visit, so the query key holds still while the page is open.
+ */
+function last30Days() {
+  const end = new Date();
+  const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+  return { startDate: start.toISOString(), endDate: end.toISOString() };
 }
+
+function displayName(member: TeamMember): string {
+  const name = [member.firstName, member.lastName].filter(Boolean).join(' ').trim();
+  return name || member.email;
+}
+
+const ONLINE: PresenceStatus[] = ['available', 'busy', 'away'];
 
 export default function TeamPage() {
   const { session } = useAuth();
   const { data, isLoading } = useTeamMembers();
+  const { data: presence } = useTeamPresence();
+  const [range] = useState(last30Days);
+  const { data: metrics, isLoading: metricsLoading } = useTeamMetrics(range);
   const { data: org, isLoading: orgLoading } = useOrganization();
   const updateOrg = useUpdateOrganization();
-  const { data: teamMetrics, isLoading: metricsLoading } = useTeamMetrics();
+  const resendInvite = useResendInvite();
 
-  const [orgName, setOrgName] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<Sort>('resolved');
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  // Null until the owner types, so the field tracks the saved name otherwise.
+  const [orgDraft, setOrgDraft] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (org) {
-      setOrgName(org.name);
+  const role = (session?.orgRole as OrgRole) || 'member';
+  const canInvite = role === 'owner' || role === 'admin';
+  const isOwner = role === 'owner';
+
+  // Every member and invite, with the figures joined on by member id. Built
+  // from the member list rather than from the metrics: a resolver's name only
+  // ever came from CSAT feedback, so the old performance table called anyone
+  // without ratings "Unknown". Here every row already has a name.
+  const rows: TeamRow[] = useMemo(() => {
+    const presenceById = new Map((presence ?? []).map((p) => [p.memberId, p]));
+    const metricsById = new Map((metrics?.members ?? []).map((m) => [m.memberId, m]));
+    const toRow = (member: TeamMember, pending: boolean): TeamRow => {
+      const p = presenceById.get(member.id);
+      const status = p?.status ?? 'offline';
+      const m = metricsById.get(member.id);
+      return {
+        member,
+        pending,
+        name: pending ? member.email : displayName(member),
+        presence: status,
+        mixedPresence: !!p?.brands.some((b) => b.status !== status),
+        // Resolved or closed: the API records the resolver on whichever came
+        // first, and both are work this person finished.
+        resolved: (m?.ticketsResolved ?? 0) + (m?.ticketsClosed ?? 0),
+        csatScore: m?.csatScore ?? null,
+        csatCount: m?.csatCount ?? 0,
+      };
+    };
+    return [
+      ...(data?.members ?? []).map((m) => toRow(m, false)),
+      ...(data?.invites ?? []).map((m) => toRow(m, true)),
+    ];
+  }, [data, presence, metrics]);
+
+  const matches = (row: TeamRow, f: Filter) =>
+    f === 'all' ||
+    (f === 'online' && !row.pending && ONLINE.includes(row.presence)) ||
+    (f === 'admins' && row.member.role !== 'member') ||
+    (f === 'invited' && row.pending);
+
+  const counts = Object.fromEntries(
+    TEAM_TABS.map((t) => [t.key, rows.filter((r) => matches(r, t.key as Filter)).length])
+  );
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows
+      .filter((r) => matches(r, filter))
+      .filter((r) => !q || `${r.name} ${r.member.email}`.toLowerCase().includes(q))
+      .sort((a, b) =>
+        sort === 'name'
+          ? a.name.localeCompare(b.name)
+          : b.resolved - a.resolved || a.name.localeCompare(b.name)
+      );
+  }, [rows, filter, query, sort]);
+
+  const people = rows.filter((r) => !r.pending);
+  const maxResolved = Math.max(1, ...people.map((r) => r.resolved));
+  const totalResolved = people.reduce((sum, r) => sum + r.resolved, 0);
+  const ratings = people.reduce((sum, r) => sum + r.csatCount, 0);
+  // Weighted by ratings, so one member's single 5-star review does not count
+  // as much as another's hundred.
+  const satisfaction = ratings
+    ? Math.round(people.reduce((sum, r) => sum + (r.csatScore ?? 0) * r.csatCount, 0) / ratings)
+    : null;
+  const ownerName = people.find((r) => r.member.role === 'owner')?.name;
+
+  const orgName = orgDraft ?? org?.name ?? '';
+  const orgChanged = orgDraft !== null && orgDraft.trim() !== (org?.name ?? '');
+
+  const handleResend = async (member: TeamMember) => {
+    setResendingId(member.id);
+    try {
+      await resendInvite.mutateAsync(member.id);
+      toast.success(`Invite resent to ${member.email}`);
+    } catch {
+      toast.error('Failed to resend the invite');
+    } finally {
+      setResendingId(null);
     }
-  }, [org]);
-
-  const currentUserRole = (session?.orgRole as OrgRole) || 'member';
-  const canInvite = currentUserRole === 'owner' || currentUserRole === 'admin';
-  const isOwner = currentUserRole === 'owner';
+  };
 
   const handleSaveOrgName = async () => {
     if (!orgName.trim()) {
       toast.error('Organization name is required');
       return;
     }
-
     try {
       await updateOrg.mutateAsync(orgName.trim());
+      setOrgDraft(null);
       toast.success('Organization name updated');
     } catch {
       toast.error('Failed to update organization name');
     }
   };
 
-  return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Team</h1>
-          <p className="text-muted-foreground">
-            Manage your organization's team members and their roles
-          </p>
-        </div>
-        {canInvite && <InviteMemberDialog />}
-      </div>
+  const empty = query.trim()
+    ? { title: `No one matches "${query.trim()}"`, body: 'Try a name or an email address.' }
+    : filter === 'invited'
+      ? { title: 'No pending invites', body: 'Invite teammates and they show here until they join.' }
+      : filter === 'online'
+        ? { title: 'No one is online', body: 'Members show here while they are available, busy or away.' }
+        : { title: 'No one here', body: 'Try a different filter.' };
 
-      <div className="space-y-6">
-        {/* Organization Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Organization Settings</CardTitle>
-            <CardDescription>
-              Your organization name is shown in invite emails and team member lists
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {orgLoading ? (
-              <Skeleton className="h-10 w-64" />
+  return (
+    <div className="space-y-5 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Team</h1>
+            {isLoading ? (
+              <Skeleton className="mt-1 h-4 w-48" />
             ) : (
-              <div className="flex items-end gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="orgName">Organization Name</Label>
-                  <Input
-                    id="orgName"
-                    placeholder="e.g., Epic Design Labs"
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    className="w-64"
-                    disabled={!isOwner}
-                  />
-                </div>
-                {isOwner && (
-                  <Button onClick={handleSaveOrgName} disabled={updateOrg.isPending}>
-                    {updateOrg.isPending ? 'Saving...' : 'Save'}
-                  </Button>
-                )}
-              </div>
-            )}
-            {!isOwner && (
-              <p className="mt-2 text-sm text-muted-foreground">
-                Only organization owners can change the organization name
+              <p className="text-muted-foreground">
+                {`${people.length} ${people.length === 1 ? 'person' : 'people'}${org?.name ? ` in ${org.name}` : ''}`}
               </p>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Team Performance */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Team Performance
-            </CardTitle>
-            <CardDescription>
-              Resolution and customer satisfaction metrics for your team
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {metricsLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : teamMetrics?.members && teamMetrics.members.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Team Member</TableHead>
-                    <TableHead className="text-right">Tickets Resolved</TableHead>
-                    <TableHead className="text-right">CSAT Score</TableHead>
-                    <TableHead className="text-right">Ratings</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {teamMetrics.members.map((member) => (
-                    <TableRow key={member.memberId}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {member.memberName || 'Unknown'}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {member.memberEmail}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{member.ticketsResolved}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {member.csatScore !== null ? (
-                          <span className={`font-medium ${getCsatColor(member.csatScore)}`}>
-                            {member.csatScore.toFixed(0)}%
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {member.csatCount > 0 ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <ThumbsUp className="text-success-foreground h-4 w-4" />
-                            <span className="text-sm">
-                              {member.csatPositive}/{member.csatCount}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">No ratings</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No performance data yet</p>
-                <p className="text-sm mt-1">
-                  Metrics will appear after team members resolve tickets
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Team Members */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Team Members</CardTitle>
-            <CardDescription>
-              People who have access to your organization's brands and tickets
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TeamMemberTable
-              members={data?.members || []}
-              invites={data?.invites || []}
-              isLoading={isLoading}
-              currentUserRole={currentUserRole}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <MetricChip icon={Radio} value={isLoading ? '–' : String(counts.online)} label="online now" />
+            <MetricChip
+              icon={CheckCircle2}
+              value={metricsLoading ? '–' : String(totalResolved)}
+              label="resolved, last 30 days"
             />
-          </CardContent>
-        </Card>
+            {satisfaction !== null && (
+              <MetricChip icon={Star} value={`${satisfaction}%`} label="satisfaction" />
+            )}
+          </div>
+        </div>
+        {canInvite && <InviteMemberDialog onInvited={() => setFilter('invited')} />}
       </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <StatusTabs
+          tabs={TEAM_TABS}
+          defaultKey="all"
+          value={filter}
+          onSelect={(key) => setFilter(key as Filter)}
+          counts={counts}
+          loading={isLoading}
+          ariaLabel="Filter team"
+        />
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name or email"
+              aria-label="Search team"
+              className="w-[240px] pl-8"
+            />
+          </div>
+          <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+            <SelectTrigger className="w-[150px]" aria-label="Sort">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="resolved">Most resolved</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <TeamMemberTable
+        rows={visible}
+        isLoading={isLoading}
+        maxResolved={maxResolved}
+        currentMemberId={session?.memberId}
+        canInvite={canInvite}
+        onResend={handleResend}
+        resendingId={resendingId}
+        empty={empty}
+      />
+
+      <section className="bg-card flex flex-wrap items-start gap-x-10 gap-y-4 rounded-xl border p-5">
+        <div className="max-w-xs">
+          <h2 className="font-semibold">Organization</h2>
+          <p className="text-muted-foreground text-sm">The name appears in invite emails and team lists.</p>
+        </div>
+        <div className="min-w-[240px] flex-1 space-y-2 sm:max-w-sm">
+          <Label htmlFor="orgName">Organization name</Label>
+          {orgLoading ? (
+            <Skeleton className="h-9 w-full" />
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                id="orgName"
+                value={orgName}
+                onChange={(e) => setOrgDraft(e.target.value)}
+                disabled={!isOwner}
+                placeholder="e.g., Epic Design Labs"
+              />
+              {isOwner && orgChanged && (
+                <Button onClick={handleSaveOrgName} disabled={updateOrg.isPending}>
+                  {updateOrg.isPending ? 'Saving...' : 'Save'}
+                </Button>
+              )}
+            </div>
+          )}
+          {!isOwner && (
+            <p className="text-muted-foreground text-xs">
+              Only the owner{ownerName ? ` (${ownerName})` : ''} can change this.
+            </p>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

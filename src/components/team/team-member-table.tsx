@@ -1,203 +1,250 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Pill } from '@/components/tickets/pill';
+import { ChevronRight, UserRound } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RoleBadge } from './role-badge';
-import { TeamMember, OrgRole } from '@/types';
-import { ChevronRight } from 'lucide-react';
-import { useTeamPresence } from '@/lib/hooks/use-presence';
-import type { MemberPresenceSummary } from '@/lib/api/presence';
+import { PersonAvatar } from '@/components/person-avatar';
 import { PRESENCE_LABELS, PresenceDot } from '@/components/presence/presence-dot';
+import { RoleBadge } from './role-badge';
+import { ROLE_HELP } from './invite-member-dialog';
+import type { PresenceStatus } from '@/lib/api/presence';
+import type { TeamMember } from '@/types';
+import { cn, formatTimeAgo } from '@/lib/utils';
 
-/** Live status from the presence API; offline means not chosen, or no open admin tab. */
-function MemberAvailability({ presence }: { presence?: MemberPresenceSummary }) {
-  const status = presence?.status ?? 'offline';
-  const mixed = presence?.brands.some((b) => b.status !== status);
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 text-sm"
-      title={mixed ? 'Status differs by brand; showing the most available' : undefined}
-    >
-      <PresenceDot status={status} />
-      {PRESENCE_LABELS[status]}
-    </span>
-  );
+/** One row of the team table: a member or a pending invite, with its figures. */
+export interface TeamRow {
+  member: TeamMember;
+  pending: boolean;
+  /** Full name, or the email when there is none -- what the row is called. */
+  name: string;
+  presence: PresenceStatus;
+  /** The member's status differs between brands; the row shows the most available. */
+  mixedPresence: boolean;
+  /** Tickets they resolved or closed in the window. */
+  resolved: number;
+  csatScore: number | null;
+  csatCount: number;
 }
 
 interface TeamMemberTableProps {
-  members: TeamMember[];
-  invites: TeamMember[];
+  rows: TeamRow[];
   isLoading?: boolean;
-  currentUserRole?: OrgRole;
+  /** Longest bar in the Resolved column, so the bars compare people. */
+  maxResolved: number;
+  /** The signed-in member, marked "You". */
+  currentMemberId?: string;
+  canInvite: boolean;
+  onResend: (member: TeamMember) => void;
+  resendingId?: string | null;
+  empty: { title: string; body: string };
 }
 
+function csatTone(score: number): string {
+  if (score >= 80) return 'text-success-foreground';
+  if (score >= 60) return 'text-warning-foreground';
+  return 'text-danger';
+}
+
+function brandAccess(member: TeamMember): string {
+  const assignment = member.brandAssignment;
+  if (assignment?.allBrands || !assignment?.brandIds?.length) return 'All brands';
+  const n = assignment.brandIds.length;
+  return `${n} brand${n === 1 ? '' : 's'}`;
+}
+
+const COLUMNS = ['Member', 'Role', 'Brands', 'Availability', 'Resolved', 'Satisfaction', ''];
+
 export function TeamMemberTable({
-  members,
-  invites,
+  rows,
   isLoading,
+  maxResolved,
+  currentMemberId,
+  canInvite,
+  onResend,
+  resendingId,
+  empty,
 }: TeamMemberTableProps) {
   const router = useRouter();
-  const { data: presence } = useTeamPresence();
-  const presenceById = new Map((presence ?? []).map((p) => [p.memberId, p]));
-
-  const handleRowClick = (memberId: string) => {
-    router.push(`/team/${memberId}`);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Member</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Brands</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Availability</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[1, 2, 3].map((i) => (
-              <TableRow key={i}>
-                <TableCell>
-                  <div className="space-y-1">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-16" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-16" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-16" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-16" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-8 w-8" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }
-
-  const allMembers = [
-    ...members.map((m) => ({ ...m, status: 'active' as const })),
-    ...invites.map((i) => ({ ...i, status: 'pending' as const })),
-  ];
-
-  if (allMembers.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-md border py-12">
-        <svg
-          className="mb-4 h-12 w-12 text-muted-foreground"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-          />
-        </svg>
-        <p className="text-lg font-medium">No team members</p>
-        <p className="text-muted-foreground">Invite your first team member</p>
-      </div>
-    );
-  }
+  const open = (id: string) => router.push(`/team/${id}`);
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Member</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Brands</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Availability</TableHead>
-            <TableHead className="w-[100px]"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {allMembers.map((member) => {
-            const name =
-              member.firstName || member.lastName
-                ? `${member.firstName || ''} ${member.lastName || ''}`.trim()
-                : null;
-            const isPending = member.status === 'pending';
-
-            return (
-              <TableRow
-                key={member.id}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => handleRowClick(member.id)}
+    // The table keeps its columns on a phone and scrolls sideways inside the
+    // card instead of crushing seven columns into a third of the width.
+    <div className="bg-card overflow-x-auto rounded-xl border">
+      <table className="w-full min-w-[760px] text-sm">
+        <thead>
+          <tr className="text-muted-foreground border-b text-left text-xs font-medium">
+            {COLUMNS.map((label, i) => (
+              <th
+                key={label || i}
+                scope="col"
+                className={cn('px-4 py-2.5 font-medium', label === 'Satisfaction' && 'text-right')}
               >
-                <TableCell>
-                  <div>
-                    {name && <p className="font-medium">{name}</p>}
-                    <p className={name ? 'text-sm text-muted-foreground' : 'font-medium'}>
-                      {member.email}
-                    </p>
+                {label === 'Resolved' ? (
+                  <>
+                    Resolved <span className="font-normal opacity-70">30 days</span>
+                  </>
+                ) : (
+                  label
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            [0, 1, 2].map((i) => (
+              <tr key={i} className="border-b last:border-0">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-3.5 w-32" />
+                      <Skeleton className="h-3 w-44" />
+                    </div>
                   </div>
-                </TableCell>
-                <TableCell>
-                  <RoleBadge role={member.role} />
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">
-                    {member.brandAssignment?.allBrands
-                      ? 'All brands'
-                      : member.brandAssignment?.brandIds?.length
-                        ? `${member.brandAssignment.brandIds.length} brand${member.brandAssignment.brandIds.length === 1 ? '' : 's'}`
-                        : 'All brands'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {isPending ? (
-                    <Pill className="bg-warning-soft text-warning-foreground">Pending</Pill>
-                  ) : (
-                    <Pill className="bg-success-soft text-success-foreground">Active</Pill>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {isPending ? (
-                    <span className="text-sm text-muted-foreground">-</span>
-                  ) : (
-                    <MemberAvailability presence={presenceById.get(member.id)} />
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-end">
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                </td>
+                {[16, 20, 20, 28, 20].map((w, j) => (
+                  <td key={j} className="px-4 py-3">
+                    <Skeleton className="h-4" style={{ width: w * 4 }} />
+                  </td>
+                ))}
+                <td />
+              </tr>
+            ))
+          ) : rows.length === 0 ? (
+            <tr>
+              <td colSpan={COLUMNS.length} className="px-4 py-12 text-center">
+                <p className="font-medium">{empty.title}</p>
+                <p className="text-muted-foreground mt-1 text-sm">{empty.body}</p>
+              </td>
+            </tr>
+          ) : (
+            rows.map((row) => {
+              const { member, pending } = row;
+              const isMe = !pending && member.id === currentMemberId;
+              return (
+                <tr
+                  key={member.id}
+                  tabIndex={0}
+                  aria-label={`Open ${row.name}`}
+                  onClick={() => open(member.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') open(member.id);
+                  }}
+                  className="hover:bg-surface-muted focus-visible:outline-brand cursor-pointer border-b transition-colors last:border-0 focus-visible:outline-2 focus-visible:-outline-offset-2"
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      {pending ? (
+                        <span className="bg-secondary text-muted-foreground grid h-8 w-8 shrink-0 place-items-center rounded-full">
+                          <UserRound className="h-4 w-4" />
+                        </span>
+                      ) : (
+                        <span className="relative shrink-0">
+                          <PersonAvatar name={row.name} imageUrl={member.avatarUrl} />
+                          <PresenceDot
+                            status={row.presence}
+                            className="ring-card absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 ring-2"
+                          />
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 font-medium">
+                          <span className="truncate">{row.name}</span>
+                          {isMe && (
+                            <span className="bg-secondary text-muted-foreground rounded-full px-2 py-px text-[11px] font-medium">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground truncate text-xs">
+                          {pending
+                            ? member.sentAt
+                              ? `Invite sent ${formatTimeAgo(member.sentAt)}`
+                              : 'Invite sent'
+                            : member.email}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span title={ROLE_HELP[member.role]}>
+                      <RoleBadge role={member.role} />
+                    </span>
+                  </td>
+                  <td className="text-muted-foreground px-4 py-3">{brandAccess(member)}</td>
+                  <td className="px-4 py-3">
+                    {pending ? (
+                      <span className="bg-warning-soft text-warning-foreground rounded-full px-2 py-0.5 text-xs font-medium">
+                        Invite pending
+                      </span>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1.5"
+                        title={row.mixedPresence ? 'Status differs by brand; showing the most available' : undefined}
+                      >
+                        <PresenceDot status={row.presence} />
+                        <span className={cn(row.presence === 'offline' && 'text-muted-foreground')}>
+                          {PRESENCE_LABELS[row.presence]}
+                        </span>
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {pending ? (
+                      <span className="text-muted-foreground">–</span>
+                    ) : (
+                      <div className="flex items-center gap-2.5">
+                        <span className="bg-secondary h-1.5 w-24 overflow-hidden rounded-full">
+                          <span
+                            className="bg-brand block h-full rounded-full"
+                            style={{ width: `${Math.round((row.resolved / Math.max(1, maxResolved)) * 100)}%` }}
+                          />
+                        </span>
+                        <span className="font-semibold tabular-nums">{row.resolved}</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {pending ? null : row.csatScore === null || row.csatCount === 0 ? (
+                      <span className="text-muted-foreground">No ratings yet</span>
+                    ) : (
+                      <>
+                        <span className={cn('font-semibold tabular-nums', csatTone(row.csatScore))}>
+                          {Math.round(row.csatScore)}%
+                        </span>{' '}
+                        <span className="text-muted-foreground text-xs">
+                          {row.csatCount} rating{row.csatCount === 1 ? '' : 's'}
+                        </span>
+                      </>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {pending && canInvite ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={resendingId === member.id}
+                        onClick={(e) => {
+                          // The row opens the invite; this button only resends it.
+                          e.stopPropagation();
+                          onResend(member);
+                        }}
+                      >
+                        {resendingId === member.id ? 'Sending...' : 'Resend'}
+                      </Button>
+                    ) : (
+                      <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" />
+                    )}
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

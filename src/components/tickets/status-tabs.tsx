@@ -50,17 +50,36 @@ interface StatusTabsProps {
   /** Show a placeholder in the count chips rather than a misleading zero. */
   loading?: boolean;
   className?: string;
+  /**
+   * Another set of tabs in the same chips -- the Team page's Everyone / Online
+   * now / Invited row. Defaults to the ticket statuses. Passed in rather than
+   * copied, because a copy of this markup is how the colours drifted before.
+   */
+  tabs?: StatusTabDef[];
+  /** The tab an empty value means. 'active' for tickets. */
+  defaultKey?: string;
+  /** Names the row for assistive tech when it filters something other than tickets. */
+  ariaLabel?: string;
 }
 
-export function StatusTabs({ value, onSelect, counts, loading, className }: StatusTabsProps) {
+export function StatusTabs({
+  value,
+  onSelect,
+  counts,
+  loading,
+  className,
+  tabs = STATUS_TABS,
+  defaultKey = 'active',
+  ariaLabel,
+}: StatusTabsProps) {
   const interactive = !!onSelect;
   return (
-    <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      {STATUS_TABS.map((tab) => {
-        // 'active' is the default view, so it owns the empty value too. A
-        // read-only row highlights nothing: there is no selection to show.
+    <div className={cn('flex flex-wrap items-center gap-2', className)} role="group" aria-label={ariaLabel}>
+      {tabs.map((tab) => {
+        // The default tab owns the empty value too. A read-only row
+        // highlights nothing: there is no selection to show.
         const isActive =
-          interactive && (tab.key === 'active' ? !value || value === 'active' : value === tab.key);
+          interactive && (tab.key === defaultKey ? !value || value === defaultKey : value === tab.key);
         const Icon = tab.icon;
         const Tag = interactive ? 'button' : 'div';
         return (
