@@ -535,9 +535,11 @@ export default function DashboardPage() {
     () => ({
       brandIds: selectedBrands.length > 0 ? selectedBrands : undefined,
       assigneeId: statsAssignee,
+      // Without it a search showed twelve tickets under a tab that said 340.
+      search,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [brandsParam, statsAssignee],
+    [brandsParam, statsAssignee, search],
   );
 
   // Asking for My tickets before the session has a member id would count the

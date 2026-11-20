@@ -13,6 +13,8 @@ export interface DashboardStatsOptions {
   brandIds?: string[];
   days?: number;
   assigneeId?: string;
+  /** The list's search box: the counts then match what the list shows. */
+  search?: string;
 }
 
 export const dashboardApi = {
@@ -55,6 +57,9 @@ export const dashboardApi = {
     }
     if (options?.assigneeId) {
       params.append('assigneeId', options.assigneeId);
+    }
+    if (options?.search) {
+      params.append('search', options.search);
     }
     const response = await apiClient.get<DashboardStats>('/tickets/stats', {
       params,
