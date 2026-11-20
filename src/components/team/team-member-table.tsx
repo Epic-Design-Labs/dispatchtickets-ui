@@ -159,13 +159,17 @@ export function TeamMemberTable({
                             </span>
                           )}
                         </div>
-                        <div className="text-muted-foreground truncate text-xs">
-                          {pending
-                            ? member.sentAt
-                              ? `Invite sent ${formatTimeAgo(member.sentAt)}`
-                              : 'Invite sent'
-                            : member.email}
-                        </div>
+                        {/* The second line is the email -- unless the row is
+                            already called by it, when it would just repeat. */}
+                        {(pending || row.name !== member.email) && (
+                          <div className="text-muted-foreground truncate text-xs">
+                            {pending
+                              ? member.sentAt
+                                ? `Invite sent ${formatTimeAgo(member.sentAt)}`
+                                : 'Invite sent'
+                              : member.email}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
