@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,14 @@ import {
   useUsage,
 } from '@/lib/hooks';
 import { OutboundReplyMode } from '@/lib/api/domains';
-import { EmailStyleCard } from '@/components/email/email-style-card';
+import {
+  EmailStyleCard,
+  emailStyleChanged,
+  emailStyleOf,
+  emailStylePayload,
+  emailStyleProblem,
+  type EmailStyleForm,
+} from '@/components/email/email-style-card';
 import { SettingsSaveBar } from '@/components/settings/settings-save-bar';
 import { toast } from 'sonner';
 import {
@@ -135,6 +142,22 @@ We'll reach back out soon!
       autoresponseSubject.trim() !== (brand.autoresponseSubject || '') ||
       autoresponseBody.trim() !== (brand.autoresponseBody || ''));
 
+  // Email appearance: edits laid over the saved brand, so a field nobody
+  // touched keeps tracking the brand. Memoised because the card re-renders its
+  // preview whenever this object changes.
+  const [styleEdits, setStyleEdits] = useState<Partial<EmailStyleForm>>({});
+  const styleSaved = useMemo(() => (brand ? emailStyleOf(brand) : null), [brand]);
+  const styleForm = useMemo(
+    () => (styleSaved ? { ...styleSaved, ...styleEdits } : null),
+    [styleSaved, styleEdits],
+  );
+  const styleChanged = !!styleSaved && !!styleForm && emailStyleChanged(styleSaved, styleForm);
+  const setStyle = useCallback(
+    <K extends keyof EmailStyleForm>(key: K, value: EmailStyleForm[K]) =>
+      setStyleEdits((e) => ({ ...e, [key]: value })),
+    [],
+  );
+
   const outboundChanged =
     !!outboundDomain &&
     (fromName.trim() !== (outboundDomain.fromName || '') ||
@@ -201,6 +224,12 @@ We'll reach back out soon!
       }
     }
 
+    const styleProblem = styleChanged && styleForm ? emailStyleProblem(styleForm) : null;
+    if (styleProblem) {
+      toast.error(styleProblem);
+      return;
+    }
+
     if (outboundChanged && outboundDomain && fromEmail && !fromEmail.endsWith(`@${outboundDomain.domain}`)) {
       toast.error(`Email must be on ${outboundDomain.domain}`);
       return;
@@ -219,12 +248,20 @@ We'll reach back out soon!
         });
       }
 
-      if (autoresponseChanged) {
+      // The auto-reply and the appearance are both brand settings, so they go
+      // in one request rather than two that could half succeed.
+      if (autoresponseChanged || styleChanged) {
         await updateBrand.mutateAsync({
-          autoresponseEnabled,
-          autoresponseSubject: autoresponseSubject.trim() || undefined,
-          autoresponseBody: autoresponseBody.trim() || undefined,
+          ...(autoresponseChanged && {
+            autoresponseEnabled,
+            autoresponseSubject: autoresponseSubject.trim() || undefined,
+            autoresponseBody: autoresponseBody.trim() || undefined,
+          }),
+          ...(styleChanged && styleForm && emailStylePayload(styleForm)),
         });
+        // Safe to drop now: the save waits for the brand to refetch, so the
+        // saved values are already underneath and nothing flashes back.
+        setStyleEdits({});
       }
 
       toast.success('Email settings saved');
@@ -236,6 +273,7 @@ We'll reach back out soon!
   const handleDiscard = () => {
     resetAutoresponse();
     resetOutbound();
+    setStyleEdits({});
   };
 
   const isLoading = brandLoading || domainsLoading;
@@ -599,7 +637,7 @@ We'll reach back out soon!
         </CardContent>
       </Card>
 
-      <EmailStyleCard brandId={brandId} />
+      {styleForm && <EmailStyleCard brandId={brandId} brandName={brand?.name} form={styleForm} onChange={setStyle} />}
 
       {/* ================================================================== */}
       {/* AUTO-REPLY */}
@@ -711,7 +749,7 @@ We'll reach back out soon!
       </Card>
 
       <SettingsSaveBar
-        dirty={autoresponseChanged || outboundChanged}
+        dirty={autoresponseChanged || outboundChanged || styleChanged}
         saving={updateBrand.isPending || updateDomain.isPending}
         onSave={handleSave}
         onDiscard={handleDiscard}

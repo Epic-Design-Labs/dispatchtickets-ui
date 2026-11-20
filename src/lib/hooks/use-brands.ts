@@ -40,10 +40,15 @@ export function useUpdateBrand(id: string) {
 
   return useMutation({
     mutationFn: (data: UpdateBrandInput) => brandsApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: brandKeys.all });
-      queryClient.invalidateQueries({ queryKey: brandKeys.detail(id) });
-    },
+    // Returned, so the mutation stays pending until the brand has refetched.
+    // Settings pages decide "unsaved" by comparing their draft with the
+    // brand; resolving before the refetch left a moment after "Saved" where
+    // the brand was stale and the page still claimed unsaved changes.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: brandKeys.all }),
+        queryClient.invalidateQueries({ queryKey: brandKeys.detail(id) }),
+      ]),
   });
 }
 

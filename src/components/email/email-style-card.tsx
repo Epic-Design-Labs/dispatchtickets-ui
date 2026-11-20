@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,10 +8,8 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { useBrand, useUpdateBrand } from '@/lib/hooks';
 import { brandsApi, type EmailPreview } from '@/lib/api/brands';
-import type { EmailStyle } from '@/types/brand';
-import { toast } from 'sonner';
+import type { Brand, EmailStyle, UpdateBrandInput } from '@/types/brand';
 
 const STYLES: { value: EmailStyle; label: string; description: string }[] = [
   {
@@ -28,7 +26,7 @@ const STYLES: { value: EmailStyle; label: string; description: string }[] = [
 
 const ACCENT = /^#[0-9a-f]{6}$/i;
 
-interface Form {
+export interface EmailStyleForm {
   style: EmailStyle;
   logoUrl: string;
   accentColor: string;
@@ -38,41 +36,77 @@ interface Form {
   showHistory: boolean;
 }
 
+type Form = EmailStyleForm;
+
 /** Same checks the API makes, so the preview and Save agree. */
-function problems(form: Form): string | null {
+export function emailStyleProblem(form: Form): string | null {
   if (form.logoUrl.trim() && !/^https:\/\/\S+$/i.test(form.logoUrl.trim())) return 'Logo URL must start with https://';
   if (form.accentColor.trim() && !ACCENT.test(form.accentColor.trim())) return 'Accent color must look like #1d4ed8';
   return null;
 }
 
-export function EmailStyleCard({ brandId }: { brandId: string }) {
-  const { data: brand } = useBrand(brandId);
-  const updateBrand = useUpdateBrand(brandId);
-  // Only what the user changed; the rest comes from the saved brand.
-  const [edits, setEdits] = useState<Partial<Form>>({});
+/** The saved appearance, as the form reads it. */
+export function emailStyleOf(brand: Brand): Form {
+  return {
+    style: brand.emailStyle === 'conversation' ? 'conversation' : 'ticket',
+    logoUrl: brand.emailLogoUrl ?? '',
+    accentColor: brand.emailAccentColor ?? '',
+    signature: brand.emailSignature ?? '',
+    footer: brand.emailFooter ?? '',
+    showTicketNumber: brand.emailShowTicketNumber ?? true,
+    showHistory: brand.emailShowHistory ?? true,
+  };
+}
+
+/** What Save sends. Blank text clears the field; the API stores null. */
+export function emailStylePayload(form: Form): UpdateBrandInput {
+  return {
+    emailStyle: form.style,
+    emailLogoUrl: form.logoUrl.trim() || null,
+    emailAccentColor: form.accentColor.trim() || null,
+    emailSignature: form.signature.trim() || null,
+    emailFooter: form.footer.trim() || null,
+    emailShowTicketNumber: form.showTicketNumber,
+    emailShowHistory: form.showHistory,
+  };
+}
+
+/**
+ * Whether the form differs from what is saved, compared the way Save writes
+ * it -- trimmed -- so a trailing space cannot keep the page looking unsaved.
+ */
+export function emailStyleChanged(saved: Form, form: Form): boolean {
+  return (Object.keys(saved) as (keyof Form)[]).some((key) => {
+    const a = saved[key];
+    const b = form[key];
+    return typeof a === 'string' && typeof b === 'string' ? a.trim() !== b.trim() : a !== b;
+  });
+}
+
+/**
+ * How customer emails look. Controlled: the settings page owns the draft so
+ * one save bar covers this card and the rest of the page, rather than the
+ * card carrying a second Save button that saved only half of what was edited.
+ */
+export function EmailStyleCard({
+  brandId,
+  brandName,
+  form,
+  onChange,
+}: {
+  brandId: string;
+  /** Shown as the signature's placeholder: what customers see when it is blank. */
+  brandName?: string;
+  form: Form;
+  onChange: <K extends keyof Form>(key: K, value: Form[K]) => void;
+}) {
   const [preview, setPreview] = useState<EmailPreview | null>(null);
   const [previewError, setPreviewError] = useState(false);
 
-  const form: Form | null = useMemo(
-    () =>
-      brand
-        ? {
-            style: brand.emailStyle === 'conversation' ? 'conversation' : 'ticket',
-            logoUrl: brand.emailLogoUrl ?? '',
-            accentColor: brand.emailAccentColor ?? '',
-            signature: brand.emailSignature ?? '',
-            footer: brand.emailFooter ?? '',
-            showTicketNumber: brand.emailShowTicketNumber ?? true,
-            showHistory: brand.emailShowHistory ?? true,
-            ...edits,
-          }
-        : null,
-    [brand, edits],
-  );
-
-  // Re-render the preview a moment after the form stops changing.
+  // Re-render the preview a moment after the form stops changing. The page
+  // memoises form, so this fires on an edit here, not on every page render.
   useEffect(() => {
-    if (!form || problems(form)) return;
+    if (emailStyleProblem(form)) return;
     let cancelled = false;
     const t = setTimeout(() => {
       brandsApi
@@ -98,29 +132,8 @@ export function EmailStyleCard({ brandId }: { brandId: string }) {
     };
   }, [brandId, form]);
 
-  if (!form) return null;
-  const set = <K extends keyof Form>(key: K, value: Form[K]) => setEdits((e) => ({ ...e, [key]: value }));
-  const problem = problems(form);
-
-  const save = async () => {
-    if (problem) return toast.error(problem);
-    try {
-      await updateBrand.mutateAsync({
-        emailStyle: form.style,
-        emailLogoUrl: form.logoUrl.trim() || null,
-        emailAccentColor: form.accentColor.trim() || null,
-        emailSignature: form.signature.trim() || null,
-        emailFooter: form.footer.trim() || null,
-        emailShowTicketNumber: form.showTicketNumber,
-        emailShowHistory: form.showHistory,
-      });
-      // Edits stay: they now match what's saved, and clearing them would
-      // flash the old values until the brand refetches.
-      toast.success('Email appearance saved');
-    } catch {
-      toast.error('Failed to save email appearance');
-    }
-  };
+  const set = onChange;
+  const problem = emailStyleProblem(form);
 
   return (
     <Card>
@@ -196,7 +209,7 @@ export function EmailStyleCard({ brandId }: { brandId: string }) {
               id="email-signature"
               rows={3}
               maxLength={1000}
-              placeholder={brand?.name ?? 'Your brand'}
+              placeholder={brandName ?? 'Your brand'}
               value={form.signature}
               onChange={(e) => set('signature', e.target.value)}
             />
@@ -238,14 +251,9 @@ export function EmailStyleCard({ brandId }: { brandId: string }) {
           </div>
 
           {problem && <p className="text-sm text-destructive">{problem}</p>}
-          <div className="flex items-center gap-3">
-            <Button onClick={save} disabled={updateBrand.isPending || !!problem}>
-              {updateBrand.isPending ? 'Saving...' : 'Save'}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Switching style mid-conversation changes the subject line, so some mail apps start a new thread.
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Switching style mid-conversation changes the subject line, so some mail apps start a new thread.
+          </p>
         </div>
 
         <div className="space-y-2">
