@@ -57,8 +57,10 @@ export interface UpdateRecurringTicketInput {
   title?: string;
   body?: string;
   priority?: string;
-  assigneeId?: string;
-  categoryId?: string;
+  /** null clears it. */
+  assigneeId?: string | null;
+  /** null clears it. */
+  categoryId?: string | null;
   tags?: string[];
   customFields?: Record<string, unknown>;
   schedule?: RecurringTicketSchedule;
