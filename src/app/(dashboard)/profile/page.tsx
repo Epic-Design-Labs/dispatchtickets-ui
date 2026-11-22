@@ -74,9 +74,9 @@ function ToggleRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <Label htmlFor={id} className="flex-1 cursor-pointer font-normal">
+      <Label htmlFor={id} className="flex-1 cursor-pointer flex-col items-start gap-0.5 font-normal">
         <span className="block text-sm font-medium">{label}</span>
-        {hint && <span className="text-muted-foreground mt-0.5 block text-xs">{hint}</span>}
+        {hint && <span className="text-muted-foreground block text-xs leading-snug">{hint}</span>}
       </Label>
       <Switch id={id} checked={checked} onCheckedChange={onChange} />
     </div>
