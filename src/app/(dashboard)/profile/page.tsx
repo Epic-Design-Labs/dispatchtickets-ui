@@ -16,6 +16,7 @@ import { useProfile, useUpdateProfile, useUploadAvatar, useDeleteAvatar } from '
 import { useMyPresence, useSetMyPresence } from '@/lib/hooks/use-presence';
 import type { PresenceStatus } from '@/lib/api/presence';
 import { useAuth } from '@/providers';
+import { clearSessionToken } from '@/providers/auth-provider';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { getGravatarUrl } from '@/lib/gravatar';
@@ -426,7 +427,12 @@ export default function ProfilePage() {
               variant="outline"
               size="sm"
               className="text-destructive hover:text-destructive"
-              onClick={() => clerk.signOut({ redirectUrl: '/login' })}
+              onClick={() => {
+                // The API client sends a legacy session token ahead of Clerk's,
+                // so one left in this browser would outlive the Clerk sign-out.
+                clearSessionToken();
+                void clerk.signOut({ redirectUrl: '/login' });
+              }}
             >
               Sign out
             </Button>
