@@ -68,7 +68,15 @@ function matches(k: ApiKey, f: Filter, now: number) {
   return true;
 }
 
-function Access({ k, brandsById }: { k: ApiKey; brandsById: Map<string, BrandOption> }) {
+function Access({
+  k,
+  brandsById,
+  brandsLoaded,
+}: {
+  k: ApiKey;
+  brandsById: Map<string, BrandOption>;
+  brandsLoaded: boolean;
+}) {
   if (k.allBrands) {
     return (
       <span
@@ -80,6 +88,7 @@ function Access({ k, brandsById }: { k: ApiKey; brandsById: Map<string, BrandOpt
       </span>
     );
   }
+  if (!brandsLoaded) return <Skeleton className="h-5 w-32" />;
   const live = k.brandIds.map((id) => brandsById.get(id)).filter((b): b is BrandOption => !!b);
   if (live.length === 0) {
     return <span className="text-muted-foreground text-sm">No brands</span>;
@@ -324,7 +333,7 @@ export default function ApiKeysPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <Access k={k} brandsById={brandsById} />
+                      <Access k={k} brandsById={brandsById} brandsLoaded={!!brandList} />
                     </td>
                     <td className="px-4 py-3">
                       {!k.lastUsedAt ? (
