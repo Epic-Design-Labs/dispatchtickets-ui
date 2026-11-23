@@ -64,6 +64,7 @@ function StatusPill({ subscription }: { subscription: Subscription }) {
     case 'past_due':
       return <Pill className="bg-danger-soft text-danger">Past due</Pill>;
     case 'canceled':
+    case 'cancelled':
       return <Pill className="bg-secondary text-muted-foreground">Cancelled</Pill>;
     case 'paused':
       return <Pill className="bg-secondary text-muted-foreground">Paused</Pill>;
@@ -169,6 +170,11 @@ export default function BillingPage() {
   const currentPlan = subscription ? allPlans.find((p) => p.id === subscription.planId) : undefined;
   const isFree = !subscription || subscription.planPrice === 0;
   const periodEnd = formatLongDate(subscription?.currentPeriodEnd);
+  // The API spells it both ways depending on the provider.
+  const isEnded = subscription?.status === 'canceled' || subscription?.status === 'cancelled';
+  const periodPast =
+    !!subscription?.currentPeriodEnd && new Date(subscription.currentPeriodEnd).getTime() < Date.now();
+  const canCancel = !!subscription && !subscription.cancelAtPeriodEnd && !isFree && !isEnded;
   const pendingOn = formatLongDate(subscription?.pendingEffectiveAt);
 
   const closeEmbed = () => {
@@ -267,7 +273,7 @@ export default function BillingPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Plan and billing</h1>
         <p className="text-muted-foreground">
-          {subscription && !isFree ? `Billed ${intervalWord}. ` : ''}
+          {subscription && !isFree && !isEnded ? `Billed ${intervalWord}. ` : ''}
           Spam tickets don&apos;t count toward your limit.
         </p>
       </div>
@@ -302,11 +308,13 @@ export default function BillingPage() {
                   {!subscription || subscription.planPrice === 0
                     ? 'No card needed.'
                     : `${priceLine(subscription.planPrice, subscription.planCurrency, subscription.planInterval)}${
-                        periodEnd
-                          ? subscription.cancelAtPeriodEnd
-                            ? ` · access ends ${periodEnd}`
-                            : ` · renews ${periodEnd}`
-                          : ''
+                        !periodEnd
+                          ? ''
+                          : isEnded || periodPast
+                            ? ` · period ended ${periodEnd}`
+                            : subscription.cancelAtPeriodEnd
+                              ? ` · access ends ${periodEnd}`
+                              : ` · renews ${periodEnd}`
                       }`}
                 </p>
               </div>
@@ -385,7 +393,7 @@ export default function BillingPage() {
                     </p>
                   ) : null}
 
-                  {periodEnd && !subscription?.cancelAtPeriodEnd && (
+                  {periodEnd && !subscription?.cancelAtPeriodEnd && !isEnded && !periodPast && (
                     <p className="text-muted-foreground text-xs">Ticket count resets {periodEnd}.</p>
                   )}
                 </>
@@ -394,12 +402,12 @@ export default function BillingPage() {
               )}
             </div>
 
-            {(currentPlan || (subscription && !subscription.cancelAtPeriodEnd && !isFree)) && (
+            {(currentPlan || canCancel) && (
               <div className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3">
                 <p className="text-muted-foreground text-xs">
                   {currentPlan ? planFeatures(currentPlan).join(' · ') : ''}
                 </p>
-                {subscription && !subscription.cancelAtPeriodEnd && !isFree && (
+                {canCancel && (
                   <button
                     type="button"
                     onClick={() => setCancelDialogOpen(true)}
