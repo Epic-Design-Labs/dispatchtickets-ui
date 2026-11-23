@@ -9,13 +9,6 @@ import {
   type InvoiceFetcher,
 } from '@usethrottle/invoices';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
   Table,
   TableBody,
   TableCell,
@@ -191,6 +184,7 @@ function InvoiceList() {
                 variant="ghost"
                 size="icon"
                 title="Download PDF"
+                aria-label={`Download invoice ${inv.number || inv.id.slice(-8)}`}
                 disabled={downloadingId === inv.id}
                 onClick={() => handleDownload(inv.id)}
               >
@@ -212,16 +206,16 @@ function InvoiceList() {
  */
 export function InvoiceHistoryCard() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Invoice History</CardTitle>
-        <CardDescription>Your past payments and invoices</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <section className="bg-card rounded-xl border">
+      <div className="border-b px-5 py-4">
+        <h2 className="font-semibold">Invoices</h2>
+        <p className="text-muted-foreground text-sm">Your past payments. Download any of them as a PDF.</p>
+      </div>
+      <div className="px-2 py-2">
         <InvoiceProvider fetcher={invoiceFetcher}>
           <InvoiceList />
         </InvoiceProvider>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

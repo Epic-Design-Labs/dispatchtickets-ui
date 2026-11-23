@@ -1,14 +1,26 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Header } from '@/components/layout';
-import { useSubscription, usePlans, useCancelSubscription, useReactivateSubscription, useUpgradeSubscription, useUsage, useDeleteAccount, useConfirmCheckout, useCancelPendingChange } from '@/lib/hooks';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { ThrottleCheckout } from '@usethrottle/checkout-sdk';
+import {
+  useCancelPendingChange,
+  useCancelSubscription,
+  useConfirmCheckout,
+  useDeleteAccount,
+  usePlans,
+  useReactivateSubscription,
+  useSubscription,
+  useUpgradeSubscription,
+  useUsage,
+} from '@/lib/hooks';
 import { useAuth } from '@/providers/auth-provider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { Pill } from '@/components/tickets/pill';
 import {
   AlertDialog,
@@ -20,25 +32,90 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import { Plan, EmbedPayload } from '@/lib/api/billing';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import type { EmbedPayload, Plan, Subscription } from '@/lib/api/billing';
 import { InvoiceHistoryCard } from '@/components/billing/invoice-history-card';
 import { PaymentMethodsWallet } from '@/components/billing/payment-methods-wallet';
-import { Input } from '@/components/ui/input';
-import { AlertTriangle } from 'lucide-react';
-import { ThrottleCheckout } from '@usethrottle/checkout-sdk';
+import { ChangePlanDialog } from '@/components/billing/change-plan-dialog';
+import {
+  formatLongDate,
+  planBaseName,
+  planFeatures,
+  priceLine,
+} from '@/components/billing/plan-helpers';
 
-// Plan group types
-interface PlanGroup {
-  baseName: string;
-  monthly: Plan | null;
-  annual: Plan | null;
+/** Overage on paid plans: $20 per 1,000 tickets. */
+const OVERAGE_CENTS_PER_TICKET = 2;
+
+/**
+ * Cancelling and Past Due must not look alike: one is a change the customer
+ * scheduled and can undo with the button beside it, the other is a failed
+ * payment that ends the service if ignored. Red belongs to Past Due alone.
+ */
+function StatusPill({ subscription }: { subscription: Subscription }) {
+  if (subscription.cancelAtPeriodEnd) {
+    return <Pill className="bg-warning-soft text-warning-foreground">Cancelling</Pill>;
+  }
+  switch (subscription.status) {
+    case 'active':
+      return <Pill className="bg-success-soft text-success-foreground">Active</Pill>;
+    case 'trialing':
+      return <Pill className="bg-info-soft text-info">Trial</Pill>;
+    case 'past_due':
+      return <Pill className="bg-danger-soft text-danger">Past due</Pill>;
+    case 'canceled':
+      return <Pill className="bg-secondary text-muted-foreground">Cancelled</Pill>;
+    case 'paused':
+      return <Pill className="bg-secondary text-muted-foreground">Paused</Pill>;
+    default:
+      return <Pill className="bg-secondary text-muted-foreground">{subscription.status}</Pill>;
+  }
+}
+
+function UsageMeter({
+  label,
+  used,
+  limit,
+  unit,
+}: {
+  label: string;
+  used: number;
+  /** null or -1 = unlimited */
+  limit: number | null;
+  unit: string;
+}) {
+  const unlimited = limit === null || limit === -1;
+  const pct = unlimited || limit === 0 ? 0 : (used / limit) * 100;
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3 text-sm">
+        <span className="font-medium">{label}</span>
+        <span className="text-muted-foreground tabular-nums">
+          {unlimited
+            ? `${used.toLocaleString()} ${unit} · unlimited`
+            : `${used.toLocaleString()} of ${limit.toLocaleString()}`}
+        </span>
+      </div>
+      {!unlimited && (
+        <div
+          className="bg-muted mt-2 h-2 w-full overflow-hidden rounded-full"
+          role="progressbar"
+          aria-label={label}
+          aria-valuemin={0}
+          aria-valuemax={limit}
+          aria-valuenow={used}
+        >
+          <div
+            className={cn(
+              'h-full rounded-full transition-[width]',
+              pct >= 100 ? 'bg-danger' : pct >= 90 ? 'bg-warning' : 'bg-brand',
+            )}
+            style={{ width: `${Math.min(100, pct)}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function BillingPage() {
@@ -46,18 +123,19 @@ export default function BillingPage() {
   const router = useRouter();
   const { session } = useAuth();
   const isOwner = session?.orgRole === 'owner';
-  const { data: subscriptionData, isLoading: subscriptionLoading, error: subscriptionError, refetch } = useSubscription();
+  const {
+    data: subscriptionData,
+    isLoading: subscriptionLoading,
+    error: subscriptionError,
+    refetch,
+  } = useSubscription();
   const { data: plansData, isLoading: plansLoading } = usePlans();
-  const { data: usageData, isLoading: usageLoading, refetch: refetchUsage } = useUsage();
+  const { data: usage, isLoading: usageLoading, refetch: refetchUsage } = useUsage();
 
-  // Handle upgrade success URL param
+  // Return from a redirect checkout.
   useEffect(() => {
     if (searchParams.get('upgraded') === 'true') {
-      // Force refetch subscription data
-      refetch().then(() => {
-        toast.success('Subscription updated successfully');
-      });
-      // Clean up URL
+      refetch().then(() => toast.success('Subscription updated'));
       router.replace('/billing', { scroll: false });
     }
   }, [searchParams, refetch, router]);
@@ -68,53 +146,37 @@ export default function BillingPage() {
   const upgradeSubscription = useUpgradeSubscription();
   const confirmCheckout = useConfirmCheckout();
   const deleteAccount = useDeleteAccount();
+
+  const [changeOpen, setChangeOpen] = useState(false);
+  const [changeKey, setChangeKey] = useState(0);
+  const openChangePlan = () => {
+    setChangeKey((k) => k + 1);
+    setChangeOpen(true);
+  };
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ plan: Plan; kind: 'upgrade' | 'downgrade' } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
-  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
-  // Embed checkout state (Throttle provider only — subscribe/plan-change flow)
+  const [changing, setChanging] = useState(false);
+  // Embed checkout (Throttle provider only)
   const [embedPayload, setEmbedPayload] = useState<EmbedPayload | null>(null);
   const [embedPlanRef, setEmbedPlanRef] = useState<string | null>(null);
   const [embedError, setEmbedError] = useState<string | null>(null);
 
-  const subscription = subscriptionData?.subscription;
-  const allPlans = plansData?.plans || [];
+  const subscription = subscriptionData?.subscription ?? null;
+  const allPlans = plansData?.plans ?? [];
+  const currentPlan = subscription ? allPlans.find((p) => p.id === subscription.planId) : undefined;
+  const isFree = !subscription || subscription.planPrice === 0;
+  const periodEnd = formatLongDate(subscription?.currentPeriodEnd);
+  const pendingOn = formatLongDate(subscription?.pendingEffectiveAt);
 
-  // Group plans by base name (Starter, Pro, Enterprise) - excludes Free plan
-  const planGroups = useMemo(() => {
-    const groups: Record<string, PlanGroup> = {};
-
-    allPlans.forEach((plan) => {
-      // Skip free plan from the upgrade grid - it shows in Current Plan section
-      if (plan.price === 0) return;
-
-      // Extract base name (remove "Monthly"/"Annual" suffix, parenthesized or not:
-      // handles both "Pro Annual" and "Pro (Annual)" so it maps to planDetails keys).
-      const baseName = plan.name.replace(/\s*\(?(?:Monthly|Annual)\)?$/i, '');
-
-      if (!groups[baseName]) {
-        groups[baseName] = { baseName, monthly: null, annual: null };
-      }
-
-      if (plan.interval === 'month') {
-        groups[baseName].monthly = plan;
-      } else if (plan.interval === 'year') {
-        groups[baseName].annual = plan;
-      }
-    });
-
-    // Sort by price (using monthly price as reference)
-    return Object.values(groups).sort((a, b) => {
-      const priceA = a.monthly?.price || 0;
-      const priceB = b.monthly?.price || 0;
-      return priceA - priceB;
-    });
-  }, [allPlans]);
-
-  const currentPlan = subscription ? allPlans.find(p => p.id === subscription.planId) : null;
+  const closeEmbed = () => {
+    setEmbedPayload(null);
+    setEmbedPlanRef(null);
+    setEmbedError(null);
+    setChanging(false);
+  };
 
   const handleCancel = async () => {
     try {
@@ -122,23 +184,7 @@ export default function BillingPage() {
       toast.success(result.message);
       setCancelDialogOpen(false);
     } catch {
-      toast.error('Failed to cancel subscription');
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmation !== 'DELETE') {
-      toast.error('Please type DELETE to confirm');
-      return;
-    }
-    try {
-      const result = await deleteAccount.mutateAsync({ confirmation: 'DELETE' });
-      toast.success(result.message);
-      setDeleteDialogOpen(false);
-      // Redirect to login page after account deletion
-      window.location.href = '/login';
-    } catch {
-      toast.error('Failed to delete account');
+      toast.error('Could not cancel the subscription');
     }
   };
 
@@ -146,646 +192,319 @@ export default function BillingPage() {
     try {
       await reactivateSubscription.mutateAsync();
       setReactivateDialogOpen(false);
-      toast.success('Subscription reactivated — it will keep renewing and won’t be cancelled.');
+      toast.success('Subscription reactivated. It will keep renewing.');
     } catch {
-      toast.error('Failed to reactivate subscription');
+      toast.error('Could not reactivate the subscription');
     }
   };
 
   const handleCancelPendingChange = async () => {
     try {
       await cancelPendingChange.mutateAsync();
-      toast.success('Scheduled plan change cancelled — you’ll keep your current plan.');
+      toast.success('Scheduled change cancelled. You keep your current plan.');
     } catch {
-      toast.error('Failed to cancel the scheduled plan change');
+      toast.error('Could not cancel the scheduled change');
     }
   };
 
-  const handleUpgrade = async (planId: string, planRef?: string) => {
-    setUpgradingPlanId(planId);
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE') return;
+    try {
+      const result = await deleteAccount.mutateAsync({ confirmation: 'DELETE' });
+      toast.success(result.message);
+      setDeleteDialogOpen(false);
+      window.location.href = '/login';
+    } catch {
+      toast.error('Could not delete the account');
+    }
+  };
+
+  const startCheckout = async (plan: Plan) => {
+    setChanging(true);
     try {
       const result = await upgradeSubscription.mutateAsync({
-        planId,
+        planId: plan.id,
         successUrl: `${window.location.origin}/billing?upgraded=true`,
         cancelUrl: `${window.location.origin}/billing`,
       });
       if ('embedToken' in result) {
-        // Embed mode (Throttle provider): show the in-page checkout
         setEmbedPayload(result as EmbedPayload);
-        setEmbedPlanRef(planRef ?? planId);
+        setEmbedPlanRef(plan.slug ?? plan.id);
         setEmbedError(null);
-        setUpgradingPlanId(null);
+        setChanging(false);
       } else {
-        // Redirect mode (Stackbe default): navigate to checkout URL
         window.location.href = result.url;
       }
     } catch (error: unknown) {
-      console.error('Upgrade error:', error);
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      const message = axiosError.response?.data?.message
-        || (error instanceof Error ? error.message : 'Unknown error');
-      toast.error(`Upgrade failed: ${message}`);
-      setUpgradingPlanId(null);
+      const message =
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+        (error instanceof Error ? error.message : 'Unknown error');
+      toast.error(`Plan change failed: ${message}`);
+      setChanging(false);
     }
   };
 
-  const formatPrice = (price: number | null | undefined, currency: string, interval: string) => {
-    if (!price && price !== 0) return 'Not available';
-
-    const formatted = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency?.toUpperCase() || 'USD',
-      minimumFractionDigits: 0,
-    }).format(price / 100);
-
-    if (interval === 'year') {
-      const monthly = Math.round(price / 12);
-      const monthlyFormatted = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency?.toUpperCase() || 'USD',
-        minimumFractionDigits: 0,
-      }).format(monthly / 100);
-      return `${monthlyFormatted}/mo`;
-    }
-
-    return `${formatted}/${interval || 'month'}`;
+  // Downgrade guard: the target plan must fit the brands you already have.
+  const blockReason = (plan: Plan): string | null => {
+    if (!usage) return null;
+    const limit = (plan.entitlements as Record<string, unknown>).brands_limit;
+    if (typeof limit !== 'number' || limit === -1 || usage.brandCount <= limit) return null;
+    const extra = usage.brandCount - limit;
+    return `You have ${usage.brandCount} brands and this plan allows ${limit}. Delete ${extra} brand${extra === 1 ? '' : 's'} first.`;
   };
 
-  const formatAnnualTotal = (price: number, currency: string) => {
-    const formatted = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency?.toUpperCase() || 'USD',
-      minimumFractionDigits: 0,
-    }).format(price / 100);
-    return `${formatted}/year`;
-  };
+  const ticketLimit = usage?.planLimit ?? null;
+  const unlimitedTickets = ticketLimit === null || ticketLimit === -1;
+  const ticketsOver = !unlimitedTickets && usage ? usage.ticketCount - ticketLimit : 0;
+  const ticketPct = !unlimitedTickets && usage && ticketLimit > 0 ? (usage.ticketCount / ticketLimit) * 100 : 0;
+  const brandLimit = usage?.brandLimit ?? null;
+  const brandsFull = !!usage && brandLimit !== null && brandLimit !== -1 && usage.brandCount >= brandLimit;
 
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'Not available';
-    const date = new Date(dateString);
-    // Check for invalid date or Unix epoch (indicates null/undefined from API)
-    if (isNaN(date.getTime()) || date.getFullYear() < 2000) {
-      return 'Not available';
-    }
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const formatShortDate = (dateString: string | null | undefined) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  /**
-   * Cancelling and Past Due both used to render as the same destructive red,
-   * and they are the two states on this page a customer acts on most
-   * differently: one is a change they scheduled themselves and can undo with
-   * the button right beside it, the other is a failed payment that ends the
-   * service if they ignore it. Cancelling takes the warning tone, Past Due
-   * keeps red to itself.
-   */
-  const getStatusBadge = (status: string, cancelAtPeriodEnd: boolean) => {
-    if (cancelAtPeriodEnd) {
-      return <Pill className="bg-warning-soft text-warning-foreground">Cancelling</Pill>;
-    }
-    switch (status) {
-      case 'active':
-        return <Pill className="bg-success-soft text-success-foreground">Active</Pill>;
-      case 'trialing':
-        return <Pill className="bg-info-soft text-info">Trial</Pill>;
-      case 'past_due':
-        return <Pill className="bg-danger-soft text-danger">Past Due</Pill>;
-      case 'canceled':
-        return <Pill className="bg-secondary text-muted-foreground">Cancelled</Pill>;
-      case 'paused':
-        return <Pill className="bg-secondary text-muted-foreground">Paused</Pill>;
-      default:
-        return <Pill className="bg-secondary text-muted-foreground">{status}</Pill>;
-    }
-  };
-
-  // Plan feature mapping based on plan name
-  const planDetails: Record<string, { tickets: string; support: string; sla?: string }> = {
-    'Free': { tickets: '100 tickets/mo', support: 'Community support' },
-    'Starter': { tickets: '1,000 tickets/mo', support: 'Email support' },
-    'Pro': { tickets: '10,000 tickets/mo', support: 'Priority support' },
-    'Enterprise': { tickets: '100,000 tickets/mo', support: 'Dedicated support', sla: '99.9% SLA' },
-  };
-
-  const getPlanFeatures = (plan: Plan, baseName: string) => {
-    const features: string[] = [];
-    const entitlements = plan.entitlements as Record<string, number | boolean>;
-    const details = planDetails[baseName] || planDetails['Starter'];
-
-    // Tickets per month
-    features.push(details.tickets);
-
-    // Brands limit
-    if (entitlements.brands_limit === -1) {
-      features.push('Unlimited brands');
-    } else if (typeof entitlements.brands_limit === 'number') {
-      features.push(`${entitlements.brands_limit} brand${entitlements.brands_limit === 1 ? '' : 's'}`);
-    }
-
-    // Custom domain
-    if (entitlements.custom_domain) {
-      features.push('Custom email domains');
-    }
-
-    // Recurring tickets (all paid plans)
-    if (baseName !== 'Free') {
-      features.push('Recurring tickets');
-    }
-
-    // Support level
-    features.push(details.support);
-
-    // SLA (Enterprise only)
-    if (details.sla) {
-      features.push(details.sla);
-    }
-
-    return features;
-  };
-
-  const isCurrentPlan = (plan: Plan) => {
-    return subscription?.planId === plan.id;
-  };
-
-  const isUpgrade = (plan: Plan) => {
-    if (!subscription) return true;
-    return plan.price > subscription.planPrice;
-  };
-
-  // Check if downgrade is allowed based on current usage vs target plan limits
-  const getDowngradeBlockReason = (plan: Plan): string | null => {
-    if (!usageData) return null;
-
-    const entitlements = plan.entitlements as Record<string, number | boolean>;
-    const targetBrandLimit = entitlements.brands_limit;
-
-    // Check brand limit (-1 means unlimited)
-    if (typeof targetBrandLimit === 'number' && targetBrandLimit !== -1) {
-      if (usageData.brandCount > targetBrandLimit) {
-        return `You have ${usageData.brandCount} brands but this plan only allows ${targetBrandLimit}. Please delete ${usageData.brandCount - targetBrandLimit} brand${usageData.brandCount - targetBrandLimit > 1 ? 's' : ''} first.`;
-      }
-    }
-
-    return null;
-  };
-
-  function requestPlanChange(plan: Plan) {
-    const kind = isUpgrade(plan) ? 'upgrade' : 'downgrade';
-    if (kind === 'downgrade') {
-      const blocked = getDowngradeBlockReason(plan);
-      if (blocked) { toast.error(blocked); return; }
-    }
-    setConfirmTarget({ plan, kind });
-  }
-
-  async function confirmPlanChange() {
-    if (!confirmTarget) return;
-    const { plan } = confirmTarget;
-    setConfirmTarget(null);
-    await handleUpgrade(plan.id, plan.slug);
-  }
-
-  // Calculate savings for annual plans
-  const getAnnualSavings = (group: PlanGroup): number | null => {
-    if (!group.monthly || !group.annual) return null;
-    const monthlyYearlyTotal = group.monthly.price * 12;
-    const annualPrice = group.annual.price;
-    const savings = Math.round(((monthlyYearlyTotal - annualPrice) / monthlyYearlyTotal) * 100);
-    return savings > 0 ? savings : null;
-  };
+  const intervalWord = subscription?.planInterval === 'year' ? 'annually' : 'monthly';
 
   return (
-    <div className="flex flex-col">
-      <Header title="Billing" />
-      <div className="flex-1 p-4 md:p-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold tracking-tight">Billing & Subscription</h2>
-          <p className="text-muted-foreground">
-            Manage your subscription and billing details
-          </p>
-        </div>
-
-        {subscriptionLoading && (
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-10 w-32" />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {subscriptionError && (
-          <Card className="border-destructive">
-            <CardContent className="pt-6">
-              <p className="text-destructive">
-                Failed to load subscription info. Please try again.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {!subscriptionLoading && !subscriptionError && (
-          <div className="space-y-6">
-            {/* Current Plan */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CardTitle>Current Plan</CardTitle>
-                    {subscription && getStatusBadge(subscription.status, subscription.cancelAtPeriodEnd)}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {subscription ? (
-                  <div className="space-y-6">
-                    {/* Scheduled (deferred) plan change banner */}
-                    {subscription.pendingPlanName && (
-                      <div className="border-warning/25 bg-warning-soft flex flex-col gap-3 rounded-lg border p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-warning-foreground">
-                          Your plan changes to <span className="font-semibold">{subscription.pendingPlanName}</span>
-                          {subscription.pendingEffectiveAt ? ` on ${formatDate(subscription.pendingEffectiveAt)}` : ''}.
-                          You keep your current plan until then.
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          onClick={handleCancelPendingChange}
-                          disabled={cancelPendingChange.isPending}
-                        >
-                          {cancelPendingChange.isPending ? 'Cancelling…' : 'Keep my current plan'}
-                        </Button>
-                      </div>
-                    )}
-
-                    <div className="flex items-baseline gap-4">
-                      <h3 className="text-3xl font-bold">{subscription.planName}</h3>
-                      <span className="text-xl text-muted-foreground">
-                        {formatPrice(subscription.planPrice, subscription.planCurrency, subscription.planInterval)}
-                        {subscription.planInterval === 'year' && (
-                          <span className="text-sm ml-1">
-                            ({formatAnnualTotal(subscription.planPrice, subscription.planCurrency)})
-                          </span>
-                        )}
-                      </span>
-                    </div>
-
-                    {/* Plan Entitlements */}
-                    {currentPlan && (
-                      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm py-3 border-y">
-                        {getPlanFeatures(currentPlan, subscription.planName.replace(/\s*\(?(?:Monthly|Annual)\)?$/i, '')).map((feature, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <svg className="text-success h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            <span className="text-muted-foreground">{feature}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-6 text-sm">
-                      <div>
-                        <p className="text-muted-foreground mb-1">Billing Cycle</p>
-                        <p className="font-medium capitalize">{subscription.planInterval === 'year' ? 'Annual' : 'Monthly'}</p>
-                      </div>
-                      {subscription.currentPeriodEnd && (
-                        <div>
-                          <p className="text-muted-foreground mb-1">
-                            {subscription.cancelAtPeriodEnd ? 'Access Ends On' : 'Next Charge'}
-                          </p>
-                          <p className="font-medium">
-                            {subscription.cancelAtPeriodEnd
-                              ? formatDate(subscription.currentPeriodEnd)
-                              : `${
-                                  subscription.planInterval === 'year'
-                                    ? formatAnnualTotal(subscription.planPrice, subscription.planCurrency)
-                                    : formatPrice(subscription.planPrice, subscription.planCurrency, subscription.planInterval)
-                                } on ${formatDate(subscription.currentPeriodEnd)}`}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      {subscription.cancelAtPeriodEnd ? (
-                        <Button
-                          onClick={() => setReactivateDialogOpen(true)}
-                          disabled={reactivateSubscription.isPending}
-                        >
-                          {reactivateSubscription.isPending ? 'Reactivating...' : 'Reactivate Subscription'}
-                        </Button>
-                      ) : (
-                        <button
-                          onClick={() => setCancelDialogOpen(true)}
-                          className="text-sm text-muted-foreground hover:text-destructive hover:underline"
-                        >
-                          Cancel Subscription
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-lg font-medium">No active subscription</p>
-                    <p className="text-muted-foreground mt-1">
-                      Choose a plan below to get started.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Payment methods */}
-            <Card>
-              <CardHeader><CardTitle>Payment methods</CardTitle></CardHeader>
-              <CardContent>
-                <PaymentMethodsWallet />
-              </CardContent>
-            </Card>
-
-            {/* Available Plans */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>{subscription ? 'Change Your Plan' : 'Available Plans'}</CardTitle>
-                    <CardDescription>
-                      {!subscription
-                        ? 'Choose a plan to get started'
-                        : subscription.cancelAtPeriodEnd
-                          ? 'Plan changes are paused while your cancellation is pending — reactivate to switch plans.'
-                          : 'Switch tiers anytime — your current plan is highlighted. To stop paying, use Cancel Subscription above.'}
-                    </CardDescription>
-                  </div>
-                  {/* Billing Period Toggle */}
-                  <div className="flex items-center gap-3">
-                    <span className={`text-sm font-medium transition-colors ${billingPeriod === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                      Monthly
-                    </span>
-                    <button
-                      onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
-                      className="relative h-6 w-11 rounded-full bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      role="switch"
-                      aria-checked={billingPeriod === 'annual'}
-                    >
-                      <span
-                        className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-primary shadow-sm transition-transform duration-200 ${
-                          billingPeriod === 'annual' ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-sm font-medium transition-colors ${billingPeriod === 'annual' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        Annual
-                      </span>
-                      <Badge variant="secondary" className="bg-success-soft text-success-foreground text-xs">
-                        Save up to 34%
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {plansLoading ? (
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-64 w-full" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-3 items-stretch">
-                    {planGroups.map((group) => {
-                      const plan = billingPeriod === 'annual' ? group.annual : group.monthly;
-                      if (!plan) return null;
-
-                      const savings = getAnnualSavings(group);
-                      const isCurrent = isCurrentPlan(plan);
-                      const isUpgradeAction = isUpgrade(plan);
-
-                      return (
-                        <div
-                          key={group.baseName}
-                          className={`relative rounded-lg border p-4 flex flex-col ${
-                            isCurrent ? 'border-primary bg-primary/5' : ''
-                          }`}
-                        >
-                          {isCurrent && (
-                            <Badge className="absolute -top-2 right-2 bg-primary">
-                              Current
-                            </Badge>
-                          )}
-                          {billingPeriod === 'annual' && savings && !isCurrent && (
-                            <Badge className="bg-success absolute -top-2 left-2 text-white">
-                              Save {savings}%
-                            </Badge>
-                          )}
-                          <div className="mb-4">
-                            <h3 className="font-semibold">{group.baseName}</h3>
-                            <p className="text-2xl font-bold mt-1">
-                              {formatPrice(plan.price, plan.currency, plan.interval)}
-                            </p>
-                            {billingPeriod === 'annual' && (
-                              <p className="text-sm text-muted-foreground">
-                                {formatAnnualTotal(plan.price, plan.currency)}
-                              </p>
-                            )}
-                          </div>
-                          <ul className="space-y-2 text-sm text-muted-foreground mb-4 flex-1">
-                            {getPlanFeatures(plan, group.baseName).map((feature, i) => (
-                              <li key={i} className="flex items-center gap-2">
-                                <svg className="text-success h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                {feature}
-                              </li>
-                            ))}
-                            {/* Overage pricing */}
-                            <li className="flex items-center gap-2 pt-2 border-t">
-                              <svg className="text-info h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                              </svg>
-                              <span>$0.02/ticket overage</span>
-                            </li>
-                          </ul>
-                          {!isCurrent && (
-                            <Button
-                              className="w-full"
-                              variant={isUpgradeAction ? 'default' : 'outline'}
-                              onClick={() => requestPlanChange(plan)}
-                              disabled={upgradingPlanId !== null || subscription?.cancelAtPeriodEnd || (!isUpgradeAction && !!getDowngradeBlockReason(plan))}
-                              title={subscription?.cancelAtPeriodEnd ? 'Reactivate your subscription to change plans' : (!isUpgradeAction ? getDowngradeBlockReason(plan) || undefined : undefined)}
-                            >
-                              {upgradingPlanId === plan.id
-                                ? 'Processing...'
-                                : isUpgradeAction
-                                ? 'Upgrade'
-                                : 'Downgrade'}
-                            </Button>
-                          )}
-                          {isCurrent && (
-                            <Button className="w-full" variant="outline" disabled>
-                              Current Plan
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-              </CardContent>
-            </Card>
-
-            {/* Usage */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Usage</CardTitle>
-                <CardDescription>
-                  Your usage for the current billing period
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {usageLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-4 w-48" />
-                  </div>
-                ) : usageData ? (
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-3xl font-bold">
-                        {usageData.ticketCount.toLocaleString()}
-                        {usageData.planLimit && (
-                          <span className="text-lg font-normal text-muted-foreground">
-                            {' '}/ {usageData.planLimit.toLocaleString()}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        tickets this billing period
-                      </p>
-                    </div>
-                    {usageData.planLimit && (
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            usageData.ticketCount >= usageData.planLimit
-                              ? 'bg-danger'
-                              : usageData.ticketCount >= usageData.planLimit * 0.8
-                              ? 'bg-warning'
-                              : 'bg-brand'
-                          }`}
-                          style={{
-                            width: `${Math.min(100, (usageData.ticketCount / usageData.planLimit) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                    )}
-                    {usageData.ticketCount > (usageData.planLimit || 0) && usageData.planLimit && (
-                      <p className="text-warning-foreground text-sm">
-                        You&apos;re {usageData.ticketCount - usageData.planLimit} tickets over your limit.
-                        Overage charges: ${((usageData.ticketCount - usageData.planLimit) * 0.02).toFixed(2)}
-                      </p>
-                    )}
-                    {subscription?.currentPeriodEnd && (
-                      <p className="text-xs text-muted-foreground">
-                        Period resets: {formatDate(subscription.currentPeriodEnd)}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No usage data available.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Invoice History — powered by @usethrottle/invoices via the
-                /api/throttle server proxy (customer-scoped, secret key stays
-                server-side). */}
-            <InvoiceHistoryCard />
-
-            {/* Danger Zone */}
-            <Card className="border-destructive/50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                  <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                </div>
-                <CardDescription>
-                  Irreversible actions that affect your account
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-4 border border-destructive/30 rounded-lg bg-destructive/5">
-                  <div>
-                    <h4 className="font-medium">Delete Account</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Permanently delete your account and all associated data including brands, tickets, and settings.
-                    </p>
-                    {!isOwner && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Only account owners can delete the account.
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant="destructive"
-                    onClick={() => setDeleteDialogOpen(true)}
-                    disabled={!isOwner}
-                  >
-                    Delete Account
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+    <div className="mx-auto max-w-3xl space-y-5 p-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Plan and billing</h1>
+        <p className="text-muted-foreground">
+          {subscription && !isFree ? `Billed ${intervalWord}. ` : ''}
+          Spam tickets don&apos;t count toward your limit.
+        </p>
       </div>
 
-      {/* Embed Checkout Modal (Throttle provider only) */}
-      {/* Embed Checkout Modal (Throttle provider only — subscribe/plan-change) */}
-      <Dialog
-        open={!!embedPayload}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEmbedPayload(null);
-            setEmbedPlanRef(null);
-            setEmbedError(null);
-            setUpgradingPlanId(null);
-          }
+      {subscriptionLoading ? (
+        <div className="bg-card space-y-4 rounded-xl border p-5">
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-2 w-full" />
+          <Skeleton className="h-2 w-full" />
+        </div>
+      ) : subscriptionError ? (
+        <div className="bg-card text-destructive rounded-xl border p-5 text-sm">
+          Couldn&apos;t load your plan. Refresh the page to try again.
+        </div>
+      ) : (
+        <>
+          {/* Current plan */}
+          <section className="bg-card rounded-xl border">
+            <div className="flex flex-wrap items-start justify-between gap-4 p-5">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                    Current plan
+                  </span>
+                  {subscription && <StatusPill subscription={subscription} />}
+                </div>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight">
+                  {subscription ? planBaseName(subscription.planName) : 'Free'}
+                </h2>
+                <p className="text-muted-foreground mt-0.5 text-sm">
+                  {!subscription || subscription.planPrice === 0
+                    ? 'No card needed.'
+                    : `${priceLine(subscription.planPrice, subscription.planCurrency, subscription.planInterval)}${
+                        periodEnd
+                          ? subscription.cancelAtPeriodEnd
+                            ? ` · access ends ${periodEnd}`
+                            : ` · renews ${periodEnd}`
+                          : ''
+                      }`}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                {subscription?.cancelAtPeriodEnd ? (
+                  <Button onClick={() => setReactivateDialogOpen(true)} disabled={reactivateSubscription.isPending}>
+                    Reactivate
+                  </Button>
+                ) : (
+                  <Button onClick={openChangePlan} disabled={changing}>
+                    {changing ? 'Opening checkout…' : isFree ? 'Upgrade' : 'Change plan'}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {subscription?.pendingPlanName && (
+              <div className="border-warning/25 bg-warning-soft mx-5 mb-4 flex flex-col gap-3 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-warning-foreground">
+                  Your plan changes to <span className="font-semibold">{subscription.pendingPlanName}</span>
+                  {pendingOn ? ` on ${pendingOn}` : ''}. You keep your current plan until then.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={handleCancelPendingChange}
+                  disabled={cancelPendingChange.isPending}
+                >
+                  {cancelPendingChange.isPending ? 'Cancelling…' : 'Keep my current plan'}
+                </Button>
+              </div>
+            )}
+
+            {subscription?.cancelAtPeriodEnd && (
+              <p className="text-muted-foreground mx-5 mb-4 text-sm">
+                Your subscription is cancelled. After {periodEnd ?? 'this period'} the account moves to Free.
+                Reactivate to keep it, or to change plans.
+              </p>
+            )}
+
+            <div className="space-y-4 border-t p-5">
+              {usageLoading ? (
+                <>
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </>
+              ) : usage ? (
+                <>
+                  <UsageMeter label="Tickets this period" used={usage.ticketCount} limit={ticketLimit} unit="tickets" />
+                  <UsageMeter label="Brands" used={usage.brandCount} limit={brandLimit} unit="brands" />
+
+                  {ticketsOver > 0 ? (
+                    isFree ? (
+                      <p className="bg-danger-soft text-danger rounded-lg px-3 py-2 text-sm">
+                        You&apos;ve used all {ticketLimit?.toLocaleString()} tickets on Free. New tickets through
+                        the API are refused until the period resets. Upgrade to keep going.
+                      </p>
+                    ) : (
+                      <p className="bg-warning-soft text-warning-foreground rounded-lg px-3 py-2 text-sm">
+                        {ticketsOver.toLocaleString()} ticket{ticketsOver === 1 ? '' : 's'} over your limit,
+                        billed at $20 per 1,000 (about $
+                        {((ticketsOver * OVERAGE_CENTS_PER_TICKET) / 100).toFixed(2)} so far).
+                      </p>
+                    )
+                  ) : ticketPct >= 90 ? (
+                    <p className="bg-warning-soft text-warning-foreground rounded-lg px-3 py-2 text-sm">
+                      You&apos;ve used {Math.floor(ticketPct)}% of this period&apos;s tickets.{' '}
+                      {isFree
+                        ? 'Free stops accepting API tickets at the limit.'
+                        : 'Tickets past the limit cost $20 per 1,000.'}
+                    </p>
+                  ) : brandsFull ? (
+                    <p className="text-muted-foreground text-sm">
+                      You&apos;re using every brand your plan includes. Pro and above have unlimited brands.
+                    </p>
+                  ) : null}
+
+                  {periodEnd && !subscription?.cancelAtPeriodEnd && (
+                    <p className="text-muted-foreground text-xs">Ticket count resets {periodEnd}.</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-muted-foreground text-sm">Usage isn&apos;t available right now.</p>
+              )}
+            </div>
+
+            {(currentPlan || (subscription && !subscription.cancelAtPeriodEnd && !isFree)) && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3">
+                <p className="text-muted-foreground text-xs">
+                  {currentPlan ? planFeatures(currentPlan).join(' · ') : ''}
+                </p>
+                {subscription && !subscription.cancelAtPeriodEnd && !isFree && (
+                  <button
+                    type="button"
+                    onClick={() => setCancelDialogOpen(true)}
+                    className="text-muted-foreground hover:text-destructive text-xs hover:underline"
+                  >
+                    Cancel subscription
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* Payment method */}
+          <section className="bg-card rounded-xl border">
+            <div className="border-b px-5 py-4">
+              <h2 className="font-semibold">Payment method</h2>
+              <p className="text-muted-foreground text-sm">The card we charge for your plan and any overage.</p>
+            </div>
+            <div className="p-5">
+              <PaymentMethodsWallet />
+            </div>
+          </section>
+
+          <InvoiceHistoryCard />
+
+          {/* Delete account */}
+          <section className="border-destructive/40 rounded-xl border">
+            <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+              <div className="max-w-md">
+                <h2 className="text-destructive flex items-center gap-2 font-semibold">
+                  <AlertTriangle className="h-4 w-4" />
+                  Delete account
+                </h2>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Permanently deletes every brand, ticket and setting, and cancels the subscription.
+                  {!isOwner && ' Only the account owner can do this.'}
+                </p>
+              </div>
+              <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)} disabled={!isOwner}>
+                Delete account
+              </Button>
+            </div>
+          </section>
+        </>
+      )}
+
+      <ChangePlanDialog
+        key={changeKey}
+        open={changeOpen}
+        onOpenChange={setChangeOpen}
+        plans={allPlans}
+        plansLoading={plansLoading}
+        subscription={subscription}
+        blockReason={blockReason}
+        onChoose={(plan, kind) => {
+          setChangeOpen(false);
+          setConfirmTarget({ plan, kind });
         }}
-      >
+      />
+
+      {/* Confirm plan change */}
+      <AlertDialog open={!!confirmTarget} onOpenChange={(o) => !o && setConfirmTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmTarget?.kind === 'upgrade'
+                ? `Upgrade to ${confirmTarget.plan.name}?`
+                : `Switch to ${confirmTarget?.plan.name}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmTarget?.kind === 'upgrade'
+                ? `You'll pay ${priceLine(confirmTarget.plan.price, confirmTarget.plan.currency, confirmTarget.plan.interval)} starting today, and your billing period restarts now.`
+                : `Nothing is charged now. You keep ${subscription?.planName ?? 'your plan'} until ${periodEnd ?? 'the end of this period'}, then switch to ${confirmTarget?.plan.name}.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const target = confirmTarget;
+                setConfirmTarget(null);
+                if (target) void startCheckout(target.plan);
+              }}
+            >
+              {confirmTarget?.kind === 'upgrade' ? (
+                <>
+                  Continue to payment
+                  <ArrowUpRight className="ml-1 h-4 w-4" />
+                </>
+              ) : (
+                'Schedule the switch'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Embed checkout (Throttle provider) */}
+      <Dialog open={!!embedPayload} onOpenChange={(open) => !open && closeEmbed()}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Complete Payment</DialogTitle>
+            <DialogTitle>Complete payment</DialogTitle>
           </DialogHeader>
           {embedError && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+            <div className="border-destructive/50 bg-destructive/5 text-destructive rounded-md border p-3 text-sm">
               {embedError}
             </div>
           )}
@@ -799,150 +518,121 @@ export default function BillingPage() {
                     checkoutSessionId: embedPayload.checkoutSessionId,
                     planRef: embedPlanRef ?? undefined,
                   });
-                  setEmbedPayload(null);
-                  setEmbedPlanRef(null);
-                  setEmbedError(null);
-                  toast.success('Subscription activated');
-                  // Await both refetches so the Current Plan + Usage update
-                  // immediately after payment (no manual reload needed).
+                  closeEmbed();
+                  toast.success('Subscription updated');
                   await Promise.all([refetch(), refetchUsage()]);
                 } catch (err: unknown) {
-                  const axiosError = err as { response?: { data?: { message?: string } } };
-                  const msg = axiosError.response?.data?.message
-                    || (err instanceof Error ? err.message : 'Failed to confirm subscription');
+                  const msg =
+                    (err as { response?: { data?: { message?: string } } }).response?.data?.message ||
+                    (err instanceof Error ? err.message : 'Could not confirm the subscription');
                   setEmbedError(msg);
                 }
               }}
-              onFailed={({ message }) => {
-                setEmbedError(message || 'Payment failed. Please try again.');
-              }}
-              onCancelled={() => {
-                setEmbedPayload(null);
-                setEmbedPlanRef(null);
-                setEmbedError(null);
-                setUpgradingPlanId(null);
-              }}
+              onFailed={({ message }) => setEmbedError(message || 'Payment failed. Please try again.')}
+              onCancelled={closeEmbed}
             />
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Cancel Subscription Dialog */}
+      {/* Cancel subscription */}
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
+            <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
             <AlertDialogDescription>
-              You&apos;ll keep full access until
-              {subscription?.currentPeriodEnd ? ` ${formatDate(subscription.currentPeriodEnd)}` : ' the end of your current billing period'}.
-              After that your plan reverts to <strong>Free</strong> and you won&apos;t be charged again.
-              You can reactivate anytime before then.
+              You keep full access until {periodEnd ?? 'the end of this billing period'}. After that the
+              account moves to <strong>Free</strong> and you won&apos;t be charged again. You can reactivate any
+              time before then.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+            <AlertDialogCancel>Keep subscription</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleCancel}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                void handleCancel();
+              }}
+              disabled={cancelSubscription.isPending}
+              className={buttonVariants({ variant: 'destructive' })}
             >
-              {cancelSubscription.isPending ? 'Cancelling...' : 'Cancel Subscription'}
+              {cancelSubscription.isPending ? 'Cancelling…' : 'Cancel subscription'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Reactivate Subscription Dialog */}
+      {/* Reactivate */}
       <AlertDialog open={reactivateDialogOpen} onOpenChange={setReactivateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reactivate Subscription</AlertDialogTitle>
+            <AlertDialogTitle>Reactivate your subscription?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your {subscription?.planName ?? 'subscription'} will continue as normal and keep
-              renewing
-              {subscription?.currentPeriodEnd ? ` on ${formatDate(subscription.currentPeriodEnd)}` : ''}
-              {' '}instead of cancelling. You can cancel again anytime.
+              {subscription?.planName ?? 'Your plan'} carries on and renews
+              {periodEnd ? ` on ${periodEnd}` : ''} instead of ending. You can cancel again any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Cancelling</AlertDialogCancel>
+            <AlertDialogCancel>Keep cancelling</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleReactivate}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleReactivate();
+              }}
               disabled={reactivateSubscription.isPending}
             >
-              {reactivateSubscription.isPending ? 'Reactivating...' : 'Reactivate Subscription'}
+              {reactivateSubscription.isPending ? 'Reactivating…' : 'Reactivate'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Unified Plan Change Confirm Dialog */}
-      <AlertDialog open={!!confirmTarget} onOpenChange={(o) => !o && setConfirmTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmTarget?.kind === 'upgrade' ? `Upgrade to ${confirmTarget?.plan.name}?` : `Switch to ${confirmTarget?.plan.name}?`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmTarget?.kind === 'upgrade'
-                ? `You'll be charged ${formatPrice(confirmTarget.plan.price, confirmTarget.plan.currency, confirmTarget.plan.interval)} today and your billing period restarts now.`
-                : `No charge now. You keep ${subscription?.planName} until ${subscription?.currentPeriodEnd ? formatDate(subscription.currentPeriodEnd) : 'period end'}, then switch to ${confirmTarget?.plan.name}.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmPlanChange}>
-              {confirmTarget?.kind === 'upgrade'
-                ? `Pay ${formatPrice(confirmTarget.plan.price, confirmTarget.plan.currency, confirmTarget.plan.interval)} & upgrade`
-                : 'Schedule downgrade'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete Account Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
-        setDeleteDialogOpen(open);
-        if (!open) setDeleteConfirmation('');
-      }}>
+      {/* Delete account */}
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setDeleteConfirmation('');
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
-              Delete Account
+              Delete this account?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                This action <strong>cannot be undone</strong>. This will permanently delete your account
-                and remove all associated data including:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>All brands and their settings</li>
-                <li>All tickets and comments</li>
-                <li>All attachments and files</li>
-                <li>All team members and permissions</li>
-                <li>Your subscription will be cancelled</li>
-              </ul>
-              <p className="pt-2">
-                Please type <strong>DELETE</strong> to confirm:
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  This <strong>cannot be undone</strong>. It permanently deletes:
+                </p>
+                <ul className="list-inside list-disc space-y-1 text-sm">
+                  <li>Every brand and its settings</li>
+                  <li>Every ticket, comment and attachment</li>
+                  <li>All team members and their access</li>
+                </ul>
+                <p>The subscription is cancelled too. Type <strong>DELETE</strong> to confirm.</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="py-2">
-            <Input
-              placeholder="Type DELETE to confirm"
-              value={deleteConfirmation}
-              onChange={(e) => setDeleteConfirmation(e.target.value)}
-              className="font-mono"
-            />
-          </div>
+          <Input
+            placeholder="DELETE"
+            value={deleteConfirmation}
+            onChange={(e) => setDeleteConfirmation(e.target.value)}
+            className="font-mono"
+            aria-label="Type DELETE to confirm"
+          />
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteAccount}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDeleteAccount();
+              }}
               disabled={deleteConfirmation !== 'DELETE' || deleteAccount.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={buttonVariants({ variant: 'destructive' })}
             >
-              {deleteAccount.isPending ? 'Deleting...' : 'Delete Account'}
+              {deleteAccount.isPending ? 'Deleting…' : 'Delete account'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
