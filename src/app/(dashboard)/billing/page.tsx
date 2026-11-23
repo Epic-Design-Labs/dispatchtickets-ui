@@ -148,6 +148,8 @@ export default function BillingPage() {
   const confirmCheckout = useConfirmCheckout();
   const deleteAccount = useDeleteAccount();
 
+  // Captured once: comparing against Date.now() during render is impure.
+  const [loadedAt] = useState(() => Date.now());
   const [changeOpen, setChangeOpen] = useState(false);
   const [changeKey, setChangeKey] = useState(0);
   const openChangePlan = () => {
@@ -173,7 +175,7 @@ export default function BillingPage() {
   // The API spells it both ways depending on the provider.
   const isEnded = subscription?.status === 'canceled' || subscription?.status === 'cancelled';
   const periodPast =
-    !!subscription?.currentPeriodEnd && new Date(subscription.currentPeriodEnd).getTime() < Date.now();
+    !!subscription?.currentPeriodEnd && new Date(subscription.currentPeriodEnd).getTime() < loadedAt;
   const canCancel = !!subscription && !subscription.cancelAtPeriodEnd && !isFree && !isEnded;
   const pendingOn = formatLongDate(subscription?.pendingEffectiveAt);
 
