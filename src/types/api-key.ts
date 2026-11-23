@@ -7,6 +7,8 @@ export interface ApiKey {
   expiresAt: string | null;
   allBrands: boolean;
   brandIds: string[];
+  /** Used by Dispatch itself (e.g. the support portal); the server refuses to revoke it. */
+  isSystem?: boolean;
   // Only returned on creation
   key?: string;
 }

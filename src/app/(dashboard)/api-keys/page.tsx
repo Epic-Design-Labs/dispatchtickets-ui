@@ -1,434 +1,409 @@
 'use client';
 
-import { useState } from 'react';
-import { formatDateTime } from '@/lib/utils';
+import { useMemo, useState } from 'react';
+import {
+  BookOpen,
+  Clock,
+  Copy,
+  Globe,
+  KeyRound,
+  Layers,
+  Pencil,
+  Plus,
+  Search,
+  ShieldX,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { Key, Plus, Trash2, Copy, Check, Shield, Globe, ShieldX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { StatusTabs, type StatusTabDef } from '@/components/tickets/status-tabs';
+import { BrandTile } from '@/components/brand-tile';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '@/lib/hooks/use-api-keys';
+  CreateApiKeyDialog,
+  EditAccessDialog,
+  NewKeyDialog,
+  RevokeKeyDialog,
+  type BrandOption,
+} from '@/components/api-keys/api-key-dialogs';
+import { useApiKeys } from '@/lib/hooks/use-api-keys';
 import { useBrands } from '@/lib/hooks';
 import { useAuth } from '@/providers';
-import { ApiKey } from '@/types/api-key';
-import { Header } from '@/components/layout';
+import { formatDate, formatDateTime, formatTimeAgo } from '@/lib/utils';
+import type { ApiKey } from '@/types/api-key';
 
-function formatDate(date: string | null) {
-  if (!date) return 'Never';
-  return formatDateTime(date);
+const STALE_DAYS = 60;
+const DAY = 864e5;
+
+type Filter = 'all' | 'wide' | 'unused';
+type Sort = 'used' | 'created' | 'name';
+
+const TABS: StatusTabDef[] = [
+  { key: 'all', label: 'All keys', icon: Layers, tone: 'bg-secondary text-muted-foreground' },
+  { key: 'wide', label: 'All-brand access', icon: Globe, tone: 'bg-warning-soft text-warning-foreground' },
+  { key: 'unused', label: 'Unused', icon: Clock, tone: 'bg-secondary text-muted-foreground' },
+];
+
+/** Never used, or not in the last 60 days. */
+function isUnused(k: ApiKey, now: number) {
+  return !k.lastUsedAt || now - new Date(k.lastUsedAt).getTime() > STALE_DAYS * DAY;
 }
 
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <Button variant="ghost" size="sm" onClick={copy}>
-      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-    </Button>
-  );
+function lastUsedLine(k: ApiKey) {
+  return k.lastUsedAt ? `Last used ${formatTimeAgo(k.lastUsedAt)}` : 'Never used';
 }
 
-function CreateKeyDialog({ onSuccess }: { onSuccess: (key: ApiKey) => void }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [allBrands, setAllBrands] = useState(true);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+function matches(k: ApiKey, f: Filter, now: number) {
+  if (f === 'wide') return k.allBrands;
+  if (f === 'unused') return isUnused(k, now);
+  return true;
+}
 
-  const { data: brands } = useBrands();
-  const createKey = useCreateApiKey();
-
-  const handleCreate = async () => {
-    try {
-      const key = await createKey.mutateAsync({
-        name: name.trim() || undefined,
-        allBrands,
-        brandIds: allBrands ? undefined : selectedBrands,
-      });
-      onSuccess(key);
-      setOpen(false);
-      setName('');
-      setAllBrands(true);
-      setSelectedBrands([]);
-    } catch {
-      toast.error('Failed to create API key');
-    }
-  };
-
-  const toggleBrand = (brandId: string) => {
-    setSelectedBrands((prev) =>
-      prev.includes(brandId)
-        ? prev.filter((id) => id !== brandId)
-        : [...prev, brandId]
+function Access({ k, brandsById }: { k: ApiKey; brandsById: Map<string, BrandOption> }) {
+  if (k.allBrands) {
+    return (
+      <span
+        className="bg-warning-soft text-warning-foreground inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+        title="Can read and change tickets in every brand, including new ones"
+      >
+        <Globe className="h-3.5 w-3.5" />
+        All brands
+      </span>
     );
-  };
-
+  }
+  const live = k.brandIds.map((id) => brandsById.get(id)).filter((b): b is BrandOption => !!b);
+  if (live.length === 0) {
+    return <span className="text-muted-foreground text-sm">No brands</span>;
+  }
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create API Key
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create API Key</DialogTitle>
-          <DialogDescription>
-            Create a new API key for accessing the Dispatch Tickets API.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name (optional)</Label>
-            <Input
-              id="name"
-              placeholder="e.g., Production API Key"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Access all brands</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow this key to access all current and future brands
-                </p>
-              </div>
-              <Switch checked={allBrands} onCheckedChange={setAllBrands} />
-            </div>
-
-            {allBrands && (
-              <p className="text-warning-foreground text-sm">
-                This key can read and change every brand&apos;s tickets, including brands you add
-                later. For a key that serves one integration, turn this off and pick its brands.
-              </p>
-            )}
-
-            {!allBrands && brands && brands.length > 0 && (
-              <div className="border rounded-md p-3 space-y-2">
-                <Label className="text-sm font-medium">Select brands</Label>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {brands.map((brand) => (
-                    <label
-                      key={brand.id}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={selectedBrands.includes(brand.id)}
-                        onCheckedChange={() => toggleBrand(brand.id)}
-                      />
-                      <span className="text-sm">{brand.name}</span>
-                    </label>
-                  ))}
-                </div>
-                {selectedBrands.length === 0 && (
-                  <p className="text-warning-foreground text-sm">
-                    Select at least one brand
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={createKey.isPending || (!allBrands && selectedBrands.length === 0)}
-          >
-            {createKey.isPending ? 'Creating...' : 'Create Key'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function NewKeyDisplay({ apiKey, onClose }: { apiKey: ApiKey; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
-
-  const copyKey = async () => {
-    if (apiKey.key) {
-      await navigator.clipboard.writeText(apiKey.key);
-      setCopied(true);
-      toast.success('API key copied to clipboard');
-    }
-  };
-
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Check className="text-success-foreground h-5 w-5" />
-            API Key Created
-          </DialogTitle>
-          <DialogDescription>
-            Copy your API key now. You won&apos;t be able to see it again.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="py-4">
-          <div className="bg-muted p-3 rounded-lg font-mono text-sm break-all flex items-start gap-2">
-            <code className="flex-1">{apiKey.key}</code>
-            <Button variant="ghost" size="sm" onClick={copyKey}>
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Store this key securely. It will only be shown once.
-          </p>
-        </div>
-
-        <DialogFooter>
-          <Button onClick={onClose}>Done</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function ApiKeyRow({ apiKey, brands }: { apiKey: ApiKey; brands: { id: string; name: string }[] }) {
-  const [revokeOpen, setRevokeOpen] = useState(false);
-  const revokeKey = useRevokeApiKey();
-
-  const handleRevoke = async () => {
-    try {
-      await revokeKey.mutateAsync(apiKey.id);
-      toast.success('API key revoked');
-      setRevokeOpen(false);
-    } catch {
-      toast.error('Failed to revoke API key');
-    }
-  };
-
-  const getBrandNames = () => {
-    if (apiKey.allBrands) return null;
-    return apiKey.brandIds
-      .map((id) => brands.find((b) => b.id === id)?.name || id)
-      .join(', ');
-  };
-
-  return (
-    <TableRow>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <Key className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <p className="font-medium">{apiKey.name}</p>
-            <p className="text-sm text-muted-foreground font-mono">{apiKey.prefix}...</p>
-          </div>
-        </div>
-      </TableCell>
-      <TableCell>
-        {apiKey.allBrands ? (
-          <Badge variant="secondary" className="gap-1">
-            <Globe className="h-3 w-3" />
-            All brands
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="gap-1">
-            <Shield className="h-3 w-3" />
-            {apiKey.brandIds.length} brand{apiKey.brandIds.length !== 1 ? 's' : ''}
-          </Badge>
-        )}
-        {!apiKey.allBrands && (
-          <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]">
-            {getBrandNames()}
-          </p>
-        )}
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {formatDate(apiKey.createdAt)}
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {formatDate(apiKey.lastUsedAt)}
-      </TableCell>
-      <TableCell>
-        <AlertDialog open={revokeOpen} onOpenChange={setRevokeOpen}>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive hover:bg-danger-soft"
-            onClick={() => setRevokeOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Revoke API Key</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to revoke &quot;{apiKey.name}&quot;? This action cannot
-                be undone. Any applications using this key will lose access immediately.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleRevoke}
-                className="bg-destructive hover:bg-destructive/90"
-              >
-                {revokeKey.isPending ? 'Revoking...' : 'Revoke Key'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </TableCell>
-    </TableRow>
+    <span className="inline-flex max-w-[240px] items-center gap-2" title={live.map((b) => b.name).join(', ')}>
+      <span className="flex -space-x-1.5">
+        {live.slice(0, 3).map((b) => (
+          <BrandTile key={b.id} name={b.name} iconUrl={b.iconUrl} className="ring-card ring-2" />
+        ))}
+      </span>
+      <span className="truncate text-sm">
+        {live[0].name}
+        {live.length > 1 && <span className="text-muted-foreground"> +{live.length - 1}</span>}
+      </span>
+    </span>
   );
 }
 
 export default function ApiKeysPage() {
   const { session } = useAuth();
-  const { data: apiKeys, isLoading } = useApiKeys();
-  const { data: brands } = useBrands();
+  const canManage = session?.orgRole === 'owner' || session?.orgRole === 'admin';
+  const { data: keys, isLoading } = useApiKeys();
+  const { data: brandList } = useBrands();
+
+  const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<Sort>('used');
+  const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<ApiKey | null>(null);
+  const [editing, setEditing] = useState<ApiKey | null>(null);
+  const [revoking, setRevoking] = useState<ApiKey | null>(null);
 
-  const canManageApiKeys = session?.orgRole === 'owner' || session?.orgRole === 'admin';
+  const brands: BrandOption[] = useMemo(
+    () =>
+      [...(brandList ?? [])]
+        .map((b) => ({ id: b.id, name: b.name, iconUrl: b.iconUrl }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [brandList],
+  );
+  const brandsById = useMemo(() => new Map(brands.map((b) => [b.id, b])), [brands]);
 
-  if (!canManageApiKeys) {
+  const all = useMemo(() => keys ?? [], [keys]);
+  // eslint-disable-next-line react-hooks/purity -- a render-time clock is fine for "N days ago"
+  const now = Date.now();
+  const counts = Object.fromEntries(
+    TABS.map((t) => [t.key, all.filter((k) => matches(k, t.key as Filter, now)).length]),
+  );
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const text = (k: ApiKey) =>
+      [
+        k.name,
+        k.prefix,
+        k.allBrands ? 'all brands' : k.brandIds.map((id) => brandsById.get(id)?.name ?? '').join(' '),
+      ]
+        .join(' ')
+        .toLowerCase();
+    const time = (s: string | null) => (s ? new Date(s).getTime() : 0);
+    return all
+      .filter((k) => matches(k, filter, now) && (!q || text(k).includes(q)))
+      .sort((a, b) =>
+        sort === 'name'
+          ? a.name.localeCompare(b.name)
+          : sort === 'created'
+            ? time(b.createdAt) - time(a.createdAt)
+            : time(b.lastUsedAt) - time(a.lastUsedAt),
+      );
+  }, [all, filter, query, sort, brandsById, now]);
+
+  if (!canManage) {
     return (
-      <div className="flex flex-col">
-        <Header title="API Keys" />
-        <div className="flex-1 p-4 md:p-6">
-          <Card className="max-w-4xl">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <ShieldX className="h-12 w-12 text-muted-foreground mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-              <p className="text-muted-foreground text-center">
-                Only owners and admins can manage API keys.
-              </p>
-            </CardContent>
-          </Card>
+      <div className="p-6">
+        <div className="bg-card flex max-w-xl flex-col items-center rounded-xl border px-6 py-14 text-center">
+          <ShieldX className="text-muted-foreground mb-4 h-10 w-10" />
+          <h1 className="font-semibold">Only owners and admins can manage API keys</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Ask an owner or admin if you need a key.</p>
         </div>
       </div>
     );
   }
 
+  const copyPrefix = async (prefix: string) => {
+    try {
+      await navigator.clipboard.writeText(prefix);
+      toast.success('Key prefix copied. The full key is only shown when it’s created.');
+    } catch {
+      toast.error('Could not copy');
+    }
+  };
+
+  const unusedCount = counts.unused ?? 0;
+
   return (
-    <div className="flex flex-col">
-      <Header title="API Keys" />
-      <div className="flex-1 p-4 md:p-6">
-        <div className="max-w-4xl space-y-6">
-          <div className="flex items-center justify-between">
-            <p className="text-muted-foreground">
-              Manage API keys for accessing the Dispatch Tickets API
-            </p>
-            <CreateKeyDialog onSuccess={setNewKey} />
+    <div className="space-y-5 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">API keys</h1>
+          <p className="text-muted-foreground flex flex-wrap items-center gap-x-3">
+            Connect apps and scripts to the Dispatch Tickets API.
+            <a
+              href="https://dispatchtickets.com/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground inline-flex items-center gap-1 text-sm font-medium hover:underline"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              API docs
+            </a>
+          </p>
+        </div>
+        <Button onClick={() => setCreating(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create API key
+        </Button>
+      </div>
+
+      {!isLoading && unusedCount > 0 && filter !== 'unused' && (
+        <div className="bg-warning-soft text-warning-foreground flex flex-wrap items-center gap-3 rounded-lg px-4 py-2.5 text-sm">
+          <Clock className="h-4 w-4 shrink-0" />
+          <span className="flex-1">
+            <b>
+              {unusedCount} {unusedCount === 1 ? 'key hasn’t' : 'keys haven’t'}
+            </b>{' '}
+            been used in over {STALE_DAYS} days or never at all. Revoking keys you don&apos;t need keeps your
+            data safer.
+          </span>
+          <Button size="sm" variant="outline" onClick={() => setFilter('unused')}>
+            Review
+          </Button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <StatusTabs
+          tabs={TABS}
+          defaultKey="all"
+          value={filter}
+          onSelect={(key) => setFilter(key as Filter)}
+          counts={counts}
+          loading={isLoading}
+          ariaLabel="Filter API keys"
+        />
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name, key or brand"
+              aria-label="Search API keys"
+              className="w-[240px] pl-8"
+            />
           </div>
-
-        {newKey && <NewKeyDisplay apiKey={newKey} onClose={() => setNewKey(null)} />}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Keys</CardTitle>
-              <CardDescription>
-                API keys are used to authenticate requests to the Dispatch Tickets API.
-                Keys can be scoped to specific brands for security.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ) : apiKeys && apiKeys.length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Scope</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Last Used</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {apiKeys.map((key) => (
-                        <ApiKeyRow key={key.id} apiKey={key} brands={brands || []} />
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Key className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                  <p className="text-muted-foreground">No API keys created yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Create your first API key to start using the API
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Brand Scoping</CardTitle>
-              <CardDescription>
-                Limit API key access to specific brands for enhanced security
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>
-                <strong className="text-foreground">All brands:</strong> The key can access
-                all workspaces under your account, including any created in the future.
-              </p>
-              <p>
-                <strong className="text-foreground">Specific brands:</strong> The key can
-                only access the selected brands. Useful for partner integrations or
-                microservices that should only touch certain data.
-              </p>
-            </CardContent>
-          </Card>
+          <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+            <SelectTrigger className="w-[150px]" aria-label="Sort">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="used">Recently used</SelectItem>
+              <SelectItem value="created">Newest</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
+
+      <div className="bg-card overflow-x-auto rounded-xl border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-muted-foreground border-b text-left text-xs font-medium">
+              <th className="px-4 py-2.5 font-medium">Name</th>
+              <th className="px-4 py-2.5 font-medium">Access</th>
+              <th className="px-4 py-2.5 font-medium">Last used</th>
+              <th className="px-4 py-2.5 font-medium">Created</th>
+              <th className="w-[96px] px-4 py-2.5" />
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {isLoading ? (
+              [1, 2, 3].map((i) => (
+                <tr key={i}>
+                  <td className="px-4 py-3" colSpan={5}>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : visible.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-14 text-center">
+                  {all.length === 0 ? (
+                    <>
+                      <KeyRound className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
+                      <h3 className="font-semibold">No API keys yet</h3>
+                      <p className="text-muted-foreground mt-1 text-sm">
+                        Create one to connect an app or script to your tickets.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="font-semibold">
+                        {query.trim() ? `No keys match “${query.trim()}”` : 'No keys here'}
+                      </h3>
+                      <p className="text-muted-foreground mt-1 text-sm">
+                        {filter === 'unused' && !query.trim()
+                          ? 'Every key has been used recently.'
+                          : 'Try a different search or filter.'}
+                      </p>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ) : (
+              visible.map((k) => {
+                const stale = k.lastUsedAt && isUnused(k, now);
+                return (
+                  <tr key={k.id} className="group">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="bg-muted text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+                          <KeyRound className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{k.name}</div>
+                          <button
+                            type="button"
+                            onClick={() => copyPrefix(k.prefix)}
+                            className="text-muted-foreground hover:bg-muted hover:text-foreground -ml-1.5 inline-flex items-center gap-1.5 rounded px-1.5 font-mono text-xs"
+                            title="Copy key prefix"
+                          >
+                            {k.prefix}••••
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Access k={k} brandsById={brandsById} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {!k.lastUsedAt ? (
+                        <span className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium">
+                          Never used
+                        </span>
+                      ) : (
+                        <span
+                          className={stale ? 'text-warning-foreground inline-flex items-center gap-1' : ''}
+                          title={formatDateTime(k.lastUsedAt)}
+                        >
+                          {stale && <Clock className="h-3.5 w-3.5" />}
+                          {formatTimeAgo(k.lastUsedAt)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-muted-foreground px-4 py-3" title={formatDateTime(k.createdAt)}>
+                      {formatDate(k.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {k.isSystem ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-muted-foreground block text-right text-xs">Used by Dispatch</span>
+                          </TooltipTrigger>
+                          <TooltipContent>Dispatch&apos;s own features need this key, so it can&apos;t be changed here.</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <div className="flex justify-end gap-0.5 opacity-60 group-focus-within:opacity-100 group-hover:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setEditing(k)}
+                            aria-label={`Change access for ${k.name}`}
+                            title="Change access"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hover:bg-danger-soft hover:text-destructive h-8 w-8"
+                            onClick={() => setRevoking(k)}
+                            aria-label={`Revoke ${k.name}`}
+                            title="Revoke"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <CreateApiKeyDialog
+        open={creating}
+        onOpenChange={setCreating}
+        brands={brands}
+        onCreated={(key) => {
+          setCreating(false);
+          setFilter('all');
+          setQuery('');
+          setSort('created');
+          setNewKey(key);
+        }}
+      />
+      <NewKeyDialog apiKey={newKey} onClose={() => setNewKey(null)} />
+      <EditAccessDialog apiKey={editing} onClose={() => setEditing(null)} brands={brands} />
+      <RevokeKeyDialog
+        apiKey={revoking}
+        onClose={() => setRevoking(null)}
+        lastUsedText={revoking ? lastUsedLine(revoking) : ''}
+      />
     </div>
   );
 }
