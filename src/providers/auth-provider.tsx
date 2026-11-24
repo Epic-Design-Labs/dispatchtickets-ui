@@ -60,9 +60,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SESSION_TOKEN_KEY = 'dispatch_session_token';
 
+/**
+ * Always null now: sessions are Clerk's. A leftover Stackbe token is removed
+ * so nothing sends it (the API no longer accepts one) -- see lib/api/client.ts.
+ */
 export function getSessionToken(): string | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem(SESSION_TOKEN_KEY);
+    try {
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+    } catch {
+      // Storage blocked.
+    }
   }
   return null;
 }

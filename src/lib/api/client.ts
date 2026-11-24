@@ -26,9 +26,19 @@ export function setClerkTokenGetter(
   }
 }
 
+/**
+ * Stackbe session tokens are no longer accepted: the API authenticates admin
+ * sessions through Clerk only. A token left in this browser from before the
+ * Clerk move used to be sent AHEAD of Clerk's, so it is removed on sight and
+ * never sent -- the request falls through to the Clerk session.
+ */
 function getStackbeToken(): string | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem(SESSION_TOKEN_KEY);
+    try {
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+    } catch {
+      // Storage blocked: nothing stored to send either.
+    }
   }
   return null;
 }

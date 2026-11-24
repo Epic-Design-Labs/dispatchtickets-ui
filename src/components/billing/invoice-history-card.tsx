@@ -32,18 +32,15 @@ import { toast } from 'sonner';
 const invoiceFetcher: InvoiceFetcher = async (path, init) => {
   let token: string | null = null;
   if (typeof window !== 'undefined') {
-    token = localStorage.getItem('dispatch_session_token');
-    if (!token) {
-      // Clerk-authenticated users (no Stackbe session token): fall back to the
-      // Clerk JWT, mirroring the axios client's interceptor.
-      try {
-        const clerk = (window as unknown as {
-          Clerk?: { session?: { getToken?: () => Promise<string | null> } };
-        }).Clerk;
-        token = (await clerk?.session?.getToken?.()) ?? null;
-      } catch {
-        token = null;
-      }
+    // The Clerk JWT, as the axios client sends. The old Stackbe session token
+    // is no longer accepted anywhere.
+    try {
+      const clerk = (window as unknown as {
+        Clerk?: { session?: { getToken?: () => Promise<string | null> } };
+      }).Clerk;
+      token = (await clerk?.session?.getToken?.()) ?? null;
+    } catch {
+      token = null;
     }
   }
   const headers = new Headers(init?.headers);
