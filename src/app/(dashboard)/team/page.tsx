@@ -2,9 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { CheckCircle2, Radio, Search, ShieldCheck, Star, Users, MailPlus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -21,7 +19,6 @@ import {
   useResendInvite,
   useTeamMembers,
   useTeamMetrics,
-  useUpdateOrganization,
 } from '@/lib/hooks';
 import { useTeamPresence } from '@/lib/hooks/use-presence';
 import type { PresenceStatus } from '@/lib/api/presence';
@@ -63,20 +60,16 @@ export default function TeamPage() {
   const { data: presence } = useTeamPresence();
   const [range] = useState(last30Days);
   const { data: metrics, isLoading: metricsLoading } = useTeamMetrics(range);
-  const { data: org, isLoading: orgLoading } = useOrganization();
-  const updateOrg = useUpdateOrganization();
+  const { data: org } = useOrganization();
   const resendInvite = useResendInvite();
 
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('resolved');
   const [resendingId, setResendingId] = useState<string | null>(null);
-  // Null until the owner types, so the field tracks the saved name otherwise.
-  const [orgDraft, setOrgDraft] = useState<string | null>(null);
 
   const role = (session?.orgRole as OrgRole) || 'member';
   const canInvite = role === 'owner' || role === 'admin';
-  const isOwner = role === 'owner';
 
   // Every member and invite, with the figures joined on by member id. Built
   // from the member list rather than from the metrics: a resolver's name only
@@ -139,10 +132,6 @@ export default function TeamPage() {
   const satisfaction = ratings
     ? Math.round(people.reduce((sum, r) => sum + (r.csatScore ?? 0) * r.csatCount, 0) / ratings)
     : null;
-  const ownerName = people.find((r) => r.member.role === 'owner')?.name;
-
-  const orgName = orgDraft ?? org?.name ?? '';
-  const orgChanged = orgDraft !== null && orgDraft.trim() !== (org?.name ?? '');
 
   const handleResend = async (member: TeamMember) => {
     setResendingId(member.id);
@@ -153,20 +142,6 @@ export default function TeamPage() {
       toast.error('Failed to resend the invite');
     } finally {
       setResendingId(null);
-    }
-  };
-
-  const handleSaveOrgName = async () => {
-    if (!orgName.trim()) {
-      toast.error('Organization name is required');
-      return;
-    }
-    try {
-      await updateOrg.mutateAsync(orgName.trim());
-      setOrgDraft(null);
-      toast.success('Organization name updated');
-    } catch {
-      toast.error('Failed to update organization name');
     }
   };
 
@@ -251,38 +226,6 @@ export default function TeamPage() {
         empty={empty}
       />
 
-      <section className="bg-card flex flex-wrap items-start gap-x-10 gap-y-4 rounded-xl border p-5">
-        <div className="max-w-xs">
-          <h2 className="font-semibold">Organization</h2>
-          <p className="text-muted-foreground text-sm">The name appears in invite emails and team lists.</p>
-        </div>
-        <div className="min-w-[240px] flex-1 space-y-2 sm:max-w-sm">
-          <Label htmlFor="orgName">Organization name</Label>
-          {orgLoading ? (
-            <Skeleton className="h-9 w-full" />
-          ) : (
-            <div className="flex gap-2">
-              <Input
-                id="orgName"
-                value={orgName}
-                onChange={(e) => setOrgDraft(e.target.value)}
-                disabled={!isOwner}
-                placeholder="e.g., Epic Design Labs"
-              />
-              {isOwner && orgChanged && (
-                <Button onClick={handleSaveOrgName} disabled={updateOrg.isPending}>
-                  {updateOrg.isPending ? 'Saving...' : 'Save'}
-                </Button>
-              )}
-            </div>
-          )}
-          {!isOwner && (
-            <p className="text-muted-foreground text-xs">
-              Only the owner{ownerName ? ` (${ownerName})` : ''} can change this.
-            </p>
-          )}
-        </div>
-      </section>
     </div>
   );
 }

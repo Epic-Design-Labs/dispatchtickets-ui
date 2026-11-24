@@ -38,6 +38,7 @@ import {
   Key,
   Plug,
   Rocket,
+  Settings2,
   BarChart3,
   Users,
   CreditCard,
@@ -238,6 +239,12 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
                 icon={<Users className={ICON} />}
                 label="Team"
                 active={pathname === '/team'}
+              />
+              <NavItem
+                href="/workspace"
+                icon={<Settings2 className={ICON} />}
+                label="Settings"
+                active={pathname === '/workspace'}
               />
               {(session?.orgRole === 'owner' || session?.orgRole === 'admin') && (
                 <NavItem

@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { ThrottleCheckout } from '@usethrottle/checkout-sdk';
 import {
   useCancelPendingChange,
   useCancelSubscription,
   useConfirmCheckout,
-  useDeleteAccount,
   usePlans,
   useReactivateSubscription,
   useSubscription,
@@ -19,7 +19,6 @@ import {
 import { useAuth } from '@/providers/auth-provider';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Pill } from '@/components/tickets/pill';
 import {
@@ -146,7 +145,6 @@ export default function BillingPage() {
   const cancelPendingChange = useCancelPendingChange();
   const upgradeSubscription = useUpgradeSubscription();
   const confirmCheckout = useConfirmCheckout();
-  const deleteAccount = useDeleteAccount();
 
   // Captured once: comparing against Date.now() during render is impure.
   const [loadedAt] = useState(() => Date.now());
@@ -159,8 +157,6 @@ export default function BillingPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ plan: Plan; kind: 'upgrade' | 'downgrade' } | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [changing, setChanging] = useState(false);
   // Embed checkout (Throttle provider only)
   const [embedPayload, setEmbedPayload] = useState<EmbedPayload | null>(null);
@@ -212,18 +208,6 @@ export default function BillingPage() {
       toast.success('Scheduled change cancelled. You keep your current plan.');
     } catch {
       toast.error('Could not cancel the scheduled change');
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmation !== 'DELETE') return;
-    try {
-      const result = await deleteAccount.mutateAsync({ confirmation: 'DELETE' });
-      toast.success(result.message);
-      setDeleteDialogOpen(false);
-      window.location.href = '/login';
-    } catch {
-      toast.error('Could not delete the account');
     }
   };
 
@@ -435,24 +419,15 @@ export default function BillingPage() {
 
           <InvoiceHistoryCard />
 
-          {/* Delete account */}
-          <section className="border-destructive/40 rounded-xl border">
-            <div className="flex flex-wrap items-center justify-between gap-4 p-5">
-              <div className="max-w-md">
-                <h2 className="text-destructive flex items-center gap-2 font-semibold">
-                  <AlertTriangle className="h-4 w-4" />
-                  Delete account
-                </h2>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  Permanently deletes every brand, ticket and setting, and cancels the subscription.
-                  {!isOwner && ' Only the account owner can do this.'}
-                </p>
-              </div>
-              <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)} disabled={!isOwner}>
-                Delete account
-              </Button>
-            </div>
-          </section>
+          {isOwner && (
+            <p className="text-muted-foreground text-sm">
+              To delete the workspace, go to{' '}
+              <Link href="/workspace" className="text-foreground underline">
+                Workspace settings
+              </Link>
+              .
+            </p>
+          )}
         </>
       )}
 
@@ -597,56 +572,6 @@ export default function BillingPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete account */}
-      <AlertDialog
-        open={deleteDialogOpen}
-        onOpenChange={(open) => {
-          setDeleteDialogOpen(open);
-          if (!open) setDeleteConfirmation('');
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Delete this account?
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p>
-                  This <strong>cannot be undone</strong>. It permanently deletes:
-                </p>
-                <ul className="list-inside list-disc space-y-1 text-sm">
-                  <li>Every brand and its settings</li>
-                  <li>Every ticket, comment and attachment</li>
-                  <li>All team members and their access</li>
-                </ul>
-                <p>The subscription is cancelled too. Type <strong>DELETE</strong> to confirm.</p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Input
-            placeholder="DELETE"
-            value={deleteConfirmation}
-            onChange={(e) => setDeleteConfirmation(e.target.value)}
-            className="font-mono"
-            aria-label="Type DELETE to confirm"
-          />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void handleDeleteAccount();
-              }}
-              disabled={deleteConfirmation !== 'DELETE' || deleteAccount.isPending}
-              className={buttonVariants({ variant: 'destructive' })}
-            >
-              {deleteAccount.isPending ? 'Deleting…' : 'Delete account'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
