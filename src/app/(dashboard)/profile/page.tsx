@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
-import { SignedIn, SignedOut, useClerk } from '@clerk/nextjs';
+import { SignedIn, useClerk } from '@clerk/nextjs';
 import { chatSoundEnabled, setChatSoundEnabled, subscribeChatSound } from '@/lib/live/chime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,6 @@ import { useProfile, useUpdateProfile, useUploadAvatar, useDeleteAvatar } from '
 import { useMyPresence, useSetMyPresence } from '@/lib/hooks/use-presence';
 import type { PresenceStatus } from '@/lib/api/presence';
 import { useAuth } from '@/providers';
-import { clearSessionToken } from '@/providers/auth-provider';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { getGravatarUrl } from '@/lib/gravatar';
@@ -97,7 +96,7 @@ function initialsOf(name: string, email?: string) {
 }
 
 export default function ProfilePage() {
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   const clerk = useClerk();
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
@@ -427,21 +426,11 @@ export default function ProfilePage() {
               variant="outline"
               size="sm"
               className="text-destructive hover:text-destructive"
-              onClick={() => {
-                // The API client sends a legacy session token ahead of Clerk's,
-                // so one left in this browser would outlive the Clerk sign-out.
-                clearSessionToken();
-                void clerk.signOut({ redirectUrl: '/login' });
-              }}
+              onClick={() => void clerk.signOut({ redirectUrl: '/login' })}
             >
               Sign out
             </Button>
           </SignedIn>
-          <SignedOut>
-            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={logout}>
-              Sign out
-            </Button>
-          </SignedOut>
         </div>
       </Section>
 

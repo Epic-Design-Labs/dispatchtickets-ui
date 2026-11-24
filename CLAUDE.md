@@ -15,36 +15,31 @@ This is **Dispatch Tickets UI**, an open-source admin dashboard for the Dispatch
 
 ## Authentication Flow
 
-The app uses **magic link authentication** via the Dispatch Tickets API:
+Sign-in is **Clerk only** (`@clerk/nextjs`). Clerk production keys are
+domain-locked to dispatchtickets.com, so the admin cannot sign in on localhost.
 
-```
-/login → enter email → magic link sent
-     ↓
-/auth/callback?token=JWT → validates & stores session
-     ↓
-/connect (if org not connected) → one-time API key setup
-     ↓
-/workspaces → dashboard
-```
+- `ClerkTokenBridge` hands Clerk's `getToken` to the axios client
+  (`src/lib/api/client.ts`), which sends the Clerk JWT as the Bearer token.
+- `AuthProvider` reads `GET /auth/session` for `organizationId`, `memberId` and
+  `orgRole`, and re-reads it whenever Clerk's active org changes.
+- Org switching is Clerk's `<OrganizationSwitcher />` / `setActive`; the JWT's
+  `org_id` claim scopes every API request.
+- **Everything the UI hides by role is enforced again by the API.** This repo is
+  open source; client checks are cosmetic.
 
-### Key Auth Details
-
-- Session token stored in `localStorage` as `dispatch_session_token`
-- The callback receives a JWT directly from Stackbe (starts with `eyJ`)
-- API returns 401 "User does not belong to an organization" for new users - this is handled gracefully
-- `isConnected: false` means user needs to link their API key via `/connect`
+The old Stackbe magic-link flow (`/auth/callback`, `/connect`,
+`dispatch_session_token` in localStorage) was removed on 2026-11-24. A leftover
+token in a browser is deleted on load and never sent.
 
 ## Project Structure
 
 ```
 src/
 ├── app/
-│   ├── (auth)/login/          # Magic link login page
-│   ├── (auth)/connect/        # API key connection (first-time)
+│   ├── (auth)/login/          # Clerk sign-in
 │   ├── (dashboard)/           # Protected routes (layout checks auth)
 │   │   ├── layout.tsx         # Auth guard - redirects if not authenticated/connected
 │   │   └── workspaces/        # Workspace and ticket pages
-│   └── auth/callback/         # Magic link callback handler
 ├── components/
 │   ├── ui/                    # shadcn/ui components
 │   ├── layout/                # Sidebar, Header, WorkspaceSwitcher
@@ -58,7 +53,7 @@ src/
 │   │   └── comments.ts        # Comment API calls
 │   └── hooks/                 # TanStack Query hooks (useTickets, useWorkspaces, etc.)
 ├── providers/
-│   ├── auth-provider.tsx      # Auth context (session, login, logout, connect)
+│   ├── auth-provider.tsx      # Session context (org, member id, role) on top of Clerk
 │   ├── query-provider.tsx     # TanStack Query setup
 │   └── index.tsx              # Combined providers export
 └── types/                     # TypeScript types (Ticket, Workspace, Comment, etc.)
@@ -66,13 +61,12 @@ src/
 
 ## API Integration
 
-**Base URL**: `https://dispatch-tickets-api.onrender.com/v1` (configurable via `NEXT_PUBLIC_API_URL`)
+**Base URL**: `https://api.dispatchtickets.com/v1` (configurable via `NEXT_PUBLIC_API_URL`)
 
 ### Auth Endpoints
-- `POST /auth/magic-link` - Send magic link email
-- `POST /auth/verify` - Verify token (for non-JWT tokens)
-- `GET /auth/session` - Get current session
-- `POST /auth/connect` - Link API key to organization
+- `GET /auth/session` - Current session (Clerk JWT)
+- `/auth/members*`, `/auth/organization`, `/auth/transfer-ownership`, `DELETE /auth/account` - team and account
+- `/auth/subscription*`, `/auth/payment-methods*`, `/auth/invoices` - Throttle billing
 
 ### Data Endpoints
 - `GET /workspaces` - List workspaces
@@ -115,21 +109,13 @@ npx shadcn@latest add [component-name]
 - **Route protection**: `src/app/(dashboard)/layout.tsx`
 - **Types**: `src/types/`
 
-## Known Issues / TODOs
-
-1. **API key source unclear**: The `/connect` page asks for an API key but it's not clear where users get this from Stackbe/Dispatch
-2. **Error handling**: Some API errors could have better user-facing messages
-
 ## Environment Variables
 
 ```env
-NEXT_PUBLIC_API_URL=https://dispatch-tickets-api.onrender.com/v1
+NEXT_PUBLIC_API_URL=https://api.dispatchtickets.com/v1
 ```
 
 ## Testing Authentication
 
-1. Go to `/login`
-2. Enter email
-3. Check email for magic link
-4. Click link → should land on `/connect` (if new user) or `/workspaces` (if already connected)
-5. On `/connect`, enter API key to link organization
+Deploy (see the root CLAUDE.md) and sign in at app.dispatchtickets.com: Clerk
+will not run on localhost with the production keys.

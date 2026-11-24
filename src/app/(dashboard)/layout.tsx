@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useAuth as useStackbeAuth } from '@/providers';
 import { useAuth as useClerkAuth } from '@clerk/nextjs';
 import { Sidebar, BrandNav, NotificationBell, CommandPalette } from '@/components/layout';
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
@@ -50,14 +49,11 @@ export default function DashboardLayout({
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
-  const stackbe = useStackbeAuth();
   const clerk = useClerkAuth();
-  // Clerk-signed-in users count as authenticated AND connected (their identity
-  // is fully wired via Clerk + the migration's users-table linking). Stackbe
-  // path continues to work for legacy customers who haven't migrated yet.
-  const isLoading = !clerk.isLoaded || (clerk.isSignedIn === false && stackbe.isLoading);
-  const isAuthenticated = clerk.isSignedIn === true || stackbe.isAuthenticated;
-  const isConnected = clerk.isSignedIn === true ? true : stackbe.isConnected;
+  // Clerk is the only sign-in. Wait for it to load before deciding, or a
+  // hydrating session cookie reads as signed out and bounces to /login.
+  const isLoading = !clerk.isLoaded;
+  const isAuthenticated = clerk.isSignedIn === true;
   const brandId = params.brandId as string | undefined;
   const { data: brands, isLoading: brandsLoading } = useBrands();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -75,15 +71,13 @@ export default function DashboardLayout({
     if (!isLoading) {
       if (!isAuthenticated) {
         router.replace('/login');
-      } else if (!isConnected) {
-        router.replace('/connect');
       }
     }
-  }, [isAuthenticated, isConnected, isLoading, router]);
+  }, [isAuthenticated, isLoading, router]);
 
   // Redirect to getting-started when no brands exist (unless already there or on allowed pages)
   useEffect(() => {
-    if (!isLoading && !brandsLoading && isAuthenticated && isConnected) {
+    if (!isLoading && !brandsLoading && isAuthenticated) {
       const hasBrands = brands && brands.length > 0;
       const isOnGettingStarted = pathname === '/getting-started';
       const isOnAllowedPage = pathname === '/profile' || pathname === '/team' ||
@@ -95,7 +89,7 @@ export default function DashboardLayout({
         router.replace('/getting-started');
       }
     }
-  }, [isLoading, brandsLoading, isAuthenticated, isConnected, brands, pathname, router]);
+  }, [isLoading, brandsLoading, isAuthenticated, brands, pathname, router]);
 
   if (isLoading) {
     return (
@@ -109,14 +103,6 @@ export default function DashboardLayout({
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Redirecting to login...</div>
-      </div>
-    );
-  }
-
-  if (!isConnected) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Redirecting to connect...</div>
       </div>
     );
   }

@@ -1,4 +1,4 @@
-export { apiClient, setApiKey, clearApiKey, hasApiKey } from './client';
+export { apiClient } from './client';
 export { brandsApi, workspacesApi } from './brands';
 export { ticketsApi } from './tickets';
 export { commentsApi } from './comments';

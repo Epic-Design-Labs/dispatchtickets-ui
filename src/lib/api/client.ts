@@ -2,7 +2,6 @@ import axios, { AxiosError, AxiosInstance } from 'axios';
 import { ApiError } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.dispatchtickets.com/v1';
-const SESSION_TOKEN_KEY = 'dispatch_session_token';
 
 /**
  * Module-level slot for Clerk's async getToken. The ClerkTokenBridge component
@@ -26,23 +25,6 @@ export function setClerkTokenGetter(
   }
 }
 
-/**
- * Stackbe session tokens are no longer accepted: the API authenticates admin
- * sessions through Clerk only. A token left in this browser from before the
- * Clerk move used to be sent AHEAD of Clerk's, so it is removed on sight and
- * never sent -- the request falls through to the Clerk session.
- */
-function getStackbeToken(): string | null {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.removeItem(SESSION_TOKEN_KEY);
-    } catch {
-      // Storage blocked: nothing stored to send either.
-    }
-  }
-  return null;
-}
-
 async function waitForClerkReady(maxMs = 5000): Promise<void> {
   await Promise.race([
     clerkReadyPromise,
@@ -58,25 +40,19 @@ function createApiClient(): AxiosInstance {
     },
   });
 
-  // Request interceptor — Stackbe session token wins; Clerk JWT is the
-  // fallback for users authenticated via @clerk/nextjs. If no Stackbe token
-  // is present we wait briefly for Clerk to be ready (up to 5s) so the
-  // first batch of hook-driven requests don't race the ClerkTokenBridge.
+  // Request interceptor: the Clerk JWT. Until the ClerkTokenBridge has
+  // registered Clerk's getter, wait briefly (up to 5s) so the first batch of
+  // hook-driven requests doesn't race it.
   client.interceptors.request.use(
     async (config) => {
       if (typeof window !== 'undefined') {
-        const stackbeToken = getStackbeToken();
-        if (stackbeToken) {
-          config.headers.Authorization = `Bearer ${stackbeToken}`;
-        } else {
-          if (!clerkTokenGetter) {
-            await waitForClerkReady();
-          }
-          if (clerkTokenGetter) {
-            const clerkToken = await clerkTokenGetter();
-            if (clerkToken) {
-              config.headers.Authorization = `Bearer ${clerkToken}`;
-            }
+        if (!clerkTokenGetter) {
+          await waitForClerkReady();
+        }
+        if (clerkTokenGetter) {
+          const clerkToken = await clerkTokenGetter();
+          if (clerkToken) {
+            config.headers.Authorization = `Bearer ${clerkToken}`;
           }
         }
       }
@@ -100,31 +76,7 @@ function createApiClient(): AxiosInstance {
 export const apiClient = createApiClient();
 
 export async function getAuthToken(): Promise<string | null> {
-  const stackbeToken = getStackbeToken();
-  if (stackbeToken) return stackbeToken;
   if (!clerkTokenGetter) await waitForClerkReady();
   if (clerkTokenGetter) return clerkTokenGetter();
   return null;
-}
-
-// Legacy helpers preserved for backwards compatibility with code that still
-// expects a Stackbe-style session token in localStorage. Safe to delete in
-// Phase 1e cleanup once nothing references them.
-export function setApiKey(key: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(SESSION_TOKEN_KEY, key);
-  }
-}
-
-export function clearApiKey(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(SESSION_TOKEN_KEY);
-  }
-}
-
-export function hasApiKey(): boolean {
-  if (typeof window !== 'undefined') {
-    return !!localStorage.getItem(SESSION_TOKEN_KEY);
-  }
-  return false;
 }

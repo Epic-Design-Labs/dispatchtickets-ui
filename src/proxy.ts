@@ -3,16 +3,11 @@ import { clerkMiddleware } from '@clerk/nextjs/server';
 /**
  * Clerk middleware for the admin app.
  *
- * The admin is dual-mode (Phase 1c): existing Stackbe customers authenticate
- * via the legacy magic-link flow; new Clerk-signup users authenticate via this
- * middleware. We do NOT call createRouteMatcher to gate routes — the existing
- * AuthProvider handles route protection client-side, and the API enforces
- * authorization server-side. This middleware exists so Clerk's <ClerkProvider>
- * can read auth state from the request context on every page load.
- *
- * When Stackbe is fully removed (Phase 1e), we'll add createRouteMatcher to
- * gate /(dashboard)/* server-side and remove the client-side auth-provider
- * fallback.
+ * Clerk is the only sign-in. We do NOT call createRouteMatcher to gate routes:
+ * the dashboard layout redirects signed-out visitors client-side, and the API
+ * enforces all authorization server-side (this UI is open source, so nothing
+ * here is a security boundary). The middleware exists so <ClerkProvider> can
+ * read auth state from the request context on every page load.
  */
 export default clerkMiddleware();
 
@@ -21,7 +16,7 @@ export const config = {
     // Run on every page route except Next internals, static assets, and the
     // invoice proxy (/api/throttle) — that route authenticates itself by
     // forwarding the caller's token to the DT API, and Clerk's verifier crashes
-    // on non-Clerk Bearer tokens (e.g. the legacy Stackbe session token).
+    // on Bearer tokens it did not issue.
     '/((?!_next|api/throttle|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     // Run on API routes too (the few there are — see admin/src/app/api/), but
     // not the self-authenticating invoice proxy.

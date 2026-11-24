@@ -32,8 +32,7 @@ import { toast } from 'sonner';
 const invoiceFetcher: InvoiceFetcher = async (path, init) => {
   let token: string | null = null;
   if (typeof window !== 'undefined') {
-    // The Clerk JWT, as the axios client sends. The old Stackbe session token
-    // is no longer accepted anywhere.
+    // The Clerk JWT, as the axios client sends.
     try {
       const clerk = (window as unknown as {
         Clerk?: { session?: { getToken?: () => Promise<string | null> } };

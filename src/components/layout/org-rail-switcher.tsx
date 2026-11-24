@@ -1,10 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useOrganizationList, useAuth as useClerkAuth } from '@clerk/nextjs';
-import { useAuth } from '@/providers';
-import { teamApi } from '@/lib/api/team';
 import { BrandTile } from '@/components/brand-tile';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -132,8 +129,7 @@ function RailSwitcher({
 /**
  * Clerk-authenticated members. The active organization lives in the session
  * token's `org_id` claim and the API scopes every request on it, so switching
- * has to go through Clerk's `setActive` -- our own `/auth/switch-organization`
- * would not touch the claim.
+ * has to go through Clerk's `setActive`.
  */
 export function ClerkOrgRailSwitcher() {
   const { isLoaded, setActive, userMemberships } = useOrganizationList({
@@ -176,41 +172,4 @@ export function ClerkOrgRailSwitcher() {
   };
 
   return <RailSwitcher orgs={orgs} currentId={orgId} onSwitch={handleSwitch} busy={switching} />;
-}
-
-/**
- * Legacy Stackbe-authenticated members, who have no Clerk session. Same list
- * and the same switch the expanded `OrgSwitcher` makes, drawn for the rail.
- */
-export function LegacyOrgRailSwitcher() {
-  const { session, switchOrganization } = useAuth();
-  const [switching, setSwitching] = useState(false);
-
-  const { data: orgs } = useQuery({
-    queryKey: ['organizations'],
-    queryFn: () => teamApi.listOrganizations(),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  if (!orgs) return null;
-
-  const handleSwitch = async (orgId: string) => {
-    if (orgId === session?.organizationId) return;
-    setSwitching(true);
-    try {
-      await switchOrganization(orgId);
-      reloadAsNewOrg();
-    } catch {
-      setSwitching(false);
-    }
-  };
-
-  return (
-    <RailSwitcher
-      orgs={orgs}
-      currentId={session?.organizationId}
-      onSwitch={handleSwitch}
-      busy={switching}
-    />
-  );
 }

@@ -18,7 +18,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.dispatchtickets.
 
 interface Session {
   customerId: string;
-  memberId?: string; // Stackbe member ID (for ticket assignment matching)
+  memberId?: string; // Local User.id (for ticket assignment matching)
   email: string;
   organizationId: string;
   orgRole?: string;
@@ -26,64 +26,26 @@ interface Session {
   expiresAt?: string;
 }
 
-interface CheckEmailResult {
-  exists: boolean;
-}
-
-interface SendMagicLinkResult {
-  success: boolean;
-  notFound?: boolean;
-}
-
-interface AcceptInviteResult {
-  success: boolean;
-  message?: string;
-  organizationId?: string;
-}
-
 interface AuthContextType {
   session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isConnected: boolean;
-  checkEmail: (email: string) => Promise<CheckEmailResult>;
-  sendMagicLink: (email: string) => Promise<SendMagicLinkResult>;
-  verifyToken: (token: string) => Promise<Session | null>;
-  connectApiKey: (apiKey: string) => Promise<boolean>;
-  acceptInvite: (inviteId: string) => Promise<AcceptInviteResult>;
-  switchOrganization: (organizationId: string) => Promise<boolean>;
   refreshSession: () => Promise<Session | null>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SESSION_TOKEN_KEY = 'dispatch_session_token';
+// The pre-Clerk session token. Nothing sends it any more; a copy left in a
+// browser is removed once, on load.
+const LEGACY_SESSION_TOKEN_KEY = 'dispatch_session_token';
 
-/**
- * Always null now: sessions are Clerk's. A leftover Stackbe token is removed
- * so nothing sends it (the API no longer accepts one) -- see lib/api/client.ts.
- */
-export function getSessionToken(): string | null {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.removeItem(SESSION_TOKEN_KEY);
-    } catch {
-      // Storage blocked.
-    }
-  }
-  return null;
-}
-
-export function setSessionToken(token: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(SESSION_TOKEN_KEY, token);
-  }
-}
-
-export function clearSessionToken(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(SESSION_TOKEN_KEY);
+function purgeLegacySessionToken(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(LEGACY_SESSION_TOKEN_KEY);
+  } catch {
+    // Storage blocked.
   }
 }
 
@@ -109,6 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // initial resolve) and drop cached org-scoped data for the org we left.
   const prevOrgIdRef = useRef<string | null | undefined>(undefined);
 
+  useEffect(purgeLegacySessionToken, []);
+
   const refreshSession = useCallback(async (): Promise<Session | null> => {
     // If already refreshing, return the existing promise (deduplication)
     if (refreshPromiseRef.current) {
@@ -120,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
-    const token = getSessionToken() || await getAuthToken();
+    const token = await getAuthToken();
     if (!token) {
       setSession(null);
       setIsLoading(false);
@@ -153,34 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const data = await response.json();
 
-        // Handle "user doesn't belong to org" - they're authenticated but need to connect
-        if (response.status === 401 && data.message?.includes('does not belong to an organization')) {
-          // Parse email from the JWT token (it's in the payload)
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            const newSession: Session = {
-              customerId: payload.sub || '',
-              email: payload.email || '',
-              organizationId: '',
-              connected: false,
-            };
-            setSessionIfCurrent(newSession);
-            return newSession;
-          } catch {
-            // If JWT parsing fails, still keep them "authenticated" for the connect flow
-            const newSession: Session = {
-              customerId: '',
-              email: '',
-              organizationId: '',
-              connected: false,
-            };
-            setSessionIfCurrent(newSession);
-            return newSession;
-          }
-        }
-
         if (!response.ok) {
-          clearSessionToken();
           setSessionIfCurrent(null);
           return null;
         }
@@ -198,12 +135,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSessionIfCurrent(newSession);
           return newSession;
         } else {
-          clearSessionToken();
           setSessionIfCurrent(null);
           return null;
         }
       } catch {
-        clearSessionToken();
         setSessionIfCurrent(null);
         return null;
       } finally {
@@ -226,8 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!clerkLoaded) return;
     // On a REAL org switch (not the first resolve after load), drop every
-    // cached query. Clerk's native org switcher changes the active org without
-    // routing through the app's switchOrganization() (which clears the cache),
+    // cached query. Clerk's org switcher changes the active org on its own,
     // so org-scoped data — brands, tickets, team — would otherwise stay pinned
     // to the org we just left. That stale brand list is what breaks scoped API
     // key creation after a switch.
@@ -241,192 +175,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshSession();
   }, [clerkLoaded, clerkOrgId, refreshSession, queryClient]);
 
-  const checkEmail = async (email: string): Promise<CheckEmailResult> => {
-    try {
-      const response = await fetch(`${API_URL}/auth/check-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        return { exists: false };
-      }
-
-      return await response.json();
-    } catch {
-      return { exists: false };
-    }
-  };
-
-  const sendMagicLink = async (email: string): Promise<{ success: boolean; notFound?: boolean }> => {
-    try {
-      const response = await fetch(`${API_URL}/auth/magic-link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        // Check if Stackbe returned "Customer not found"
-        if (data.message?.includes('Customer not found') || data.message?.includes('not found')) {
-          return { success: false, notFound: true };
-        }
-        return { success: false };
-      }
-
-      const data = await response.json();
-      return { success: data.success === true };
-    } catch {
-      return { success: false };
-    }
-  };
-
-  const verifyToken = async (token: string): Promise<Session | null> => {
-    try {
-      const response = await fetch(`${API_URL}/auth/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
-      if (data.success && data.sessionToken) {
-        // Reset logged out flag on successful login
-        isLoggedOutRef.current = false;
-        setSessionToken(data.sessionToken);
-        const newSession: Session = {
-          customerId: data.customerId,
-          memberId: data.memberId,
-          email: data.email,
-          organizationId: data.organizationId,
-          connected: data.connected,
-        };
-        setSession(newSession);
-        return newSession;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
-  const connectApiKey = async (apiKey: string): Promise<boolean> => {
-    const token = getSessionToken();
-    if (!token) return false;
-
-    try {
-      const response = await fetch(`${API_URL}/auth/connect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ apiKey }),
-      });
-
-      if (!response.ok) {
-        return false;
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        // Refresh session to get updated connected status
-        await refreshSession();
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
-  };
-
-  const acceptInvite = async (inviteId: string): Promise<AcceptInviteResult> => {
-    const token = getSessionToken();
-    if (!token) {
-      return { success: false, message: 'Not authenticated' };
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/auth/accept-invite`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ inviteId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          message: data.message || 'Failed to accept invite'
-        };
-      }
-
-      // Refresh session to get updated organization
-      await refreshSession();
-      return {
-        success: true,
-        message: 'Invite accepted',
-        organizationId: data.organizationId
-      };
-    } catch {
-      return { success: false, message: 'Failed to accept invite' };
-    }
-  };
-
-  const switchOrganization = async (organizationId: string): Promise<boolean> => {
-    const token = getSessionToken();
-    if (!token) return false;
-
-    try {
-      const response = await fetch(`${API_URL}/auth/switch-organization`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ organizationId }),
-      });
-
-      if (!response.ok) {
-        return false;
-      }
-
-      const data = await response.json();
-      if (data.sessionToken) {
-        setSessionToken(data.sessionToken);
-        // Clear all cached data since we're switching orgs
-        queryClient.clear();
-        // Refresh session to load new org context
-        await refreshSession();
-        router.push('/dashboard');
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
-  };
-
   const logout = () => {
     // Set flag to prevent stale refresh results from updating state
     isLoggedOutRef.current = true;
-    clearSessionToken();
     setSession(null);
     router.push('/login');
   };
 
   const isAuthenticated = session !== null;
-  const isConnected = session?.connected ?? false;
 
   return (
     <AuthContext.Provider
@@ -434,13 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         isAuthenticated,
         isLoading,
-        isConnected,
-        checkEmail,
-        sendMagicLink,
-        verifyToken,
-        connectApiKey,
-        acceptInvite,
-        switchOrganization,
         refreshSession,
         logout,
       }}

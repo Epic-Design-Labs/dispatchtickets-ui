@@ -8,7 +8,7 @@ import { createInvoiceProxyHandler } from '@usethrottle/invoices/server';
  *
  * `getCustomerId` resolves the signed-in DT user to the externalId on their
  * Throttle customer record (= the DT Account / organizationId). The browser
- * sends the DT session token (Stackbe session token OR Clerk JWT) as a Bearer
+ * sends the Clerk JWT as a Bearer
  * header via the invoice fetcher; we forward it to the DT API session endpoint
  * to read `organizationId`. Returns null when unauthenticated -> proxy 401s.
  */

@@ -5,23 +5,13 @@ import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { SignedIn, SignedOut, UserButton, OrganizationSwitcher } from '@clerk/nextjs';
+import { SignedIn, UserButton, OrganizationSwitcher } from '@clerk/nextjs';
 import { useAuth } from '@/providers';
 import { useProfile, useBrands, useDashboardStats, useDashboardTickets } from '@/lib/hooks';
 import { useGlobalChatQueue } from '@/lib/hooks/use-chat';
 import { useSidebarCollapsed } from '@/lib/ui-prefs';
 import { BrandList } from './brand-list';
-import { OrgSwitcher } from './org-switcher';
-import { ClerkOrgRailSwitcher, LegacyOrgRailSwitcher } from './org-rail-switcher';
+import { ClerkOrgRailSwitcher } from './org-rail-switcher';
 import { NotificationBell } from './notification-bell';
 import {
   SidebarCollapsedProvider,
@@ -44,8 +34,6 @@ import {
   CreditCard,
   LifeBuoy,
   Lightbulb,
-  LogOut,
-  UserCog,
   MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
@@ -66,7 +54,7 @@ function countFrom(result: PaginatedResponse<unknown> | undefined): number | str
 export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   const { data: profile } = useProfile();
   const { data: brands } = useBrands();
   const email = session?.email;
@@ -110,17 +98,6 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
 
   // Get display name: profile > email-derived > email
   const displayName = profile?.displayName || (email ? email.split('@')[0].split(/[._-]/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : 'User');
-
-  // Get initials for avatar fallback
-  const getInitials = () => {
-    if (profile?.displayName) {
-      return profile.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    }
-    if (email) {
-      return email.slice(0, 2).toUpperCase();
-    }
-    return 'U';
-  };
 
   return (
     <SidebarCollapsedProvider value={collapsed}>
@@ -287,11 +264,10 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
         </div>
 
         {/* Org switcher.
-            • Clerk users: Clerk's <OrganizationSwitcher /> (drives the JWT's
-              org_id claim — the API uses that to scope data).
-            • Stackbe users: the legacy OrgSwitcher (Stackbe API + session).
+            Clerk's <OrganizationSwitcher /> (drives the JWT's org_id claim —
+            the API uses that to scope data).
 
-            ON THE RAIL both are replaced by OrgRailSwitcher, which draws the
+            ON THE RAIL it is replaced by OrgRailSwitcher, which draws the
             org as a BrandTile and opens our own menu — see that file for why
             it is not simply Clerk's component with its text hidden.
 
@@ -322,14 +298,9 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
           /* No wrapper here: the switcher draws its own bordered strip, so a
              member with one organization gets nothing rather than an empty
              rule across the rail. */
-          <>
-            <SignedIn>
-              <ClerkOrgRailSwitcher />
-            </SignedIn>
-            <SignedOut>
-              <LegacyOrgRailSwitcher />
-            </SignedOut>
-          </>
+          <SignedIn>
+            <ClerkOrgRailSwitcher />
+          </SignedIn>
         ) : (
           <div className="shrink-0 border-t px-3 py-2">
             <SignedIn>
@@ -348,16 +319,10 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
                 }}
               />
             </SignedIn>
-            <SignedOut>
-              <OrgSwitcher />
-            </SignedOut>
           </div>
         )}
 
-        {/* Profile section — Clerk users see <UserButton />; Stackbe users see
-            the legacy dropdown. Clerk's <SignedOut> treats Stackbe-authenticated
-            sessions as "signed-out" since Clerk has no session for them, which is
-            exactly the routing we want during the parallel-mode period. */}
+        {/* Profile section: Clerk's <UserButton /> (sign out lives there). */}
         <div className={cn('shrink-0 border-t', collapsed ? 'px-2 py-2.5' : 'px-3 py-3')}>
           <SignedIn>
             <div
@@ -381,48 +346,6 @@ export function Sidebar({ collapsible = true }: { collapsible?: boolean } = {}) 
               <AvailabilityToggle variant={collapsed ? 'dot' : 'pill'} />
             </div>
           </SignedIn>
-          <SignedOut>
-            <div className={cn('flex items-center', collapsed ? 'flex-col gap-1.5' : 'gap-2')}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      collapsed ? 'h-8 w-8 p-0' : 'min-w-0 flex-1 justify-start gap-2.5 px-1'
-                    )}
-                    title={collapsed ? displayName : undefined}
-                  >
-                    <Avatar className="h-7 w-7">
-                      <AvatarImage src={profile?.avatarUrl || undefined} alt={displayName} />
-                      <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
-                    </Avatar>
-                    {!collapsed && (
-                      <span className="truncate text-sm font-medium">{displayName}</span>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="start" side="top">
-                  <DropdownMenuLabel className="font-normal">
-                    <p className="text-sm font-medium">{displayName}</p>
-                    <p className="text-muted-foreground truncate text-xs">{email}</p>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link href="/profile">
-                      <UserCog className="mr-2 h-4 w-4" />
-                      Profile Settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <AvailabilityToggle variant={collapsed ? 'dot' : 'pill'} />
-            </div>
-          </SignedOut>
         </div>
       </div>
     </SidebarCollapsedProvider>

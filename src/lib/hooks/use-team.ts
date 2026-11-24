@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamApi, Organization } from '@/lib/api/team';
 import { InviteMemberInput, UpdateMemberInput, UpdateBrandAssignmentsInput } from '@/types';
+import { useAuth } from '@/providers';
 
 export const teamKeys = {
   all: ['team'] as const,
@@ -71,11 +72,15 @@ export function useRemoveMember() {
 
 export function useTransferOwnership() {
   const queryClient = useQueryClient();
+  const { refreshSession } = useAuth();
 
   return useMutation({
     mutationFn: (newOwnerId: string) => teamApi.transferOwnership(newOwnerId),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: teamKeys.members() });
+      // The caller is now an admin, not the owner: re-read the session so
+      // owner-only controls (billing, delete account) go away.
+      await refreshSession();
     },
   });
 }
