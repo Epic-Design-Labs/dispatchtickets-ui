@@ -119,13 +119,24 @@ export default function FeatureRequestsPage() {
 
   const handleAddImage = () => {
     if (!newImageUrl.trim()) return;
+    let secure = false;
     try {
-      new URL(newImageUrl); // Validate URL
-      setNewImages([...newImages, { url: newImageUrl.trim() }]);
-      setNewImageUrl('');
+      secure = new URL(newImageUrl.trim()).protocol === 'https:';
     } catch {
-      toast.error('Please enter a valid URL');
+      secure = false;
     }
+    // The server keeps https links only (and at most five), so say so here
+    // rather than have the image quietly disappear.
+    if (!secure) {
+      toast.error('Use an image link that starts with https://');
+      return;
+    }
+    if (newImages.length >= 5) {
+      toast.error('You can add up to five images');
+      return;
+    }
+    setNewImages([...newImages, { url: newImageUrl.trim() }]);
+    setNewImageUrl('');
   };
 
   const handleRemoveImage = (index: number) => {

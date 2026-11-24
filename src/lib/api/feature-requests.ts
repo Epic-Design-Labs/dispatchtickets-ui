@@ -18,6 +18,10 @@ export interface FeatureRequest {
   images?: FeatureRequestImage[];
   status: 'new' | 'under_review' | 'planned' | 'in_progress' | 'completed' | 'declined';
   voteCount: number;
+  /** Whether the signed-in person has voted for it. */
+  hasVoted?: boolean;
+  /** Whether the signed-in person sent it. The board never says who else did. */
+  isMine?: boolean;
   authorId: string;
   createdAt: string;
   updatedAt: string;
@@ -48,7 +52,7 @@ export const featureRequestsApi = {
     limit?: number;
   }): Promise<FeatureRequestsResponse> => {
     const response = await apiClient.get<FeatureRequestsResponse>(
-      '/auth/feature-requests',
+      '/feature-requests',
       { params }
     );
     return response.data;
@@ -56,7 +60,7 @@ export const featureRequestsApi = {
 
   create: async (data: CreateFeatureRequestInput): Promise<FeatureRequest> => {
     const response = await apiClient.post<FeatureRequest>(
-      '/auth/feature-requests',
+      '/feature-requests',
       data
     );
     return response.data;
@@ -64,21 +68,21 @@ export const featureRequestsApi = {
 
   vote: async (requestId: string): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>(
-      `/auth/feature-requests/${requestId}/vote`
+      `/feature-requests/${requestId}/vote`
     );
     return response.data;
   },
 
   unvote: async (requestId: string): Promise<{ success: boolean }> => {
     const response = await apiClient.delete<{ success: boolean }>(
-      `/auth/feature-requests/${requestId}/vote`
+      `/feature-requests/${requestId}/vote`
     );
     return response.data;
   },
 
   getActivity: async (): Promise<FeatureActivityResponse> => {
     const response = await apiClient.get<FeatureActivityResponse>(
-      '/auth/feature-requests/activity'
+      '/feature-requests/activity'
     );
     return response.data;
   },
