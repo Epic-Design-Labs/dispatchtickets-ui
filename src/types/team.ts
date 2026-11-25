@@ -5,6 +5,24 @@ export type MemberStatus = 'active' | 'pending';
 export interface BrandAssignment {
   allBrands: boolean;
   brandIds: string[];
+  groupIds?: string[];
+  /** Names of those groups, for display. */
+  groupNames?: string[];
+}
+
+/** A named set of brands; members in it reach its brands, live. */
+export interface BrandGroup {
+  id: string;
+  name: string;
+  brandIds: string[];
+  memberCount: number;
+  /** Members (and invites) who reach brands only through this group. */
+  soleAccessCount: number;
+}
+
+export interface BrandGroupInput {
+  name?: string;
+  brandIds?: string[];
 }
 
 export interface AvailableBrand {
@@ -16,12 +34,15 @@ export interface BrandAssignmentResponse {
   memberId: string;
   allBrands: boolean;
   brandIds: string[];
+  groupIds: string[];
   availableBrands: AvailableBrand[];
+  availableGroups: { id: string; name: string; brandIds: string[] }[];
 }
 
 export interface UpdateBrandAssignmentsInput {
   allBrands: boolean;
   brandIds?: string[];
+  groupIds?: string[];
 }
 
 export interface TeamMember {
@@ -46,6 +67,7 @@ export interface InviteMemberInput {
   role: OrgRole;
   allBrands?: boolean;
   brandIds?: string[];
+  groupIds?: string[];
 }
 
 export interface UpdateMemberInput {

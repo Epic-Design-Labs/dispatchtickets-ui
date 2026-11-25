@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamApi, Organization } from '@/lib/api/team';
-import { InviteMemberInput, UpdateMemberInput, UpdateBrandAssignmentsInput } from '@/types';
+import { InviteMemberInput, UpdateMemberInput, UpdateBrandAssignmentsInput, BrandGroupInput } from '@/types';
 import { useAuth } from '@/providers';
 
 export const teamKeys = {
@@ -12,6 +12,7 @@ export const teamKeys = {
     : [...teamKeys.all, 'members'] as const,
   organization: () => [...teamKeys.all, 'organization'] as const,
   brandAssignments: (memberId: string) => [...teamKeys.all, 'brandAssignments', memberId] as const,
+  brandGroups: () => [...teamKeys.all, 'brandGroups'] as const,
 };
 
 /**
@@ -123,5 +124,44 @@ export function useUpdateBrandAssignments() {
       queryClient.invalidateQueries({ queryKey: teamKeys.brandAssignments(memberId) });
       queryClient.invalidateQueries({ queryKey: teamKeys.members() });
     },
+  });
+}
+
+export function useBrandGroups(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: teamKeys.brandGroups(),
+    queryFn: teamApi.getBrandGroups,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/** A group change can change anyone's access: refresh every team view. */
+function useInvalidateTeam() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: teamKeys.all });
+}
+
+export function useCreateBrandGroup() {
+  const invalidate = useInvalidateTeam();
+  return useMutation({
+    mutationFn: (data: BrandGroupInput & { name: string }) => teamApi.createBrandGroup(data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateBrandGroup() {
+  const invalidate = useInvalidateTeam();
+  return useMutation({
+    mutationFn: ({ groupId, data }: { groupId: string; data: BrandGroupInput }) =>
+      teamApi.updateBrandGroup(groupId, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteBrandGroup() {
+  const invalidate = useInvalidateTeam();
+  return useMutation({
+    mutationFn: (groupId: string) => teamApi.deleteBrandGroup(groupId),
+    onSuccess: invalidate,
   });
 }

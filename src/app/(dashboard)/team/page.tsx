@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InviteMemberDialog, TeamMemberTable } from '@/components/team';
+import { BrandGroupsSection } from '@/components/team/brand-groups-section';
 import type { TeamRow } from '@/components/team/team-member-table';
 import { MetricChip, StatusTabs, type StatusTabDef } from '@/components/tickets/status-tabs';
 import {
@@ -225,6 +226,8 @@ export default function TeamPage() {
         resendingId={resendingId}
         empty={empty}
       />
+
+      {canInvite && <BrandGroupsSection />}
 
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useInviteMember, useBrands, useTeamMembers } from '@/lib/hooks';
+import { useInviteMember, useBrands, useTeamMembers, useBrandGroups } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -60,20 +60,28 @@ export function InviteMemberDialog({ children, onInvited }: InviteMemberDialogPr
   const [role, setRole] = useState<'member' | 'admin'>('member');
   const [allBrands, setAllBrands] = useState(true);
   const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
   const inviteMember = useInviteMember();
   const { data: brands } = useBrands();
   const { data: team } = useTeamMembers();
+  const { data: groups } = useBrandGroups({ enabled: open });
 
   const reset = () => {
     setEmails('');
     setRole('member');
     setAllBrands(true);
     setSelectedBrandIds([]);
+    setSelectedGroupIds([]);
     setError(null);
   };
+
+  const toggleGroup = (groupId: string) =>
+    setSelectedGroupIds((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
+    );
 
   const toggleBrand = (brandId: string) =>
     setSelectedBrandIds((prev) =>
@@ -94,7 +102,9 @@ export function InviteMemberDialog({ children, onInvited }: InviteMemberDialogPr
     if (already.length) {
       return setError(`${already.join(', ')} ${already.length > 1 ? 'are' : 'is'} already on the team or invited.`);
     }
-    if (!allBrands && selectedBrandIds.length === 0) return setError('Pick at least one brand.');
+    if (!allBrands && selectedBrandIds.length === 0 && selectedGroupIds.length === 0) {
+      return setError('Pick at least one brand or group.');
+    }
     setError(null);
 
     // One request per address, in turn rather than all at once: the endpoint
@@ -111,6 +121,7 @@ export function InviteMemberDialog({ children, onInvited }: InviteMemberDialogPr
           role: role as OrgRole,
           allBrands,
           brandIds: allBrands ? [] : selectedBrandIds,
+          groupIds: allBrands ? [] : selectedGroupIds,
         });
         sent.push(email);
       } catch (err) {
@@ -234,8 +245,31 @@ export function InviteMemberDialog({ children, onInvited }: InviteMemberDialogPr
                 </label>
               ))}
             </div>
+            {!allBrands && !!groups?.length && (
+              <div className="space-y-1 rounded-lg border p-2">
+                <p className="text-muted-foreground px-2 pt-1 text-xs font-medium">Groups</p>
+                {groups.map((group) => (
+                  <label
+                    key={group.id}
+                    className="hover:bg-surface-muted flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm"
+                  >
+                    <Checkbox
+                      checked={selectedGroupIds.includes(group.id)}
+                      onCheckedChange={() => toggleGroup(group.id)}
+                    />
+                    <span className="flex-1">{group.name}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {group.brandIds.length} brand{group.brandIds.length === 1 ? '' : 's'}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
             {!allBrands && (
               <div className="max-h-[200px] space-y-1 overflow-y-auto rounded-lg border p-2">
+                {!!groups?.length && (
+                  <p className="text-muted-foreground px-2 pt-1 text-xs font-medium">Individual brands</p>
+                )}
                 {brands?.length ? (
                   brands.map((brand) => (
                     <label

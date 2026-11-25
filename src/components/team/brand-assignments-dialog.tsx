@@ -36,14 +36,35 @@ export function BrandAssignmentsDialog({
 
   const [allBrands, setAllBrands] = useState(true);
   const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
   // Sync state when data loads
   useEffect(() => {
     if (data) {
       setAllBrands(data.allBrands);
       setSelectedBrandIds(data.brandIds || []);
+      setSelectedGroupIds(data.groupIds || []);
     }
   }, [data]);
+
+  const groups = data?.availableGroups ?? [];
+  // Brand id -> names of the selected groups that grant it. Shown, not stored:
+  // the API resolves groups live, so a brand added to a group later counts too.
+  const viaGroups = new Map<string, string[]>();
+  for (const group of groups) {
+    if (!selectedGroupIds.includes(group.id)) continue;
+    for (const brandId of group.brandIds) {
+      viaGroups.set(brandId, [...(viaGroups.get(brandId) ?? []), group.name]);
+    }
+  }
+  const reachable = new Set([...selectedBrandIds, ...viaGroups.keys()]);
+
+  const handleGroupToggle = (groupId: string) => {
+    if (allBrands) setAllBrands(false);
+    setSelectedGroupIds((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
+    );
+  };
 
   // Check if current user can modify this member's assignments
   const canModify = (() => {
@@ -60,6 +81,7 @@ export function BrandAssignmentsDialog({
     if (checked) {
       // When enabling "all brands", clear individual selections
       setSelectedBrandIds([]);
+      setSelectedGroupIds([]);
     }
   };
 
@@ -83,6 +105,7 @@ export function BrandAssignmentsDialog({
         data: {
           allBrands,
           brandIds: allBrands ? [] : selectedBrandIds,
+          groupIds: allBrands ? [] : selectedGroupIds,
         },
       });
       toast.success('Brand assignments updated');
@@ -99,7 +122,7 @@ export function BrandAssignmentsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Brand Access</DialogTitle>
           <DialogDescription>
@@ -142,15 +165,47 @@ export function BrandAssignmentsDialog({
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  Or select specific brands
+                  Or select groups and brands
                 </span>
               </div>
             </div>
+
+            {/* Brand groups */}
+            {groups.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Groups</p>
+                {groups.map((group) => {
+                  const isSelected = allBrands || selectedGroupIds.includes(group.id);
+                  return (
+                    <div
+                      key={group.id}
+                      className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
+                        allBrands ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <div>
+                        <span className="font-medium">{group.name}</span>
+                        <p className="text-xs text-muted-foreground">
+                          {group.brandIds.length} brand{group.brandIds.length === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={isSelected}
+                        onCheckedChange={() => handleGroupToggle(group.id)}
+                        disabled={!canModify || allBrands}
+                      />
+                    </div>
+                  );
+                })}
+                <p className="pt-1 text-sm font-medium">Individual brands</p>
+              </div>
+            )}
 
             {/* Individual brand toggles */}
             <div className="space-y-2">
               {data?.availableBrands.map((brand) => {
                 const isSelected = allBrands || selectedBrandIds.includes(brand.id);
+                const fromGroups = allBrands ? undefined : viaGroups.get(brand.id);
                 return (
                   <div
                     key={brand.id}
@@ -163,6 +218,11 @@ export function BrandAssignmentsDialog({
                       {isSelected && !allBrands && (
                         <Badge variant="secondary" className="text-xs">
                           Selected
+                        </Badge>
+                      )}
+                      {fromGroups && (
+                        <Badge variant="outline" className="text-xs">
+                          via {fromGroups.join(', ')}
                         </Badge>
                       )}
                     </div>
@@ -181,6 +241,15 @@ export function BrandAssignmentsDialog({
                 </p>
               )}
             </div>
+
+            {!allBrands && (
+              <p className="text-sm text-muted-foreground">
+                {reachable.size === 0
+                  ? `${memberName} will not be able to open any brand.`
+                  : `${memberName} can open ${reachable.size} brand${reachable.size === 1 ? '' : 's'}.`}
+                {selectedGroupIds.length > 0 && ' Brands added to a group later are included.'}
+              </p>
+            )}
           </div>
         )}
 

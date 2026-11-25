@@ -5,6 +5,8 @@ import {
   UpdateMemberInput,
   BrandAssignmentResponse,
   UpdateBrandAssignmentsInput,
+  BrandGroup,
+  BrandGroupInput,
 } from '@/types';
 
 export interface Organization {
@@ -13,6 +15,29 @@ export interface Organization {
 }
 
 export const teamApi = {
+  // Brand groups (owner/admin; the API enforces it)
+  getBrandGroups: async (): Promise<BrandGroup[]> => {
+    const response = await apiClient.get<BrandGroup[]>('/auth/brand-groups');
+    return response.data;
+  },
+
+  createBrandGroup: async (data: BrandGroupInput & { name: string }): Promise<BrandGroup> => {
+    const response = await apiClient.post<BrandGroup>('/auth/brand-groups', data);
+    return response.data;
+  },
+
+  updateBrandGroup: async (groupId: string, data: BrandGroupInput): Promise<BrandGroup> => {
+    const response = await apiClient.patch<BrandGroup>(`/auth/brand-groups/${groupId}`, data);
+    return response.data;
+  },
+
+  deleteBrandGroup: async (
+    groupId: string
+  ): Promise<{ success: boolean; membersAffected: number; membersLeftWithoutBrands: number }> => {
+    const response = await apiClient.delete(`/auth/brand-groups/${groupId}`);
+    return response.data;
+  },
+
   getMembers: async (options?: { brandId?: string }): Promise<TeamMembersResponse> => {
     const params = options?.brandId ? { brandId: options.brandId } : undefined;
     const response = await apiClient.get<TeamMembersResponse>('/auth/members', { params });

@@ -48,9 +48,12 @@ function csatTone(score: number): string {
 
 function brandAccess(member: TeamMember): string {
   const assignment = member.brandAssignment;
-  if (assignment?.allBrands || !assignment?.brandIds?.length) return 'All brands';
-  const n = assignment.brandIds.length;
-  return `${n} brand${n === 1 ? '' : 's'}`;
+  // No record means never narrowed, which the API treats as every brand.
+  if (!assignment || assignment.allBrands) return 'All brands';
+  const groups = assignment.groupNames ?? [];
+  const n = assignment.brandIds?.length ?? 0;
+  const parts = [...groups, ...(n ? [`${n} brand${n === 1 ? '' : 's'}`] : [])];
+  return parts.length ? parts.join(', ') : 'No brands';
 }
 
 const COLUMNS = ['Member', 'Role', 'Brands', 'Availability', 'Resolved', 'Satisfaction', ''];
