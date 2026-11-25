@@ -388,18 +388,23 @@ export default function MemberDetailPage() {
                     </div>
                   </div>
 
+                  {allBrands && (
+                    <p className="text-sm text-muted-foreground">
+                      Turning on a group or brand below switches off &quot;All current and future brands&quot;, so this
+                      member can open only what you pick. Press Save Brand Access to apply.
+                    </p>
+                  )}
+
                   {/* Brand groups */}
                   {groups.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Groups</p>
                       {groups.map((group) => {
-                        const isSelected = allBrands || selectedGroupIds.includes(group.id);
+                        const isSelected = !allBrands && selectedGroupIds.includes(group.id);
                         return (
                           <div
                             key={group.id}
-                            className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
-                              allBrands ? 'opacity-50' : ''
-                            }`}
+                            className="flex items-center justify-between rounded-lg border p-3 transition-colors"
                           >
                             <div>
                               <span className="font-medium">{group.name}</span>
@@ -422,18 +427,16 @@ export default function MemberDetailPage() {
                   {/* Individual brand toggles */}
                   <div className="space-y-2">
                     {brandData?.availableBrands.map((brand) => {
-                      const isSelected = allBrands || selectedBrandIds.includes(brand.id);
+                      const isSelected = !allBrands && selectedBrandIds.includes(brand.id);
                       const fromGroups = allBrands ? undefined : viaGroups.get(brand.id);
                       return (
                         <div
                           key={brand.id}
-                          className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
-                            allBrands ? 'opacity-50' : ''
-                          }`}
+                          className="flex items-center justify-between rounded-lg border p-3 transition-colors"
                         >
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{brand.name}</span>
-                            {isSelected && !allBrands && (
+                            {isSelected && (
                               <Badge variant="secondary" className="text-xs">
                                 Selected
                               </Badge>
