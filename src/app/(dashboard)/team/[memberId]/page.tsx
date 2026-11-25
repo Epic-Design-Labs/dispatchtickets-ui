@@ -49,6 +49,7 @@ export default function MemberDetailPage() {
   const [selectedRole, setSelectedRole] = useState<OrgRole>('member');
   const [allBrands, setAllBrands] = useState(true);
   const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [hasRoleChanges, setHasRoleChanges] = useState(false);
   const [hasBrandChanges, setHasBrandChanges] = useState(false);
 
@@ -84,8 +85,21 @@ export default function MemberDetailPage() {
     if (brandData) {
       setAllBrands(brandData.allBrands);
       setSelectedBrandIds(brandData.brandIds || []);
+      setSelectedGroupIds(brandData.groupIds || []);
     }
   }, [brandData]);
+
+  const groups = brandData?.availableGroups ?? [];
+  // Brand id -> names of the selected groups that give it. The API resolves
+  // groups live, so a brand added to a group later counts too.
+  const viaGroups = new Map<string, string[]>();
+  for (const group of groups) {
+    if (!selectedGroupIds.includes(group.id)) continue;
+    for (const brandId of group.brandIds) {
+      viaGroups.set(brandId, [...(viaGroups.get(brandId) ?? []), group.name]);
+    }
+  }
+  const reachableCount = new Set([...selectedBrandIds, ...viaGroups.keys()]).size;
 
   // Track changes
   useEffect(() => {
@@ -98,10 +112,11 @@ export default function MemberDetailPage() {
     if (brandData) {
       const brandsChanged =
         allBrands !== brandData.allBrands ||
-        JSON.stringify(selectedBrandIds.sort()) !== JSON.stringify((brandData.brandIds || []).sort());
+        JSON.stringify([...selectedBrandIds].sort()) !== JSON.stringify([...(brandData.brandIds || [])].sort()) ||
+        JSON.stringify([...selectedGroupIds].sort()) !== JSON.stringify([...(brandData.groupIds || [])].sort());
       setHasBrandChanges(brandsChanged);
     }
-  }, [allBrands, selectedBrandIds, brandData]);
+  }, [allBrands, selectedBrandIds, selectedGroupIds, brandData]);
 
   const handleRoleChange = async () => {
     if (!member || selectedRole === member.role) return;
@@ -122,6 +137,7 @@ export default function MemberDetailPage() {
         data: {
           allBrands,
           brandIds: allBrands ? [] : selectedBrandIds,
+          groupIds: allBrands ? [] : selectedGroupIds,
         },
       });
       toast.success('Brand access updated');
@@ -135,7 +151,17 @@ export default function MemberDetailPage() {
     setAllBrands(checked);
     if (checked) {
       setSelectedBrandIds([]);
+      setSelectedGroupIds([]);
     }
+  };
+
+  const handleGroupToggle = (groupId: string) => {
+    if (allBrands) {
+      setAllBrands(false);
+    }
+    setSelectedGroupIds((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
+    );
   };
 
   const handleBrandToggle = (brandId: string) => {
@@ -357,15 +383,47 @@ export default function MemberDetailPage() {
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
                       <span className="bg-background px-2 text-muted-foreground">
-                        Or select specific brands
+                        Or select groups and brands
                       </span>
                     </div>
                   </div>
+
+                  {/* Brand groups */}
+                  {groups.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Groups</p>
+                      {groups.map((group) => {
+                        const isSelected = allBrands || selectedGroupIds.includes(group.id);
+                        return (
+                          <div
+                            key={group.id}
+                            className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
+                              allBrands ? 'opacity-50' : ''
+                            }`}
+                          >
+                            <div>
+                              <span className="font-medium">{group.name}</span>
+                              <p className="text-xs text-muted-foreground">
+                                {group.brandIds.length} brand{group.brandIds.length === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                            <Switch
+                              checked={isSelected}
+                              onCheckedChange={() => handleGroupToggle(group.id)}
+                              disabled={!canManageMembers}
+                            />
+                          </div>
+                        );
+                      })}
+                      <p className="pt-1 text-sm font-medium">Individual brands</p>
+                    </div>
+                  )}
 
                   {/* Individual brand toggles */}
                   <div className="space-y-2">
                     {brandData?.availableBrands.map((brand) => {
                       const isSelected = allBrands || selectedBrandIds.includes(brand.id);
+                      const fromGroups = allBrands ? undefined : viaGroups.get(brand.id);
                       return (
                         <div
                           key={brand.id}
@@ -378,6 +436,11 @@ export default function MemberDetailPage() {
                             {isSelected && !allBrands && (
                               <Badge variant="secondary" className="text-xs">
                                 Selected
+                              </Badge>
+                            )}
+                            {fromGroups && (
+                              <Badge variant="outline" className="text-xs">
+                                via {fromGroups.join(', ')}
                               </Badge>
                             )}
                           </div>
@@ -396,6 +459,15 @@ export default function MemberDetailPage() {
                       </p>
                     )}
                   </div>
+
+                  {!allBrands && (
+                    <p className="text-sm text-muted-foreground">
+                      {reachableCount === 0
+                        ? 'This member will not be able to open any brand.'
+                        : `This member can open ${reachableCount} brand${reachableCount === 1 ? '' : 's'}.`}
+                      {selectedGroupIds.length > 0 && ' Brands added to a group later are included.'}
+                    </p>
+                  )}
 
                   {canManageMembers && (
                     <div className="flex justify-end pt-2">

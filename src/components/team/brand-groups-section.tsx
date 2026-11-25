@@ -82,7 +82,8 @@ export function BrandGroupsSection() {
             Brand groups
           </h2>
           <p className="text-muted-foreground text-sm">
-            Put members in a group to give them its brands. Changing a group changes access for everyone in it.
+            Give members a group's brands from their page: click a person below, then turn the group on under Brand
+            Access. Changing a group changes access for everyone in it.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setEditing('new')}>
