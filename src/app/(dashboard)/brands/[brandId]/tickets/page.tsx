@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, type SetStateAction } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useBrand, useTickets, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, BulkActionType, ticketKeys } from '@/lib/hooks';
+import { useBrand, useTickets, useEmailConnections, useSyncEmail, useBulkAction, useMergeTickets, useCategories, useTags, useTeamMembers, useFieldsByEntity, useDashboardStats, useTicketStatusCounts, BulkActionType, ticketKeys } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { RefreshCw, MessageSquare, Timer } from 'lucide-react';
 import { TicketFilters, TicketTable, CreateTicketDialog, StatusTabs, MetricChip } from '@/components/tickets';
@@ -112,8 +112,8 @@ export default function BrandDashboardPage() {
   }, []);
 
   const { data: brand, isLoading: brandLoading } = useBrand(brandId);
-  // Fetch all tickets for stats (without filters)
-  const { data: allTicketsData, isLoading: allTicketsLoading } = useTickets(brandId, {});
+  // Per-status counts from the API (the ticket list is paged, so it can't be counted client-side)
+  const { data: statusStats, isLoading: statusStatsLoading } = useTicketStatusCounts(brandId);
   // Convert 'all' status to undefined (no filter) for API, include sort/order
   const apiFilters = useMemo(() => {
     const base = filters.status === 'all'
@@ -249,17 +249,17 @@ export default function BrandDashboardPage() {
     }
   };
 
-  const isLoading = brandLoading || allTicketsLoading;
+  const isLoading = brandLoading || statusStatsLoading;
 
-  // Calculate ticket stats from all tickets (unfiltered)
-  const allTickets = allTicketsData?.data || [];
+  // Ticket counts per status tab
+  const countOf = (key: string) => statusStats?.find((st) => st.key === key)?.ticketCount ?? 0;
   const stats = {
-    total: allTickets.length,
-    active: allTickets.filter((t) => t.status === 'open' || t.status === 'pending').length,
-    open: allTickets.filter((t) => t.status === 'open').length,
-    pending: allTickets.filter((t) => t.status === 'pending').length,
-    resolved: allTickets.filter((t) => t.status === 'resolved').length,
-    closed: allTickets.filter((t) => t.status === 'closed').length,
+    total: (statusStats ?? []).reduce((sum, st) => sum + st.ticketCount, 0),
+    active: countOf('open') + countOf('pending'),
+    open: countOf('open'),
+    pending: countOf('pending'),
+    resolved: countOf('resolved'),
+    closed: countOf('closed'),
   };
 
   // Sort tickets: open first (by newest), then pending (by newest) when showing active

@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ticketsApi } from '@/lib/api';
+import { statusesApi } from '@/lib/api/statuses';
 import { CreateTicketInput, UpdateTicketInput, TicketFilters } from '@/types';
 
 export const ticketKeys = {
@@ -10,7 +11,21 @@ export const ticketKeys = {
     ['tickets', brandId, 'list', filters] as const,
   detail: (brandId: string, ticketId: string) =>
     ['tickets', brandId, ticketId] as const,
+  statusCounts: (brandId: string) => ['tickets', brandId, 'status-counts'] as const,
 };
+
+/**
+ * Ticket count per status for a brand (spam and deleted excluded, like the list).
+ * Keyed under the brand's tickets so every ticket mutation that invalidates
+ * ticketKeys.all refreshes the counts too.
+ */
+export function useTicketStatusCounts(brandId: string) {
+  return useQuery({
+    queryKey: ticketKeys.statusCounts(brandId),
+    queryFn: () => statusesApi.getStats(brandId),
+    enabled: !!brandId,
+  });
+}
 
 export function useTickets(brandId: string, filters?: TicketFilters) {
   return useQuery({
